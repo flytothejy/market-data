@@ -22,9 +22,9 @@ jobs:
         run: |
           import os, re, time
           import yfinance as yf
-          T = """^GSPC ^NDX ^DJI ^RUT ^VIX ES=F NQ=F QQQ SPY
+          T = """^GSPC ^NDX ^DJI ^RUT ^VIX ES=F NQ=F YM=F RTY=F QQQ SPY
           ^KS11 ^KQ11 069500.KS
-          ^N225 ^HSI 000001.SS ^STOXX50E ^GDAXI ^FTSE ^TWII ^BSESN ^BVSP
+          ^N225 NKD=F 1321.T ^HSI 000001.SS ^STOXX50E ^GDAXI ^FTSE ^TWII ^BSESN ^BVSP
           GC=F SI=F HG=F CL=F BZ=F NG=F ZC=F ZW=F
           DX-Y.NYB KRW=X ^TNX""".split()
           os.makedirs("data", exist_ok=True)
