@@ -1,0 +1,59 @@
+name: update-market-data
+
+on:
+  schedule:
+    - cron: "30 22 * * 1-5"   # 평일 22:30 UTC (한국 07:30) 미국장 마감 후
+  workflow_dispatch:           # Actions 탭에서 수동 실행
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install yfinance pandas
+      - name: download
+        shell: python
+        run: |
+          import os, re, time
+          import yfinance as yf
+          T = """^GSPC ^NDX ^DJI ^RUT ^VIX ES=F NQ=F
+          ^KS11 ^KQ11 ^KS200
+          ^N225 ^HSI 000001.SS ^STOXX50E ^GDAXI ^FTSE ^TWII ^BSESN ^BVSP
+          GC=F SI=F HG=F CL=F BZ=F NG=F ZC=F ZW=F
+          DX-Y.NYB KRW=X ^TNX""".split()
+          os.makedirs("data", exist_ok=True)
+          bad = []
+          for t in T:
+              name = re.sub(r"[^A-Za-z0-9]+", "_", t).strip("_")
+              for k in range(3):
+                  try:
+                      d = yf.download(t, period="max", interval="1d", auto_adjust=False,
+                                      progress=False, threads=False)
+                      if len(d):
+                          if hasattr(d.columns, "levels"):
+                              d.columns = d.columns.get_level_values(0)
+                          d = d[["Open", "High", "Low", "Close", "Volume"]].dropna(how="all")
+                          d.index.name = "Date"
+                          d.round(6).to_csv(f"data/{name}.csv")
+                          print(t, len(d), d.index[0].date(), d.index[-1].date())
+                          break
+                  except Exception as e:
+                      print(t, "retry", k, e)
+                  time.sleep(5)
+              else:
+                  bad.append(t)
+              time.sleep(1)
+          print("failed:", bad)
+      - name: commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || git commit -m "data $(date -u +%F)"
+          git push
