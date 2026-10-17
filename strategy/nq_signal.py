@@ -14,7 +14,7 @@
 사용: python strategy/nq_signal.py   (저장소 루트에서, data/ 폴더 필요)
 환경변수(선택): TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, PAGES_URL
 """
-import json, os, sys, datetime
+import json, os, sys, datetime, html
 import numpy as np
 import pandas as pd
 
@@ -312,7 +312,7 @@ def chart_png(ix, F, trades, path):
 def telegram(text, photo=None):
     tok, chat = os.environ.get("TELEGRAM_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
     if not tok or not chat:
-        print("[텔레그램 미설정]\n" + text); return
+        print("[텔레그램 미설정]\n" + text); return False
     import requests
     base = f"https://api.telegram.org/bot{tok}"
     if photo:
@@ -321,6 +321,9 @@ def telegram(text, photo=None):
     else:
         r = requests.post(f"{base}/sendMessage", data=dict(chat_id=chat, text=text, parse_mode="HTML", disable_web_page_preview=True), timeout=30)
     print("텔레그램", r.status_code, r.text[:200])
+    if r.status_code != 200:                          # 실행 요약에 경고 표시 (데이터 커밋은 계속)
+        print(f"::error title=텔레그램 전송 실패::{r.status_code} {r.text[:150]}")
+    return r.status_code == 200
 
 
 def main():
@@ -338,12 +341,13 @@ def main():
     ev = None
     last = trades[-1] if trades else None
     T = F.index[-1].date().isoformat()
-    cond = "\n".join(f"{'✅' if ok else '▫️'} {n}: {v} ({th})" for n, v, th, ok in st["cond"])
+    E = html.escape                                   # 텔레그램 HTML 모드: <, >, & 는 반드시 변환
+    cond = E("\n".join(f"{'✅' if ok else '▫️'} {n}: {v} ({th})" for n, v, th, ok in st["cond"]))
     if last and last["signal_date"] == T and last["status"] in ("진입 예정", "보유"):
-        ev = (f"entry:{T}", f"🟠 <b>NQ 매수 신호</b> ({T} 나스닥 종가 기준)\n근거: {last['why']}\nVIX {last['vix']} → 비중 {100*last['weight']:.0f}%\n"
+        ev = (f"entry:{T}", f"🟠 <b>NQ 매수 신호</b> ({T} 나스닥 종가 기준)\n근거: {E(last['why'])}\nVIX {last['vix']} → 비중 {100*last['weight']:.0f}%\n"
                             f"실행: 다음 NQ 세션 시가 매수 (재개장 한국시간 07:00/08:00)\n청산: 나스닥 종가 &gt; 5일선 또는 5거래일\n\n{cond}")
     elif last and last.get("exit_signal_date") == T:
-        ev = (f"exit:{T}", f"🔵 <b>NQ 청산 신호</b> ({T})\n사유: {last['exit_why']} (보유 {last['held']}거래일)\n"
+        ev = (f"exit:{T}", f"🔵 <b>NQ 청산 신호</b> ({T})\n사유: {E(last['exit_why'])} (보유 {last['held']}거래일)\n"
                            f"진입 {last.get('entry_date','')} {last.get('entry', float('nan')):,.0f} → 현재 NQ {st['nq_last']:,.0f}\n실행: 다음 NQ 세션 시가 청산")
     elif st["mode"] == "대기" and F.vix.iloc[-1] >= VIX_MIN and F.vix.iloc[-2] < VIX_MIN:
         ev = (f"watch:{T}", f"⚪️ <b>VIX 25 돌파</b> ({T}, VIX {F.vix.iloc[-1]:.1f}) — 공포 구간 진입, 과매도 신호 대기\n\n{cond}")
@@ -353,13 +357,13 @@ def main():
             chart_png(ix, F, trades, png)
         except Exception as e:
             print("차트 실패", e); png = None
-        telegram(ev[1] + link, png)
-        S["sent"] = (S["sent"] + [ev[0]])[-200:]
+        if telegram(ev[1] + link, png) is not False:      # 실패하면 다음 실행에서 다시 시도
+            S["sent"] = (S["sent"] + [ev[0]])[-200:]
     S.update(last_run=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"), basis_date=T, mode=st["mode"], headline=st["headline"])
     json.dump(S, open(sp, "w"), ensure_ascii=False, indent=1)
     if os.environ.get("TELEGRAM_TEST"):
         png = os.path.join(ST, "nq_chart.png"); chart_png(ix, F, trades, png)
-        telegram(f"🧪 연결 테스트 — {st['headline']}\n\n{cond}{link}", png)
+        telegram(f"🧪 연결 테스트 — {E(st['headline'])}\n\n{cond}{link}", png)
     print(st["headline"])
 
 
