@@ -170,7 +170,7 @@ table{width:100%;border-collapse:collapse;font-size:13px} td,th{padding:6px 4px;
 th{color:var(--mut);font-weight:500} .ok{color:var(--ok);font-weight:650} .no{color:var(--no)} tr.live td{background:rgba(194,65,12,.08)}
 .scroll{overflow-x:auto} .scroll table{min-width:820px} .scroll td{white-space:nowrap} .chart{width:100%}
 </style></head><body><main>
-<nav><a href="index.html">나스닥 → NQ</a><a class="on" href="kospi.html">코스피 반등</a></nav>
+<nav><a href="index.html">나스닥 → NQ</a><a class="on" href="kospi.html">코스피 반등</a><a href="consensus.html">컨센서스</a></nav>
 <h1>코스피 미국발 급락 → 반등 매수 <span class="sub">(관찰)</span></h1>
 <p class="sub">기준일 __DATE__ (코스피 종가) · 생성 __GEN__ · 실전 검증 시작 __GOLIVE__</p>
 <div class="card"><span class="mode">__MODE__</span><div class="head">__HEAD__</div>__EXTRA__

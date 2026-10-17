@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>S&amp;P500 컨센서스</title>
+<style>
+:root{--bg:#fafaf8;--fg:#1d1d1b;--mut:#6b6b66;--line:#e2e1dc;--line2:#efeee9;--card:#fff;--acc:#c2410c;--acc2:#9a3412;--dn:#1d4ed8;--dn2:#1e3a8a;--track:#f3d9cc;--grey:#b8b7b0;--input:#d6d5cf}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--fg:#ecebe6;--mut:#a3a29c;--line:#2c2c2a;--line2:#232321;--card:#1d1d1b;--acc:#fb923c;--acc2:#fdba74;--dn:#60a5fa;--dn2:#93c5fd;--track:#4a2a1c;--grey:#55554f;--input:#3a3a37}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+main{max-width:1120px;margin:auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:16px}
+a{color:var(--acc)} nav{display:flex;gap:18px;flex-wrap:wrap;font-size:14px} nav a{text-decoration:none} nav a.on{font-weight:700;border-bottom:2px solid var(--acc);padding-bottom:2px}
+h1{margin:0;font-size:24px;letter-spacing:-.01em} h2{margin:0;font-size:16px}
+.sub{color:var(--mut);font-size:13px;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:16px} .row>.card{flex:1 1 480px} .row.full>.card{flex:1 1 100%}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.big{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.up{color:var(--acc)} .dn{color:var(--dn)} .mut{color:var(--mut)}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+label.search{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut);flex:0 1 340px}
+input[type=search]{font:inherit;font-size:15px;padding:10px 14px;border:1px solid var(--input);border-radius:10px;background:var(--card);color:var(--fg);min-height:44px;width:100%}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th{color:var(--mut);font-size:12px;font-weight:500;text-align:right;padding:6px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line2);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td.tk a{color:var(--fg);text-decoration:none;font-weight:650} td.tk .nm{display:block;color:var(--mut);font-size:12px;font-weight:400;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font:inherit;font-size:13px;padding:6px 14px;min-height:36px;border-radius:99px;border:1px solid var(--input);background:var(--card);color:var(--mut);cursor:pointer}
+.tabs button.on{border-color:var(--acc);color:var(--acc);font-weight:650}
+.bar{position:relative;height:8px;background:var(--track);border-radius:99px;margin:4px 0}
+.bar i{position:absolute;top:-3px;width:14px;height:14px;margin-left:-7px;border-radius:99px;background:var(--acc);border:2px solid var(--card)}
+.rng{display:flex;justify-content:space-between;font-size:11px;color:var(--mut)}
+.stack{display:flex;height:26px;border-radius:8px;overflow:hidden;font-size:11px;font-weight:600;color:#fff}
+.stack div{display:flex;align-items:center;justify-content:center;min-width:0}
+.ph{border:1px dashed var(--input);border-radius:10px;padding:28px 16px;text-align:center;color:var(--mut);font-size:13px}
+.back{font-size:13px;color:var(--mut);text-decoration:none}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<nav><a href="index.html">나스닥 → NQ</a><a href="kospi.html">코스피 반등</a><a class="on" href="consensus.html">컨센서스</a></nav>
+<div class="head">
+  <div id="hdr"><h1 id="ttl">S&amp;P500 애널리스트 컨센서스</h1><p class="sub" id="meta">불러오는 중…</p></div>
+  <label class="search">종목 검색<input type="search" id="q" list="tickers" placeholder="티커 또는 회사명 (예: AAPL)" autocomplete="off"></label>
+  <datalist id="tickers"></datalist>
+</div>
+
+<div id="home">
+  <section class="grid" style="margin-bottom:16px">
+    <div class="card"><span class="sub">내년 EPS 전망 · 최근 30일</span><div class="big up" id="nUp">–</div></div>
+    <div class="card"><span class="sub">내년 EPS 전망 · 최근 30일</span><div class="big dn" id="nDn">–</div></div>
+    <div class="card"><span class="sub" id="ratioLab">상향 : 하향 비율</span>
+      <div class="stack" id="ratioBar" style="height:12px;border-radius:99px"></div>
+      <div class="rng" id="ratioTxt"></div></div>
+  </section>
+  <section class="card" style="margin-bottom:16px">
+    <div class="head" style="align-items:center">
+      <h2>전망 수정 순위 <span class="sub" style="display:inline">· 내년 EPS, 애널리스트 <span id="minN"></span>명 이상</span></h2>
+      <div class="tabs" role="group" aria-label="정렬 기준">
+        <button data-k="ratio" class="on">순상향률</button><button data-k="net">순상향 수</button><button data-k="chg90">90일 전망 변화</button>
+      </div>
+    </div>
+    <p class="sub" id="sortHelp"></p>
+  </section>
+  <section class="row full">
+    <div class="card"><h2>상향 상위</h2><div class="scroll"><table id="tUp"></table></div></div>
+    <div class="card"><h2>하향 상위</h2><div class="scroll"><table id="tDn"></table></div></div>
+  </section>
+  <section class="card" style="margin-top:16px">
+    <h2>시장 전체 전망 수정 추이</h2>
+    <p class="sub">상향 우세 종목 비율(%)의 일별 변화입니다.</p>
+    <div id="breadth"></div>
+  </section>
+</div>
+
+<div id="detail" class="hidden"></div>
+<p class="sub" style="text-align:right">출처: yfinance (애널리스트 전망 집계) · 매일 한국시간 09:10 갱신 · 투자 권유가 아닙니다</p>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct=(v,d=1,sign=true)=>v==null?'–':(sign&&v>0?'+':v<0?'−':'')+Math.abs(v*100).toFixed(d)+'%';
+const sgn=(v,d=0)=>v==null?'–':(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(d);
+const usd=v=>v==null?'–':'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const eok=v=>v==null?'–':'$'+Math.round(v/1e8).toLocaleString('ko-KR')+'억';
+const eokN=v=>v==null?'–':Math.round(v/1e8).toLocaleString('ko-KR');
+let D=null, sortK='ratio';
+const HELP={ratio:'순상향률 = (최근 30일 상향 − 하향 애널리스트 수) ÷ 커버리지 애널리스트 수. 커버리지가 많은 대형주에 유리하지 않도록 비율로 봅니다.',
+            net:'순상향 수 = 최근 30일 상향 − 하향 애널리스트 수. 관심이 많이 쏠린 종목이 위로 옵니다.',
+            chg90:'90일 전망 변화 = 내년 EPS 컨센서스가 90일 전보다 몇 % 바뀌었는지. 수정의 "폭"을 봅니다.'};
+fetch('consensus_data.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{D=d;init();route()}).catch(e=>{$('#meta').textContent='데이터를 불러오지 못했습니다: '+e});
+function init(){
+  const T=D.t, keys=Object.keys(T).sort();
+  $('#meta').textContent=`기준 ${D.date} · ${D.n_tickers}종목 · 변화 비교: 전일 ${D.prev||'(기록 쌓이는 중)'} · 1주 ${D.wk||'(기록 쌓이는 중)'}`;
+  $('#minN').textContent=D.min_n;
+  $('#tickers').innerHTML=keys.map(k=>`<option value="${k}">${esc(T[k].name)}</option>`).join('');
+  const h=D.hist[D.hist.length-1];
+  $('#nUp').innerHTML=`${h.up} <span style="font-size:15px;font-weight:500;color:var(--fg)">종목 상향 우세</span>`;
+  $('#nDn').innerHTML=`${h.dn} <span style="font-size:15px;font-weight:500;color:var(--fg)">종목 하향 우세</span>`;
+  const u=h.up/h.n, dn=h.dn/h.n, eq=1-u-dn;
+  $('#ratioLab').textContent=`상향 : 하향 비율 (애널리스트 ${D.min_n}명 이상 ${h.n}종목)`;
+  $('#ratioBar').innerHTML=`<div style="width:${u*100}%;background:var(--acc)"></div><div style="width:${eq*100}%;background:var(--grey)"></div><div style="width:${dn*100}%;background:var(--dn)"></div>`;
+  $('#ratioTxt').innerHTML=`<span>상향 ${Math.round(u*100)}%</span><span>같음 ${Math.round(eq*100)}%</span><span>하향 ${Math.round(dn*100)}%</span>`;
+  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{sortK=b.dataset.k;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));tables()});
+  $('#q').addEventListener('change',go); $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
+  tables(); breadth();
+}
+function go(){
+  const v=$('#q').value.trim().toUpperCase(); if(!v)return;
+  let k=D.t[v]?v:Object.keys(D.t).find(t=>(D.t[t].name||'').toUpperCase().includes(v));
+  if(k){location.hash=k;$('#q').value='';}
+}
+function chg(o){
+  const a=o.d1_net, b=o.d7_net;
+  const f=v=>v==null?'<span class="mut">–</span>':`<span class="${v>0?'up':v<0?'dn':'mut'}">${sgn(v)}</span>`;
+  return `${f(a)} <span class="mut">/</span> ${f(b)}`;
+}
+function tables(){
+  $('#sortHelp').textContent=HELP[sortK];
+  const rows=Object.entries(D.t).filter(([k,o])=>o.n1y>=D.min_n&&o[sortK]!=null);
+  const tb=(o,k)=>sortK==='chg90'?[o.chg90,o.ratio]:sortK==='net'?[o.net,o.ratio]:[o.ratio,o.net];
+  const asc=[...rows].sort((a,b)=>{const x=tb(a[1]),y=tb(b[1]);return (x[0]-y[0])||(x[1]-y[1])});
+  const top=[...asc].reverse().slice(0,10), bot=asc.slice(0,10);
+  const head=`<tr><th>종목</th><th>상향 / 하향</th><th>순상향</th><th>순상향률</th><th title="순상향 수의 전일 대비 / 1주 전 대비 변화">변화 (1일 / 1주)</th><th>90일 전망 변화</th><th>내년 EPS 성장</th></tr>`;
+  const tr=([k,o])=>`<tr><td class="tk"><a href="#${k}">${k}</a><span class="nm">${esc(o.name)}</span></td>
+    <td>${o.rev30?o.rev30[0]+' / '+o.rev30[1]:'–'}</td>
+    <td class="${o.net>0?'up':o.net<0?'dn':''}" style="font-weight:650">${sgn(o.net)}</td>
+    <td>${pct(o.ratio,0)}</td><td>${chg(o)}</td><td>${pct(o.chg90)}</td><td>${pct(o.eps&&o.eps['+1y']?o.eps['+1y'].g:null)}</td></tr>`;
+  $('#tUp').innerHTML=head+top.map(tr).join(''); $('#tDn').innerHTML=head+bot.map(tr).join('');
+}
+function breadth(){
+  const H=D.hist;
+  if(H.length<2){$('#breadth').innerHTML=`<div class="ph">${H[0].d}부터 기록 중입니다. 기록이 이틀 이상 쌓이면 선 그래프가 나타납니다. (현재 상향 우세 ${Math.round(H[0].up/H[0].n*100)}%)</div>`;return}
+  const W=1000,Ht=200,p=30, ys=H.map(h=>h.up/h.n*100), lo=Math.min(...ys,40)-5, hi=Math.max(...ys,60)+5;
+  const X=i=>p+i*(W-2*p)/(H.length-1), Y=v=>Ht-p-(v-lo)/(hi-lo)*(Ht-2*p);
+  const pts=ys.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  $('#breadth').innerHTML=`<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="상향 우세 비율 추이" style="width:100%;height:auto">
+   <line x1="${p}" x2="${W-p}" y1="${Y(50)}" y2="${Y(50)}" stroke="var(--line)" stroke-dasharray="4 4"/>
+   <text x="${p}" y="${Y(50)-6}" font-size="12" fill="var(--mut)">50%</text>
+   <polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="2.5"/>
+   <circle cx="${X(H.length-1)}" cy="${Y(ys[ys.length-1])}" r="5" fill="var(--acc)"/>
+   <text x="${W-p}" y="${Y(ys[ys.length-1])-10}" font-size="13" fill="var(--acc)" text-anchor="end">${ys[ys.length-1].toFixed(0)}%</text>
+   <text x="${p}" y="${Ht-6}" font-size="12" fill="var(--mut)">${H[0].d}</text><text x="${W-p}" y="${Ht-6}" font-size="12" fill="var(--mut)" text-anchor="end">${H[H.length-1].d}</text></svg>`;
+}
+window.addEventListener('hashchange',route);
+function route(){
+  if(!D)return; const k=decodeURIComponent(location.hash.slice(1));
+  if(k&&D.t[k]){ $('#home').classList.add('hidden'); $('#detail').classList.remove('hidden'); $('#hdr').classList.add('hidden'); detail(k); window.scrollTo(0,0);}
+  else { $('#home').classList.remove('hidden'); $('#detail').classList.add('hidden'); $('#hdr').classList.remove('hidden'); }
+}
+function rangeBar(r,fmt){
+  if(!r||r.avg==null||r.lo==null||r.hi==null)return '<span class="mut">–</span>';
+  const pos=r.hi>r.lo?Math.max(0,Math.min(100,(r.avg-r.lo)/(r.hi-r.lo)*100)):50;
+  return `<div class="bar"><i style="left:${pos}%"></i></div><div class="rng"><span>${fmt(r.lo)}</span><span>${fmt(r.hi)}</span></div>`;
+}
+function detail(k){
+  const o=D.t[k], P=[['0q','이번 분기'],['+1q','다음 분기'],['0y','올해'],['+1y','내년']];
+  const pt=o.pt||{}, e1=o.eps&&o.eps['+1y'], r0=o.rev&&o.rev['0y'];
+  const fpe=pt.cur&&e1&&e1.avg>0?(pt.cur/e1.avg).toFixed(1)+'배':'–';
+  const tgt=pt.cur&&pt.mean?pt.mean/pt.cur-1:null;
+  const tr=o.trend||[], t90=tr[0]&&tr[4]?tr[4]/tr[0]-1:null;
+  const beats=(o.surp||[]).filter(s=>s.s!=null), nb=beats.filter(s=>s.s>0).length, avgS=beats.length?beats.reduce((a,s)=>a+s.s,0)/beats.length:null;
+  const rec=o.rec||[], rn=rec.reduce((a,b)=>a+(b||0),0);
+  const recCol=['var(--acc2)','var(--acc)','var(--grey)','var(--dn)','var(--dn2)'], recLab=['적극 매수','매수','보유','매도','적극 매도'];
+  let trendSvg='<div class="ph">전망치 추이 데이터 없음</div>';
+  if(tr.length===5&&tr.every(v=>v!=null)){
+    const lo=Math.min(...tr),hi=Math.max(...tr),pd=(hi-lo)||Math.abs(hi)*0.01||1, X=i=>20+i*67.5, Y=v=>100-(v-lo)/pd*72-8;
+    trendSvg=`<svg viewBox="0 0 300 122" role="img" aria-label="내년 EPS 전망치 90일 전 ${tr[0]}에서 현재 ${tr[4]}" style="width:100%;height:140px">
+     <polyline points="${tr.map((v,i)=>X(i)+','+Y(v).toFixed(1)).join(' ')}" fill="none" stroke="var(--fg)" stroke-width="2"/>
+     ${tr.map((v,i)=>`<circle cx="${X(i)}" cy="${Y(v).toFixed(1)}" r="${i===4?4.5:3.5}" fill="${i===4?'var(--acc)':'var(--fg)'}"/>`).join('')}
+     ${['90일 전','60일','30일','7일','현재'].map((l,i)=>`<text x="${X(i)}" y="118" font-size="10" fill="var(--mut)" text-anchor="${i===4?'end':i===0?'start':'middle'}">${l}</text>`).join('')}
+     <text x="${X(0)}" y="${Y(tr[0])-8}" font-size="10" fill="var(--fg)">${tr[0].toFixed(2)}</text>
+     <text x="${X(4)}" y="${Y(tr[4])-8}" font-size="10" fill="var(--acc)" text-anchor="end">${tr[4].toFixed(2)}</text></svg>`;
+  }
+  const sMax=Math.max(0.01,...beats.map(s=>Math.abs(s.s)));
+  $('#detail').innerHTML=`
+  <a class="back" href="#">← 전체 목록</a>
+  <div class="head" style="margin:8px 0 16px">
+    <div><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h1 style="font-size:28px">${k}</h1><span class="mut" style="font-size:16px">${esc(o.name)}</span></div>
+    <p class="sub">기준 ${D.date} · 내년 EPS 애널리스트 ${o.n1y??'–'}명</p></div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;font-variant-numeric:tabular-nums">
+      <div><div class="sub">현재가</div><div style="font-size:22px;font-weight:700">${usd(pt.cur)}</div></div>
+      <div><div class="sub">선행 PER (내년 EPS)</div><div style="font-size:22px;font-weight:700">${fpe}</div></div>
+      <div><div class="sub">평균 목표가 대비</div><div style="font-size:22px;font-weight:700" class="${tgt>0?'up':'dn'}">${pct(tgt)}</div></div>
+    </div>
+  </div>
+  <section class="grid" style="margin-bottom:16px">
+    <div class="card" style="gap:2px"><span class="sub">올해 매출 전망</span><span class="big" style="font-size:22px">${eok(r0&&r0.avg)}</span><span class="${r0&&r0.g<0?'dn':'up'}" style="font-size:13px;font-weight:600">전년 대비 ${pct(r0&&r0.g)}</span></div>
+    <div class="card" style="gap:2px"><span class="sub">내년 EPS 전망</span><span class="big" style="font-size:22px">${usd(e1&&e1.avg)}</span><span class="${e1&&e1.g<0?'dn':'up'}" style="font-size:13px;font-weight:600">올해 대비 ${pct(e1&&e1.g)}</span></div>
+    <div class="card" style="gap:2px"><span class="sub">내년 EPS 전망 수정 (30일)</span><span class="big" style="font-size:22px">${o.rev30?`<span class="up">↑${o.rev30[0]}</span> <span class="mut" style="font-weight:400">/</span> <span class="dn">↓${o.rev30[1]}</span>`:'–'}</span><span class="sub">순상향률 ${pct(o.ratio,0)} · 변화 ${sgn(o.d1_net)} (1일) / ${sgn(o.d7_net)} (1주) · 90일 전 대비 ${pct(t90)}</span></div>
+    <div class="card" style="gap:2px"><span class="sub">최근 ${beats.length}분기 EPS</span><span class="big" style="font-size:22px">${beats.length?(nb===beats.length?beats.length+'회 모두 상회':nb+'회 상회'):'–'}</span><span class="sub">평균 ${pct(avgS)} 서프라이즈</span></div>
+  </section>
+  <section class="card" style="margin-bottom:16px">
+    <div class="head" style="align-items:baseline"><h2>기간별 전망</h2><span class="sub">막대 = 최저~최고 전망, 점 = 평균 · 회사 회계연도 기준</span></div>
+    <div class="scroll"><table style="min-width:820px"><tr><th>기간</th><th>매출 평균</th><th>성장</th><th style="text-align:center;width:170px">매출 전망 범위 (억 달러)</th><th>EPS 평균</th><th>성장</th><th style="text-align:center;width:170px">EPS 전망 범위</th><th>애널리스트</th></tr>
+    ${P.map(([p,l])=>{const r=(o.rev||{})[p]||{}, e=(o.eps||{})[p]||{};return `<tr><td style="font-weight:600">${l}</td><td>${eok(r.avg)}</td><td>${pct(r.g)}</td><td style="padding:10px 12px">${rangeBar(r,eokN)}</td><td>${usd(e.avg)}</td><td>${pct(e.g)}</td><td style="padding:10px 12px">${rangeBar(e,v=>v.toFixed(2))}</td><td>${e.n??r.n??'–'}명</td></tr>`}).join('')}
+    </table></div>
+  </section>
+  <section class="row">
+    <div class="card" style="flex:1 1 320px"><h2>내년 EPS 전망치 추이</h2>${trendSvg}<p class="sub">지금은 90·60·30·7일 전과 현재 5개 점입니다. 일별 기록이 쌓이면 매일 이어집니다.</p></div>
+    <div class="card" style="flex:1 1 320px;gap:14px"><h2>목표주가 · 투자의견</h2>
+      ${pt.lo!=null&&pt.hi>pt.lo?(()=>{const P_=v=>Math.max(0,Math.min(100,(v-pt.lo)/(pt.hi-pt.lo)*100));return `<div><div style="position:relative;height:10px;background:var(--line2);border-radius:99px;margin-top:30px">
+        <div style="position:absolute;left:${P_(pt.mean)}%;top:-6px;width:2px;height:22px;background:var(--mut)"></div>
+        <div style="position:absolute;left:${P_(pt.mean)}%;top:-28px;transform:translateX(-50%);font-size:11px;color:var(--mut);white-space:nowrap">평균 ${usd(pt.mean)}</div>
+        <div style="position:absolute;left:${P_(pt.cur)}%;top:-5px;width:20px;height:20px;margin-left:-10px;border-radius:99px;background:var(--acc);border:3px solid var(--card)"></div></div>
+        <div class="rng" style="font-size:12px;margin-top:6px"><span>최저 ${usd(pt.lo)}</span><span class="up" style="font-weight:600">현재가 ${usd(pt.cur)}</span><span>최고 ${usd(pt.hi)}</span></div></div>`})():'<div class="ph">목표주가 없음</div>'}
+      ${rn?`<div><span class="sub">투자의견 (${rn}명)</span><div class="stack" style="margin-top:6px">${rec.map((v,i)=>v?`<div style="width:${v/rn*100}%;background:${recCol[i]};${i===2?'color:var(--fg)':''}">${v}</div>`:'').join('')}</div>
+        <div class="rng" style="flex-wrap:wrap;gap:4px;margin-top:4px">${recLab.map(l=>`<span>${l}</span>`).join('')}</div></div>`:''}
+    </div>
+    <div class="card" style="flex:1 1 320px"><h2>최근 ${beats.length}분기 EPS 서프라이즈</h2>
+      ${beats.length?`<div style="display:grid;grid-template-columns:repeat(${beats.length},minmax(0,1fr));gap:10px;align-items:end;height:120px">
+        ${beats.map(s=>`<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%"><span style="font-size:12px;font-weight:600" class="${s.s>=0?'up':'dn'}">${pct(s.s)}</span><div style="width:100%;height:${Math.max(4,Math.abs(s.s)/sMax*96)}px;background:${s.s>=0?'var(--acc)':'var(--dn)'};border-radius:6px 6px 0 0"></div></div>`).join('')}</div>
+        <div style="display:grid;grid-template-columns:repeat(${beats.length},minmax(0,1fr));gap:10px;font-size:11px;color:var(--mut);text-align:center">${beats.map(s=>`<span>${s.q.slice(2,7).replace('-','.')}<br>${s.a?.toFixed(2)} vs ${s.e?.toFixed(2)}</span>`).join('')}</div>
+        <p class="sub" style="font-size:12px">실제 vs 예상 EPS (분기 말 기준)</p>`:'<div class="ph">서프라이즈 기록 없음</div>'}
+    </div>
+  </section>`;
+}
+</script>
+</body>
+</html>
