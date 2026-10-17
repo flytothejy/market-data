@@ -82,6 +82,7 @@ def compute():
     for i in np.where(F.C2.values.astype(bool) & vhi)[0]:
         if i - last >= 5:
             a.add(i); last = i
+    F.attrs["last_a"] = last
     # (b) 점수 2 이상으로 올라섬 (VIX 무관하게 무장 상태 추적, 신호는 VIX 충족 시만)
     b, armed, last = set(), True, -99
     arm = np.zeros(len(F), bool)
@@ -94,8 +95,44 @@ def compute():
             if vhi[i]:
                 b.add(i)
     F["armed"] = arm
+    F.attrs["armed_next"], F.attrs["last_b"] = armed, last
     sigs = sorted(a | b)
     return ix, F, nq, sigs, a, b
+
+
+def ind_last(d):
+    """마지막 행의 RSI14·켈트너·스토캐스틱·MACD (compute 와 같은 식)"""
+    c, h, l = d.Close, d.High, d.Low
+    sig = c.pct_change().rolling(60, min_periods=50).std()
+    tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
+    return dict(RSI14=rsi(c, 14).iloc[-1], KELT=((c - c.ewm(span=20).mean()) / tr.rolling(14).mean()).iloc[-1],
+                STOCH=((c - l.rolling(14).min()) / (h.rolling(14).max() - l.rolling(14).min())).iloc[-1],
+                MACD=((c.ewm(span=12).mean() - c.ewm(span=26).mean()).pipe(lambda m: m - m.ewm(span=9).mean()) / (c * sig)).iloc[-1])
+
+
+def levels(ix, F):
+    """다음 세션 나스닥 종가가 얼마 이하로 끝나면 각 조건을 충족하는지 (가상의 다음 봉: 시가=전일 종가)"""
+    base = ix.iloc[-600:][["Open", "High", "Low", "Close"]]
+    p0 = float(base.Close.iloc[-1])
+    nxt = base.index[-1] + pd.Timedelta(days=1)
+    def val(k, c):
+        d = pd.concat([base, pd.DataFrame(dict(Open=[p0], High=[max(p0, c)], Low=[min(p0, c)], Close=[c]), index=[nxt])])
+        return ind_last(d)[k]
+    out = {}
+    for k in THR:
+        lo, hi = p0 * 0.70, p0 * 1.03
+        if val(k, lo) > THR[k]:
+            out[k] = None; continue                          # −30% 로도 안 됨
+        if val(k, hi) <= THR[k]:
+            out[k] = hi; continue                            # 이미 충족 수준
+        for _ in range(30):
+            m = (lo + hi) / 2
+            lo, hi = (m, hi) if val(k, m) <= THR[k] else (lo, m)
+        out[k] = lo
+    sig_next = float(ix.Close.pct_change().iloc[-60:].std())
+    lv = sorted([v for v in out.values() if v is not None], reverse=True)
+    return dict(p0=p0, lv=out, candle_pct=-2 * sig_next, p1_level=lv[1] if len(lv) >= 2 else None,
+                armed=bool(F.attrs.get("armed_next", True)))
 
 
 def replay(ix, F, nq, sigs, a, b):
@@ -175,6 +212,21 @@ def today_status(ix, F, nq, trades):
 
 
 # ───────────────────────── 대시보드 ─────────────────────────
+def near_text(L, html_mode=False):
+    """근접 현황 문구 (대시보드·텔레그램 공용)"""
+    p0 = L["p0"]
+    f = lambda v: "−30% 넘게 하락해도 미충족" if v is None else (f"{v:,.0f} 이하 ({100*(v/p0-1):+.1f}%)" if v < p0 else "현재 이미 충족 수준")
+    rows = [("2σ 음봉", f"시가 대비 {100*L['candle_pct']:.2f}% 이하로 마감")] + \
+           [(LABEL[k], f(L["lv"][k])) for k in THR]
+    if L["p1_level"] is None:
+        head = "과매도 점수 경로: 지표 2개를 동시에 충족하기 어려움"
+    elif not L["armed"]:
+        head = "과매도 점수 경로: 무장 해제 상태 (점수 0으로 돌아온 뒤 다시 가능) — 2σ 음봉 경로만 유효"
+    else:
+        head = f"과매도 점수 2 도달: 나스닥 종가 {L['p1_level']:,.0f} 이하 ({100*(L['p1_level']/p0-1):+.1f}%)"
+    return head, rows
+
+
 def dashboard(ix, F, trades, st, a, b):
     os.makedirs(DOCS, exist_ok=True)
     k0 = max(0, len(F) - 756)
@@ -213,7 +265,13 @@ def dashboard(ix, F, trades, st, a, b):
                 (f" · 진입 {t['entry_date']} {t['entry']:,.0f}" if "entry" in t else "") + "</p>"
         if st.get("exit_check"):
             extra += f"<p class='sub'>청산 확인: {st['exit_check']}</p>"
-    html = TEMPLATE.replace("__DATA__", json.dumps(payload, ensure_ascii=False)) \
+    near = ""
+    if st.get("near"):
+        hd, rr = near_text(st["near"])
+        near = (f"<div class='card'><b>다음 세션 근접 현황</b> <span class='sub'>(전일 종가 {st['near']['p0']:,.0f} 기준, 가상의 다음 봉으로 계산한 근사치 · VIX ≥ 25 유지 필요)</span>"
+                f"<p class='hl'>{hd}</p><table><tr><th>조건</th><th>나스닥이 이렇게 끝나면 충족</th></tr>" +
+                "".join(f"<tr><td>{a_}</td><td>{b_}</td></tr>" for a_, b_ in rr) + "</table></div>")
+    html = TEMPLATE.replace("__DATA__", json.dumps(payload, ensure_ascii=False)).replace("__NEAR__", near) \
         .replace("__HEAD__", st["headline"]).replace("__DATE__", st["date"]).replace("__MODE__", st["mode"]) \
         .replace("__EXTRA__", extra).replace("__COND__", cond_rows).replace("__ROWS__", "".join(rows)).replace("__OLD__", "".join(old)) \
         .replace("__BT__", summ(bt)).replace("__LV__", summ(lv)).replace("__GEN__", datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")) \
@@ -223,7 +281,8 @@ def dashboard(ix, F, trades, st, a, b):
 
 TEMPLATE = r"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NQ 과매도 전략</title>
-<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="charts.js"></script>
 <style>
 :root{--bg:#fafaf8;--fg:#1d1d1b;--mut:#6b6b66;--line:#e2e1dc;--card:#fff;--ok:#1a7f4b;--no:#9a9a94;--acc:#c2410c}
 @media (prefers-color-scheme:dark){:root{--bg:#141413;--fg:#ecebe6;--mut:#9b9a94;--line:#2c2c2a;--card:#1d1d1b;--ok:#4ade80;--no:#6b6b66;--acc:#fb923c}}
@@ -233,50 +292,35 @@ h1{font-size:18px;margin:0 0 4px} .sub{color:var(--mut);font-size:13px;margin:2p
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
 .head{font-size:20px;font-weight:650;margin:6px 0} .mode{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--acc);color:var(--acc)}
 table{width:100%;border-collapse:collapse;font-size:13px} td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{color:var(--mut);font-weight:500} .ok{color:var(--ok);font-weight:650} .no{color:var(--no)} tr.live td{background:rgba(194,65,12,.08)}
-.scroll{overflow-x:auto} .scroll table{min-width:820px} .scroll td{white-space:nowrap} .scroll td:nth-child(2){white-space:normal;min-width:220px} .chart{width:100%;height:1500px}
+th{color:var(--mut);font-weight:500} .ok{color:var(--ok);font-weight:650} .hl{font-weight:650;color:var(--acc);margin:6px 0} .no{color:var(--no)} tr.live td{background:rgba(194,65,12,.08)}
+.scroll{overflow-x:auto} .scroll table{min-width:820px} .scroll td{white-space:nowrap} .scroll td:nth-child(2){white-space:normal;min-width:220px} .chart{width:100%}
 </style></head><body><main>
 <nav style="margin-bottom:6px"><a href="index.html" style="color:var(--acc);margin-right:14px;font-size:14px;text-decoration:none;font-weight:700">나스닥 → NQ</a><a href="kospi.html" style="color:var(--acc);font-size:14px;text-decoration:none">코스피 반등</a></nav>
 <h1>나스닥 과매도 → NQ 매수</h1>
 <p class="sub">기준일 __DATE__ (나스닥 종가) · 생성 __GEN__ · 실전 검증 시작 __GOLIVE__</p>
 <div class="card"><span class="mode">__MODE__</span><div class="head">__HEAD__</div>__EXTRA__
 <p class="sub">진입 = VIX ≥ 25 그리고 (2σ 음봉 또는 과매도 점수가 2 이상으로 올라섬) · 청산 = 나스닥 종가 &gt; 5일선 또는 5거래일</p></div>
-<div class="card"><b>오늘의 판단 근거</b><div><table><tr><th>조건</th><th>오늘 값</th><th>기준</th><th></th></tr>__COND__</table></div></div>
-<div class="card"><b>최근 3년 지표</b> <span class="sub">(▲ 매수 신호, ▼ 청산 신호, 회색 ▲ 보유 중이라 건너뛴 신호 · 점선 = 기준선)</span><div id="ch" class="chart"></div></div>
+__NEAR__<div class="card"><b>오늘의 판단 근거</b><div><table><tr><th>조건</th><th>오늘 값</th><th>기준</th><th></th></tr>__COND__</table></div></div>
+<div class="card"><b>지표 차트</b> <span class="sub">(▲ 매수 신호 · ▼ 청산 신호 · 회색 ▲ 보유 중이라 건너뛴 신호 · 점선 = 기준선 · 손가락으로 좌우 이동·확대)</span><div id="ch" class="chart"></div></div>
 <div class="card"><b>거래 기록</b><p class="sub">백테스트(2000~): __BT__<br>실전 검증: __LV__</p>
 <div class="scroll"><table><tr><th>신호일</th><th>근거</th><th>VIX</th><th>비중</th><th>진입(NQ 시가)</th><th>청산</th><th>청산 사유</th><th>수익</th><th>비중 반영</th></tr>__ROWS__</table></div>
 <details><summary class="sub">이전 백테스트 거래 전체 보기</summary><div class="scroll"><table>__OLD__</table></div></details></div>
+<p class="sub" style="text-align:right">차트: <a href="https://www.tradingview.com/" style="color:inherit">TradingView Lightweight Charts</a></p>
 </main><script>
-const D=__DATA__;const dark=matchMedia('(prefers-color-scheme: dark)').matches;
-const fg=dark?'#ecebe6':'#1d1d1b',grid=dark?'#2c2c2a':'#e8e7e2',acc=dark?'#fb923c':'#c2410c',blue=dark?'#60a5fa':'#2563eb',red=dark?'#f87171':'#dc2626';
-const n=8,dom=i=>{const g=0.025,h=(1-g*(n-1))/n;const top=1-i*(h+g);return[top-h,top]};
-const ax=(i,t)=>({domain:dom(i),title:{text:t,font:{size:11}},gridcolor:grid,zeroline:false});
-const hl=(y,yr)=>({type:'line',xref:'paper',x0:0,x1:1,y0:y,y1:y,yref:yr,line:{dash:'dot',color:acc,width:1}});
-const T=[
-{type:'candlestick',x:D.d,open:D.o,high:D.h,low:D.l,close:D.c,name:'나스닥',increasing:{line:{color:'#16a34a'}},decreasing:{line:{color:red}},yaxis:'y'},
-{x:D.d,y:D.sma5,name:'5일선',line:{color:blue,width:1},yaxis:'y'},
-{x:D.sig.filter(s=>!s.skip).map(s=>s.d),y:D.sig.filter(s=>!s.skip).map(s=>s.y*0.97),mode:'markers',marker:{symbol:'triangle-up',size:11,color:acc},name:'매수 신호',yaxis:'y'},
-{x:D.sig.filter(s=>s.skip).map(s=>s.d),y:D.sig.filter(s=>s.skip).map(s=>s.y*0.97),mode:'markers',marker:{symbol:'triangle-up',size:9,color:'#9a9a94'},name:'건너뜀',yaxis:'y'},
-{x:D.ex.map(s=>s.d),y:D.ex.map(s=>s.y*1.03),mode:'markers',marker:{symbol:'triangle-down',size:10,color:blue},name:'청산 신호',yaxis:'y'},
-{x:D.d,y:D.vix,name:'VIX',line:{color:fg,width:1},yaxis:'y2'},
-{x:D.d,y:D.z,type:'bar',name:'캔들/σ',marker:{color:D.z.map(v=>v<=-2?acc:'#9a9a94')},yaxis:'y3'},
-{x:D.d,y:D.p1,type:'bar',name:'과매도 점수',marker:{color:D.p1.map(v=>v>=2?acc:'#9a9a94')},yaxis:'y4'},
-{x:D.d,y:D.rsi,name:'RSI14',line:{color:fg,width:1},yaxis:'y5'},
-{x:D.d,y:D.kelt,name:'켈트너',line:{color:fg,width:1},yaxis:'y6'},
-{x:D.d,y:D.stoch,name:'스토캐스틱',line:{color:fg,width:1},yaxis:'y7'},
-{x:D.d,y:D.macd,name:'MACD/σ',line:{color:fg,width:1},yaxis:'y8'}];
-const end=D.d[D.d.length-1],st=new Date(end);st.setFullYear(st.getFullYear()-1);
-const L={paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:fg,size:11},showlegend:false,margin:{l:48,r:8,t:8,b:30},hovermode:'x unified',
-xaxis:{range:[st.toISOString().slice(0,10),end],rangeslider:{visible:false},gridcolor:grid,anchor:'y8'},
-yaxis:ax(0,'나스닥'),yaxis2:ax(1,'VIX'),yaxis3:ax(2,'캔들/σ'),yaxis4:ax(3,'점수'),yaxis5:ax(4,'RSI14'),yaxis6:ax(5,'켈트너'),yaxis7:ax(6,'스토캐스틱%'),yaxis8:ax(7,'MACD/σ'),
-shapes:[hl(25,'y2'),hl(-2,'y3'),hl(2,'y4'),hl(D.thr.RSI14,'y5'),hl(D.thr.KELT,'y6'),hl(100*D.thr.STOCH,'y7'),hl(D.thr.MACD,'y8')]};
-for(let i=2;i<=8;i++){L['yaxis'+i].anchor='x'}
-const s0=st.toISOString().slice(0,10);const vis=D.d.map(x=>x>=s0);
-const rng=(a,b)=>{let lo=Infinity,hi=-Infinity;D.d.forEach((x,i)=>{if(vis[i]){const p=a[i],q=(b||a)[i];if(p!=null&&p<lo)lo=p;if(q!=null&&q>hi)hi=q}});const m=(hi-lo)*0.06;return[lo-m,hi+m]};
-L.yaxis.range=rng(D.l,D.h);L.yaxis2.range=(r=>[r[0],Math.max(r[1],28)])(rng(D.vix));
-document.getElementById('ch').addEventListener('dblclick',()=>{});
-for(const t of T){t.xaxis='x'}
-Plotly.newPlot('ch',T,L,{responsive:true,displayModeBar:false});
+const D=__DATA__;const K=window.CHART_COLORS;
+const mk=[...D.sig.filter(x=>!x.skip).map(x=>({time:x.d,position:'belowBar',color:K.acc,shape:'arrowUp',text:'매수'})),
+ ...D.sig.filter(x=>x.skip).map(x=>({time:x.d,position:'belowBar',color:K.gray,shape:'arrowUp',text:''})),
+ ...D.ex.map(x=>({time:x.d,position:'aboveBar',color:K.blue,shape:'arrowDown',text:'청산'}))];
+const gray=v=>K.gray;
+buildStack(document.getElementById('ch'),{dates:D.d,defaultRange:'1Y',panes:[
+ {title:'나스닥 종합',height:330,series:[{type:'candle',o:D.o,h:D.h,l:D.l,c:D.c,up:K.green,down:K.red,digits:0},{type:'line',v:D.sma5,color:K.blue,width:1,name:'5일선',digits:0,lastValue:false}],markers:mk},
+ {title:'VIX',height:110,series:[{type:'line',v:D.vix,color:K.fg,digits:1}],lines:[{value:25,label:'25'}]},
+ {title:'캔들/σ',height:100,series:[{type:'hist',v:D.z,colorFn:v=>v<=-2?K.acc:K.gray,digits:2}],lines:[{value:-2,label:'−2σ'}]},
+ {title:'과매도 점수',height:90,series:[{type:'hist',v:D.p1,colorFn:v=>v>=2?K.acc:K.gray,digits:0}],lines:[{value:2,label:'2'}]},
+ {title:'RSI(14)',height:95,series:[{type:'line',v:D.rsi,color:K.fg,digits:1}],lines:[{value:D.thr.RSI14,label:''}]},
+ {title:'켈트너',height:95,series:[{type:'line',v:D.kelt,color:K.fg,digits:2}],lines:[{value:D.thr.KELT,label:''}]},
+ {title:'스토캐스틱 %K',height:95,series:[{type:'line',v:D.stoch,color:K.fg,digits:1}],lines:[{value:100*D.thr.STOCH,label:''}]},
+ {title:'MACD/σ',height:120,series:[{type:'line',v:D.macd,color:K.fg,digits:2}],lines:[{value:D.thr.MACD,label:''}]}]});
 </script></body></html>"""
 
 
@@ -331,10 +375,12 @@ def main():
     ix, F, nq, sigs, a, b = compute()
     trades = replay(ix, F, nq, sigs, a, b)
     st = today_status(ix, F, nq, trades)
+    if st["mode"] == "대기":
+        st["near"] = levels(ix, F)
     os.makedirs(ST, exist_ok=True)
     pd.DataFrame(trades).to_csv(os.path.join(ST, "nq_trades.csv"), index=False, encoding="utf-8-sig")
     dashboard(ix, F, trades, st, a, b)
-    # 알림: 진입 신호 · 청산 신호 · VIX 25 진입(대기 중일 때). 같은 일은 한 번만
+    # 알림: 진입 신호 · 청산 신호 · 근접 현황(VIX ≥ 25 이고 대기 중일 때 매일). 같은 일은 한 번만
     sp = os.path.join(ST, "nq_state.json")
     S = json.load(open(sp)) if os.path.exists(sp) else {"sent": []}
     url = os.environ.get("PAGES_URL", "")
@@ -350,12 +396,18 @@ def main():
     elif last and last.get("exit_signal_date") == T:
         ev = (f"exit:{T}", f"🔵 <b>NQ 청산 신호</b> ({T})\n사유: {E(last['exit_why'])} (보유 {last['held']}거래일)\n"
                            f"진입 {last.get('entry_date','')} {last.get('entry', float('nan')):,.0f} → 현재 NQ {st['nq_last']:,.0f}\n실행: 다음 NQ 세션 시가 청산")
-    elif st["mode"] == "대기" and F.vix.iloc[-1] >= VIX_MIN and F.vix.iloc[-2] < VIX_MIN:
-        ev = (f"watch:{T}", f"⚪️ <b>VIX 25 돌파</b> ({T}, VIX {F.vix.iloc[-1]:.1f}) — 공포 구간 진입, 과매도 신호 대기\n\n{cond}")
+    elif st["mode"] == "대기" and F.vix.iloc[-1] >= VIX_MIN:
+        hd, rr = near_text(st["near"])
+        first = " — 공포 구간 진입" if F.vix.iloc[-2] < VIX_MIN else ""
+        ev = (f"near:{T}", f"⚪️ <b>NQ 근접 현황</b> ({T} 종가 기준, VIX {F.vix.iloc[-1]:.1f}{first})\n"
+                           f"오늘 밤 나스닥 마감 기준, VIX 25 이상 유지 시:\n<b>{E(hd)}</b>\n" +
+                           "\n".join(f"▫️ {E(a_)}: {E(b_)}" for a_, b_ in rr) +
+                           f"\n(현재 점수 {int(F.P1.iloc[-1])}, 전일 종가 {st['near']['p0']:,.0f}, 근사치)")
     if ev and ev[0] not in S["sent"]:
-        png = os.path.join(ST, "nq_chart.png")
+        png = os.path.join(ST, "nq_chart.png") if not ev[0].startswith("near") else None
         try:
-            chart_png(ix, F, trades, png)
+            if png:
+                chart_png(ix, F, trades, png)
         except Exception as e:
             print("차트 실패", e); png = None
         if telegram(ev[1] + link, png) is not False:      # 실패하면 다음 실행에서 다시 시도

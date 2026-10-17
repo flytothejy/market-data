@@ -156,7 +156,8 @@ def dashboard(ks, F, trades, st, sigs):
 
 TEMPLATE = r"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>코스피 반등 전략</title>
-<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="charts.js"></script>
 <style>
 :root{--bg:#fafaf8;--fg:#1d1d1b;--mut:#6b6b66;--line:#e2e1dc;--card:#fff;--ok:#1a7f4b;--no:#9a9a94;--acc:#c2410c}
 @media (prefers-color-scheme:dark){:root{--bg:#141413;--fg:#ecebe6;--mut:#9b9a94;--line:#2c2c2a;--card:#1d1d1b;--ok:#4ade80;--no:#6b6b66;--acc:#fb923c}}
@@ -167,7 +168,7 @@ h1{font-size:18px;margin:8px 0 4px} .sub{color:var(--mut);font-size:13px;margin:
 .head{font-size:20px;font-weight:650;margin:6px 0} .mode{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--acc);color:var(--acc)}
 table{width:100%;border-collapse:collapse;font-size:13px} td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 th{color:var(--mut);font-weight:500} .ok{color:var(--ok);font-weight:650} .no{color:var(--no)} tr.live td{background:rgba(194,65,12,.08)}
-.scroll{overflow-x:auto} .scroll table{min-width:820px} .scroll td{white-space:nowrap} .chart{width:100%;height:760px}
+.scroll{overflow-x:auto} .scroll table{min-width:820px} .scroll td{white-space:nowrap} .chart{width:100%}
 </style></head><body><main>
 <nav><a href="index.html">나스닥 → NQ</a><a class="on" href="kospi.html">코스피 반등</a></nav>
 <h1>코스피 미국발 급락 → 반등 매수 <span class="sub">(관찰)</span></h1>
@@ -175,29 +176,19 @@ th{color:var(--mut);font-weight:500} .ok{color:var(--ok);font-weight:650} .no{co
 <div class="card"><span class="mode">__MODE__</span><div class="head">__HEAD__</div>__EXTRA__
 <p class="sub">진입 = 전날 미국 S&amp;P ≤ −1% 그리고 코스피 캔들 ≤ −2σ → 다음 날 시가 · 청산 = 코스피 종가 &gt; 5일선 다음 날 시가 (최대 10거래일)</p></div>
 <div class="card"><b>오늘의 판단 근거</b><table><tr><th>조건</th><th>값</th><th>기준</th><th></th></tr>__COND__</table></div>
-<div class="card"><b>최근 3년</b> <span class="sub">(▲ 매수 신호, ▼ 청산 신호 · 점선 = 기준선)</span><div id="ch" class="chart"></div></div>
+<div class="card"><b>지표 차트</b> <span class="sub">(▲ 매수 신호 · ▼ 청산 신호 · 점선 = 기준선 · 손가락으로 좌우 이동·확대)</span><div id="ch" class="chart"></div></div>
 <div class="card"><b>거래 기록</b> <span class="sub">(코스피 지수 시가 기준, 비용 전)</span>
 <p class="sub">백테스트(1997~): __BT__<br>KODEX200 실제 가격 (2002~): __BTE__<br>실전 검증: __LV__</p>
 <div class="scroll"><table><tr><th>신호일</th><th>근거</th><th>진입</th><th>청산</th><th>청산 사유</th><th>코스피</th><th>KODEX200</th></tr>__ROWS__</table></div></div>
+<p class="sub" style="text-align:right">차트: <a href="https://www.tradingview.com/" style="color:inherit">TradingView Lightweight Charts</a></p>
 </main><script>
-const D=__DATA__;const dark=matchMedia('(prefers-color-scheme: dark)').matches;
-const fg=dark?'#ecebe6':'#1d1d1b',grid=dark?'#2c2c2a':'#e8e7e2',acc=dark?'#fb923c':'#c2410c',blue=dark?'#60a5fa':'#2563eb',red=dark?'#f87171':'#dc2626';
-const ax=(a,b,t)=>({domain:[a,b],title:{text:t,font:{size:11}},gridcolor:grid,zeroline:false,anchor:'x'});
-const hl=(y,yr)=>({type:'line',xref:'paper',x0:0,x1:1,y0:y,y1:y,yref:yr,line:{dash:'dot',color:acc,width:1}});
-const T=[
-{type:'candlestick',x:D.d,open:D.o,high:D.h,low:D.l,close:D.c,increasing:{line:{color:red}},decreasing:{line:{color:blue}},yaxis:'y'},
-{x:D.d,y:D.sma5,line:{color:fg,width:1},name:'5일선',yaxis:'y'},
-{x:D.sig.filter(s=>!s.skip).map(s=>s.d),y:D.sig.filter(s=>!s.skip).map(s=>s.y*0.97),mode:'markers',marker:{symbol:'triangle-up',size:11,color:acc},name:'매수',yaxis:'y'},
-{x:D.ex.map(s=>s.d),y:D.ex.map(s=>s.y*1.03),mode:'markers',marker:{symbol:'triangle-down',size:10,color:blue},name:'청산',yaxis:'y'},
-{x:D.d,y:D.z,type:'bar',name:'캔들/σ',marker:{color:D.z.map(v=>v<=-2?acc:'#9a9a94')},yaxis:'y2'},
-{x:D.d,y:D.us,type:'bar',name:'전날 S&P %',marker:{color:D.us.map(v=>v<=-1?acc:'#9a9a94')},yaxis:'y3'}];
-const end=D.d[D.d.length-1],st=new Date(end);st.setFullYear(st.getFullYear()-1);const s0=st.toISOString().slice(0,10);
-let lo=Infinity,hi=-Infinity;D.d.forEach((x,i)=>{if(x>=s0){if(D.l[i]<lo)lo=D.l[i];if(D.h[i]>hi)hi=D.h[i]}});const m=(hi-lo)*0.06;
-const L={paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:fg,size:11},showlegend:false,margin:{l:48,r:8,t:8,b:30},hovermode:'x unified',
-xaxis:{range:[s0,end],rangeslider:{visible:false},gridcolor:grid,anchor:'y3'},
-yaxis:Object.assign(ax(0.52,1,'코스피'),{range:[lo-m,hi+m]}),yaxis2:ax(0.27,0.48,'캔들/σ'),yaxis3:ax(0,0.23,'전날 S&P %'),
-shapes:[hl(-2,'y2'),hl(-1,'y3')]};
-Plotly.newPlot('ch',T,L,{responsive:true,displayModeBar:false});
+const D=__DATA__;const K=window.CHART_COLORS;
+const mk=[...D.sig.filter(x=>!x.skip).map(x=>({time:x.d,position:'belowBar',color:K.acc,shape:'arrowUp',text:'매수'})),
+ ...D.ex.map(x=>({time:x.d,position:'aboveBar',color:K.blue,shape:'arrowDown',text:'청산'}))];
+buildStack(document.getElementById('ch'),{dates:D.d,defaultRange:'1Y',panes:[
+ {title:'코스피',height:340,series:[{type:'candle',o:D.o,h:D.h,l:D.l,c:D.c,up:K.red,down:K.blue,digits:2},{type:'line',v:D.sma5,color:K.fg,width:1,name:'5일선',digits:2,lastValue:false}],markers:mk},
+ {title:'코스피 캔들/σ',height:120,series:[{type:'hist',v:D.z,colorFn:v=>v<=-2?K.acc:K.gray,digits:2}],lines:[{value:-2}]},
+ {title:'전날 미국 S&P %',height:130,series:[{type:'hist',v:D.us,colorFn:v=>v<=-1?K.acc:K.gray,digits:2}],lines:[{value:-1}]}]});
 </script></body></html>"""
 
 
