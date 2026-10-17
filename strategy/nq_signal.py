@@ -236,6 +236,7 @@ table{width:100%;border-collapse:collapse;font-size:13px} td,th{padding:6px 4px;
 th{color:var(--mut);font-weight:500} .ok{color:var(--ok);font-weight:650} .no{color:var(--no)} tr.live td{background:rgba(194,65,12,.08)}
 .scroll{overflow-x:auto} .scroll table{min-width:820px} .scroll td{white-space:nowrap} .scroll td:nth-child(2){white-space:normal;min-width:220px} .chart{width:100%;height:1500px}
 </style></head><body><main>
+<nav style="margin-bottom:6px"><a href="index.html" style="color:var(--acc);margin-right:14px;font-size:14px;text-decoration:none;font-weight:700">나스닥 → NQ</a><a href="kospi.html" style="color:var(--acc);font-size:14px;text-decoration:none">코스피 반등</a></nav>
 <h1>나스닥 과매도 → NQ 매수</h1>
 <p class="sub">기준일 __DATE__ (나스닥 종가) · 생성 __GEN__ · 실전 검증 시작 __GOLIVE__</p>
 <div class="card"><span class="mode">__MODE__</span><div class="head">__HEAD__</div>__EXTRA__
