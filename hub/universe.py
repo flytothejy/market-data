@@ -102,6 +102,8 @@ def run(limit=0, **_):
             h, asof = ishares_holdings(web, pid)
             for _, r in h.iterrows():
                 raw = str(r["Ticker"]).strip().upper()
+                if raw in ("-", "", "NAN"):
+                    continue
                 if raw.endswith(" WS") or "-R-W" in raw or raw.endswith(" RT"):
                     continue              # 워런트·권리 — 주식이 아님
                 t = norm_ticker(raw, known)

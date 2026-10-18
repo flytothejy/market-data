@@ -26,7 +26,7 @@ def parse(txt):
                          "total_vol": pd.to_numeric(df["TotalVolume"], errors="coerce")})
 
 
-def run(limit=0, days=None, **_):
+def run(limit=0, days=None, full=False, **_):
     R = Run("short_volume")
     U = universe.load()
     keep = set(U.ticker)
@@ -34,9 +34,14 @@ def run(limit=0, days=None, **_):
     last = None
     if have:
         last = read(have[-1]).date.max()
-    days = days or (10 if last is not None else 365)
+    days = days or (365 if full or last is None else 10)
     http = Http(rate=4)
-    today = dt.date.today()
+    try:
+        from zoneinfo import ZoneInfo
+        ny = dt.datetime.now(ZoneInfo("America/New_York"))
+    except Exception:                                   # Windows에 시간대 정보가 없을 때
+        ny = dt.datetime.utcnow() - dt.timedelta(hours=5)
+    today = ny.date() if ny.hour >= 18 else ny.date() - dt.timedelta(days=1)   # 18시(동부) 이후 게시
     dates = [today - dt.timedelta(days=k) for k in range(days, -1, -1)]
     dates = [d for d in dates if d.weekday() < 5]
     if limit:
@@ -58,7 +63,7 @@ def run(limit=0, days=None, **_):
     cov = A[A.date == A.date.max()].ticker.nunique()
     R.set(days_fetched=len(got), first=str(min(got)), latest=str(max(got)), rows_new=len(A),
           tickers_latest_day=f"{cov}/{len(keep)}",
-          median_short_ratio=f"{(A.short_vol/A.total_vol).median()*100:.0f}%")
+          median_short_ratio=f"{(A.short_vol/A.total_vol).median()*100:.0f}%", http=http.stats())
     if cov < len(keep):
         miss = sorted(keep - set(A[A.date == A.date.max()].ticker))
         R.warning(f"최근일 파일에 없는 종목 {len(miss)}개: {', '.join(miss[:15])}")

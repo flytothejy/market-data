@@ -102,8 +102,16 @@ def run(limit=0, full=False, **_):
     stale = last[last < maxd - pd.Timedelta(days=5)]
     bad = int(((L[["open", "high", "low", "close"]] <= 0).any(axis=1)).sum())
     L = L.sort_values(["ticker", "date"])
-    ret = L.groupby("ticker").close.pct_change()
-    jumps = L[ret.abs() > 0.5]
+    ratio = L.close / L.groupby("ticker").close.shift(1)
+    # 분할 의심: 하루 변화가 흔한 분할 비율(2·3·4·5·10배 또는 그 역수)에 가깝고 분할 기록이 없는 경우
+    near = lambda x: any(abs(x / k - 1) < 0.06 for k in (2, 3, 4, 5, 10, 1/2, 1/3, 1/4, 1/5, 1/10))
+    cand = L[(ratio > 1.8) | (ratio < 0.55)].assign(r=ratio)
+    cand = cand[cand.r.apply(near)]
+    if not A.empty and not cand.empty:
+        sp = A[A.split != 0][["ticker", "date"]]
+        cand = cand.merge(sp.assign(has=1), on=["ticker", "date"], how="left")
+        cand = cand[cand.has.isna()]
+    jumps = cand
     if miss:
         R.warning(f"못 받은 종목 {len(miss)}개: {', '.join(miss[:20])}")
     if len(stale):
@@ -111,7 +119,7 @@ def run(limit=0, full=False, **_):
     if bad:
         R.warning(f"0 이하 가격 행 {bad}개")
     if len(jumps):
-        R.warning(f"하루 ±50% 넘는 변동 {len(jumps)}건 (분할 미반영 가능): " + ", ".join(f"{r.ticker} {r.date:%Y-%m-%d}" for r in jumps.head(8).itertuples()))
+        R.warning(f"분할 미반영 의심 {len(jumps)}건: " + ", ".join(f"{r.ticker} {r.date:%Y-%m-%d}" for r in jumps.head(8).itertuples()))
     R.set(tickers_ok=int(L.ticker.nunique()), missing=len(miss), latest_date=str(maxd.date()),
           first_date=str(L.date.min().date()), rows_new=len(L), dividends=int((A.dividend != 0).sum()) if not A.empty else 0,
           splits=int((A.split != 0).sum()) if not A.empty else 0)

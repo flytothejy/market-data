@@ -30,19 +30,26 @@ class Http:
         self.gap = 1.0 / rate
         self.retries, self.timeout = retries, timeout
         self._last = 0.0
-        self.calls = 0
+        self.calls, self.retries_used, self.net_sec = 0, 0, 0.0
+
+    def stats(self):
+        return f"{self.calls}회 · 재시도 {self.retries_used}회 · 평균 {self.net_sec/max(self.calls,1):.2f}초"
 
     def get(self, url, ok404=False, **kw):
         err = None
         for i in range(self.retries):
+            if i:
+                self.retries_used += 1
             wait = self._last + self.gap - time.time()
             if wait > 0:
                 time.sleep(wait)
             self._last = time.time()
             self.calls += 1
             try:
+                t0 = time.time()
                 r = self.s.get(url, timeout=self.timeout, **kw)
-                if r.status_code == 404 and ok404:
+                self.net_sec += time.time() - t0
+                if r.status_code in (403, 404) and ok404:
                     return None
                 if r.status_code in (429, 500, 502, 503, 504):
                     err = f"HTTP {r.status_code}"

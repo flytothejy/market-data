@@ -73,6 +73,7 @@ def run_filings(limit=0, **_):
     last7 = allf[allf.filed >= allf.filed.max() - pd.Timedelta(days=7)]
     k8 = last7[last7.form.str.startswith("8-K")]
     item_cnt = pd.Series([x for s in k8["items"] for x in str(s).split(",") if x]).value_counts().head(6)
+    R.set(http=http.stats())
     R.set(companies=len(U) - len(fail), rows_total=len(allf), rows_new=len(added), latest_filed=str(allf.filed.max().date()),
           first_filed=str(allf.filed.min().date()),
           new_by_form=", ".join(f"{k} {v}" for k, v in added.form.value_counts().head(8).items()) or "-",
@@ -152,7 +153,7 @@ def run_insider(limit=0, days=90, **_):
               last30d_buy=f"{len(buys)}건 ${(buys.shares*buys.price).sum()/1e6:,.1f}M",
               last30d_sell=f"{len(sells)}건 ${(sells.shares*sells.price).sum()/1e6:,.1f}M",
               top_buy=", ".join(buys.assign(v=buys.shares*buys.price).groupby("ticker").v.sum().nlargest(5).index) or "-")
-    R.set(processed=len(todo) - len(bad), failed=len(bad), rows_new=len(todo) - len(bad))
+    R.set(processed=len(todo) - len(bad), failed=len(bad), rows_new=len(todo) - len(bad), http=http.stats())
     return R.done()
 
 
@@ -166,7 +167,9 @@ def _flush(rows, ok):
 # ---------------------------------------------------------------- XBRL 재무
 TAGS = {
     "us-gaap": ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "RevenueFromContractWithCustomerIncludingAssessedTax",
-                "RevenuesNetOfInterestExpense", "InterestAndDividendIncomeOperating", "NoninterestIncome",
+                "RevenuesNetOfInterestExpense", "InterestAndDividendIncomeOperating", "NoninterestIncome", "InterestIncomeExpenseNet",
+                "InterestIncomeOperating", "RegulatedAndUnregulatedOperatingRevenue", "ElectricUtilityRevenue",
+                "OperatingLeasesIncomeStatementLeaseRevenue", "RevenueFromContractWithCustomerProductAndServiceExcludingAssessedTax",
                 "CostOfRevenue", "CostOfGoodsAndServicesSold", "GrossProfit", "OperatingIncomeLoss", "NetIncomeLoss", "ProfitLoss",
                 "NetIncomeLossAvailableToCommonStockholdersBasic", "IncomeLossFromContinuingOperations",
                 "EarningsPerShareDiluted", "EarningsPerShareBasic", "WeightedAverageNumberOfDilutedSharesOutstanding",
@@ -175,7 +178,7 @@ TAGS = {
                 "CashAndCashEquivalentsAtCarryingValue", "LongTermDebt", "LongTermDebtNoncurrent", "InventoryNet", "AccountsReceivableNetCurrent",
                 "NetCashProvidedByUsedInOperatingActivities", "PaymentsToAcquirePropertyPlantAndEquipment",
                 "PaymentsForRepurchaseOfCommonStock", "PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "ShareBasedCompensation"],
-    "ifrs-full": ["Revenue", "GrossProfit", "ProfitLossFromOperatingActivities", "ProfitLoss", "ProfitLossAttributableToOwnersOfParent",
+    "ifrs-full": ["Revenue", "RevenueFromContractsWithCustomers", "InterestIncome", "GrossProfit", "ProfitLossFromOperatingActivities", "ProfitLoss", "ProfitLossAttributableToOwnersOfParent",
                   "DilutedEarningsLossPerShare", "Assets", "Liabilities", "Equity", "CashAndCashEquivalents",
                   "CashFlowsFromUsedInOperatingActivities", "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"],
     "dei": ["EntityCommonStockSharesOutstanding", "EntityPublicFloat"],
@@ -238,7 +241,9 @@ def run_financials(limit=0, full=False, **_):
     if fail:
         R.warning(f"실패 {len(fail)}개: {', '.join(fail[:15])}")
     if not A.empty:
-        rev_tags = {"Revenues", "RevenuesNetOfInterestExpense", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet",
+        rev_tags = {"Revenues", "RevenuesNetOfInterestExpense", "InterestIncomeExpenseNet", "InterestIncomeOperating",
+                    "RegulatedAndUnregulatedOperatingRevenue", "ElectricUtilityRevenue", "OperatingLeasesIncomeStatementLeaseRevenue",
+                    "RevenueFromContractsWithCustomers", "InterestAndDividendIncomeOperating", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet",
                     "RevenueFromContractWithCustomerIncludingAssessedTax", "Revenue"}
         A["end"] = pd.to_datetime(A["end"], errors="coerce")
         recent = A[(A.end >= pd.Timestamp.today() - pd.Timedelta(days=550))]
@@ -256,7 +261,7 @@ def run_financials(limit=0, full=False, **_):
             R.set(no_recent_net_income=", ".join(U[U.cik.astype(int).isin(missing_ni)].ticker.tolist()[:20]))
         if has_rev / max(nU, 1) < 0.9:
             R.warning("최근 매출 값이 있는 회사가 90% 미만 — 매출 태그 보강 필요 (은행·보험은 매출 태그가 다름)")
-    R.set(fetched=len(todo) - len(fail), rows_new=len(todo) - len(fail))
+    R.set(fetched=len(todo) - len(fail), rows_new=len(todo) - len(fail), http=http.stats())
     return R.done()
 
 
