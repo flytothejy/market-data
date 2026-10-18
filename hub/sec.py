@@ -97,7 +97,7 @@ def parse_form4(xml_text):
             "title": _t(rel, "officerTitle") if rel is not None else None}
     flag = lambda v: str(v).strip().lower() in ("1", "true")
     plan = flag(_t(root, "aff10b5One"))
-    base = {"issuer_symbol": _t(root, "issuer/issuerTradingSymbol"), "owner": names, "owner_cik": _t(owners[0], "reportingOwnerId/rptOwnerCik") if owners else None,
+    base = {"issuer_cik": _t(root, "issuer/issuerCik"), "issuer_symbol": _t(root, "issuer/issuerTradingSymbol"), "owner": names, "owner_cik": _t(owners[0], "reportingOwnerId/rptOwnerCik") if owners else None,
             "is_director": flag(role["director"]), "is_officer": flag(role["officer"]), "is_10pct": flag(role["ten_pct"]),
             "title": role["title"], "plan_10b5_1": plan}
     out = []
@@ -126,14 +126,21 @@ def run_insider(limit=0, days=90, **_):
     if limit:
         todo = todo.head(limit)
     log(f"Form 4 {len(todo)}건 처리 (최근 {days}일, 이미 처리 {len(done_acc)}건 제외)")
-    rows, ok, bad = [], [], []
+    US = universe.load("stock").dropna(subset=["cik"]).drop_duplicates("cik")
+    cik2t = dict(zip(US.cik.astype(int), US.ticker))
+    rows, ok, bad, foreign = [], [], [], 0
     for i, r in enumerate(todo.itertuples()):
         doc = str(r.doc or "")
         doc = doc.split("/")[-1] if doc.startswith("xsl") else doc
         url = f"https://www.sec.gov/Archives/edgar/data/{int(r.cik)}/{r.accession.replace('-', '')}/{doc}"
         try:
             for x in parse_form4(http.get(url).content):
-                rows.append({"accession": r.accession, "cik": r.cik, "ticker": r.ticker, "filed": r.filed, **x})
+                # 제출 목록에는 '그 회사가 남의 주식을 산 신고'(예: 버크셔의 OXY 매수)도 섞여 있음 → 발행회사 기준으로 귀속
+                icik = int(x["issuer_cik"]) if x.get("issuer_cik") and str(x["issuer_cik"]).strip().isdigit() else None
+                if icik is None or icik not in cik2t:
+                    foreign += 1
+                    continue
+                rows.append({"accession": r.accession, "cik": icik, "ticker": cik2t[icik], "filed": r.filed, **x})
             ok.append(r.accession)
         except Exception as e:
             bad.append(f"{r.ticker} {r.accession}: {str(e)[:60]}")
@@ -142,6 +149,17 @@ def run_insider(limit=0, days=90, **_):
             _flush(rows, ok); rows, ok = [], []
     _flush(rows, ok)
     I = read(S_DIR / "insider.parquet")
+    if not I.empty:                                     # 예전 방식으로 잘못 귀속된 행 정리 (발행회사 ≠ 귀속 종목)
+        sym = I["issuer_symbol"].astype(str).str.upper().str.replace(r"[./ ]", "-", regex=True)
+        ic = pd.to_numeric(I.get("issuer_cik"), errors="coerce") if "issuer_cik" in I else pd.Series(float("nan"), index=I.index)
+        US2 = universe.load("stock").dropna(subset=["cik"])
+        s2c = dict(zip(US2.ticker, US2.cik.astype(int)))
+        symc = sym.map(s2c)
+        wrong = (ic.notna() & (ic != I["cik"])) | (ic.isna() & (symc != I["cik"]))   # 우리 대상이 아닌 발행회사도 제외
+        if wrong.any():
+            I = I[~wrong]
+            write(S_DIR / "insider.parquet", I)
+            R.set(fixed_misattributed=int(wrong.sum()))
     if bad:
         R.warning(f"해석 실패 {len(bad)}건 — 예: {bad[0]}")
     if not I.empty:
@@ -153,6 +171,7 @@ def run_insider(limit=0, days=90, **_):
               last30d_buy=f"{len(buys)}건 ${(buys.shares*buys.price).sum()/1e6:,.1f}M",
               last30d_sell=f"{len(sells)}건 ${(sells.shares*sells.price).sum()/1e6:,.1f}M",
               top_buy=", ".join(buys.assign(v=buys.shares*buys.price).groupby("ticker").v.sum().nlargest(5).index) or "-")
+    R.set(skipped_not_issuer=foreign)
     R.set(processed=len(todo) - len(bad), failed=len(bad), rows_new=len(todo) - len(bad), http=http.stats())
     return R.done()
 
