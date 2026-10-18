@@ -20,7 +20,7 @@ def parse(txt):
     df = pd.read_csv(io.StringIO(txt), sep="|", dtype={"Symbol": str})
     df = df[df["Symbol"].notna() & df["Date"].astype(str).str.fullmatch(r"\d{8}")]
     return pd.DataFrame({"date": pd.to_datetime(df["Date"].astype(str), format="%Y%m%d"),
-                         "ticker": df["Symbol"].str.replace(".", "-", regex=False).str.upper(),
+                         "ticker": df["Symbol"].str.strip().str.upper().str.replace(r"[./ ]", "-", regex=True),
                          "short_vol": pd.to_numeric(df["ShortVolume"], errors="coerce"),
                          "short_exempt": pd.to_numeric(df.get("ShortExemptVolume"), errors="coerce"),
                          "total_vol": pd.to_numeric(df["TotalVolume"], errors="coerce")})
@@ -59,6 +59,7 @@ def run(limit=0, days=None, **_):
     R.set(days_fetched=len(got), first=str(min(got)), latest=str(max(got)), rows_new=len(A),
           tickers_latest_day=f"{cov}/{len(keep)}",
           median_short_ratio=f"{(A.short_vol/A.total_vol).median()*100:.0f}%")
-    if cov < 0.95 * len(keep):
-        R.warning(f"최근일 파일에 없는 종목 {len(keep)-cov}개 (티커 표기 차이 가능)")
+    if cov < len(keep):
+        miss = sorted(keep - set(A[A.date == A.date.max()].ticker))
+        R.warning(f"최근일 파일에 없는 종목 {len(miss)}개: {', '.join(miss[:15])}")
     return R.done()

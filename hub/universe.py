@@ -12,6 +12,8 @@ from .core import DATA, Http, Run, log, sec_http, write, read
 U_DIR = DATA / "universe"
 ISHARES = "https://www.ishares.com/us/products/{pid}/x/latest-holdings.csv"
 FUNDS = {"r1000": 239707, "sp500": 239726}           # IWB, IVV
+NASDAQ_NDX = "https://api.nasdaq.com/api/quote/list-type/nasdaq100"
+SSGA_DIA = "https://www.ssga.com/us/en/intermediary/library-content/products/fund-data/etfs/us/holdings-daily-us-en-dia.xlsx"
 WIKI = {"ndx": ("https://en.wikipedia.org/wiki/Nasdaq-100", ("Ticker", "Symbol")),
         "dji": ("https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average", ("Symbol", "Ticker"))}
 ETF_LIST = __import__("pathlib").Path(__file__).with_name("etf_list.csv")
@@ -47,7 +49,28 @@ def wiki_tickers(http, url, cols):
                 s = [x for x in s if x and x != "nan" and len(x) <= 6]
                 if len(s) >= 25:
                     return s
-    raise RuntimeError(f"표를 찾지 못함 (표 {len(seen)}개: {'; '.join(seen[:6])})")
+    raise RuntimeError(f"표를 찾지 못함 (표 {len(seen)}개: {'; '.join(seen)})")
+
+
+def ndx_nasdaq(http):
+    j = http.get(NASDAQ_NDX, headers={"Accept": "application/json, text/plain, */*", "Origin": "https://www.nasdaq.com",
+                                      "Referer": "https://www.nasdaq.com/"}).json()
+    rows = (j.get("data") or {}).get("data", {}).get("rows") or []
+    ts = [r["symbol"] for r in rows if r.get("symbol")]
+    if len(ts) < 90:
+        raise RuntimeError(f"나스닥 API 종목 수 이상: {len(ts)}")
+    return ts
+
+
+def dji_ssga(http):
+    raw = pd.read_excel(io.BytesIO(http.get(SSGA_DIA).content), header=None)
+    hdr = next(i for i in range(min(15, len(raw))) if "Ticker" in raw.iloc[i].astype(str).tolist())
+    df = raw.iloc[hdr + 1:].copy()
+    df.columns = raw.iloc[hdr].astype(str)
+    ts = [t for t in df["Ticker"].astype(str).str.strip() if t and t != "nan" and t.upper() != "CASH_USD" and len(t) <= 6]
+    if not 28 <= len(ts) <= 32:
+        raise RuntimeError(f"DIA 구성 수 이상: {len(ts)}")
+    return ts
 
 
 def norm_ticker(t, known):
@@ -87,9 +110,14 @@ def run(limit=0, **_):
             R.set(**{f"{idx}_n": len(h), f"{idx}_asof": asof})
         except Exception as e:
             R.warning(f"치명: {idx} 구성 다운로드 실패 — {e}")
+    primary = {"ndx": ndx_nasdaq, "dji": dji_ssga}
     for idx, (url, cols) in WIKI.items():
         try:
-            ts = wiki_tickers(web, url, cols)
+            try:
+                ts = primary[idx](web)
+            except Exception as e1:
+                R.warning(f"{idx} 기본 출처 실패 → 위키백과로 대체: {str(e1)[:80]}")
+                ts = wiki_tickers(web, url, cols)
             for t in ts:
                 t = norm_ticker(t, known)
                 members.append({"index": idx, "ticker": t, "weight": None, "asof": dt.date.today().isoformat()})
@@ -131,7 +159,7 @@ def run(limit=0, **_):
     no_cik = stocks[stocks.cik.isna()].ticker.tolist()
     if no_cik:
         R.warning(f"CIK 못 찾은 종목 {len(no_cik)}개: {', '.join(no_cik[:15])}")
-    if not old.empty:
+    if not old.empty and not limit:
         added = sorted(set(stocks.ticker) - set(old[old.kind == "stock"].ticker))
         removed = sorted(set(old[old.kind == "stock"].ticker) - set(stocks.ticker))
         R.set(added=", ".join(added[:20]) or "-", removed=", ".join(removed[:20]) or "-")

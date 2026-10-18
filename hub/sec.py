@@ -66,7 +66,7 @@ def run_filings(limit=0, **_):
     new = pd.concat(rows, ignore_index=True)
     old = read(S_DIR / "filings.parquet")
     old_acc = set(old.accession) if not old.empty else set()
-    added = new[~new.accession.isin(old_acc)]
+    added = new[~new.accession.isin(old_acc)].drop_duplicates("accession")
     allf = upsert(S_DIR / "filings.parquet", new, ["accession", "cik"], sort=["filed", "accession"])
     if fail:
         R.warning(f"실패 {len(fail)}개: {', '.join(fail[:15])}")
@@ -121,7 +121,7 @@ def run_insider(limit=0, days=90, **_):
     done = read(S_DIR / "insider_done.parquet")
     done_acc = set(done.accession) if not done.empty else set()
     cut = pd.Timestamp(dt.date.today() - dt.timedelta(days=days))
-    todo = F[F.form.isin(["4", "4/A"]) & (F.filed >= cut) & ~F.accession.isin(done_acc)].drop_duplicates("accession")
+    todo = F[F.form.isin(["4", "4/A"]) & (F.filed >= cut) & ~F.accession.isin(done_acc)].drop_duplicates("accession").sort_values("filed", ascending=False)
     if limit:
         todo = todo.head(limit)
     log(f"Form 4 {len(todo)}건 처리 (최근 {days}일, 이미 처리 {len(done_acc)}건 제외)")
@@ -166,7 +166,9 @@ def _flush(rows, ok):
 # ---------------------------------------------------------------- XBRL 재무
 TAGS = {
     "us-gaap": ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "RevenueFromContractWithCustomerIncludingAssessedTax",
-                "CostOfRevenue", "CostOfGoodsAndServicesSold", "GrossProfit", "OperatingIncomeLoss", "NetIncomeLoss",
+                "RevenuesNetOfInterestExpense", "InterestAndDividendIncomeOperating", "NoninterestIncome",
+                "CostOfRevenue", "CostOfGoodsAndServicesSold", "GrossProfit", "OperatingIncomeLoss", "NetIncomeLoss", "ProfitLoss",
+                "NetIncomeLossAvailableToCommonStockholdersBasic", "IncomeLossFromContinuingOperations",
                 "EarningsPerShareDiluted", "EarningsPerShareBasic", "WeightedAverageNumberOfDilutedSharesOutstanding",
                 "ResearchAndDevelopmentExpense", "SellingGeneralAndAdministrativeExpense", "IncomeTaxExpenseBenefit", "InterestExpense",
                 "DepreciationDepletionAndAmortization", "Assets", "Liabilities", "StockholdersEquity", "AssetsCurrent", "LiabilitiesCurrent",
@@ -236,16 +238,23 @@ def run_financials(limit=0, full=False, **_):
     if fail:
         R.warning(f"실패 {len(fail)}개: {', '.join(fail[:15])}")
     if not A.empty:
-        rev_tags = {"Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet",
+        rev_tags = {"Revenues", "RevenuesNetOfInterestExpense", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet",
                     "RevenueFromContractWithCustomerIncludingAssessedTax", "Revenue"}
         A["end"] = pd.to_datetime(A["end"], errors="coerce")
         recent = A[(A.end >= pd.Timestamp.today() - pd.Timedelta(days=550))]
         has_rev = recent[recent.tag.isin(rev_tags)].cik.nunique()
-        has_ni = recent[recent.tag.isin({"NetIncomeLoss", "ProfitLoss"})].cik.nunique()
+        has_ni = recent[recent.tag.isin({"NetIncomeLoss", "ProfitLoss", "NetIncomeLossAvailableToCommonStockholdersBasic", "ProfitLossAttributableToOwnersOfParent"})].cik.nunique()
+        nU = U.cik.nunique()
         ncomp = A.cik.nunique()
         R.set(companies=ncomp, facts_rows=len(A), first_period=str(A.end.min().date()),
-              revenue_coverage=f"{has_rev}/{len(U)} ({has_rev/len(U)*100:.0f}%)", net_income_coverage=f"{has_ni}/{len(U)} ({has_ni/len(U)*100:.0f}%)")
-        if has_rev / max(len(U), 1) < 0.9:
+              revenue_coverage=f"{has_rev}/{nU} ({has_rev/nU*100:.0f}%)", net_income_coverage=f"{has_ni}/{nU} ({has_ni/nU*100:.0f}%)")
+        missing_rev = sorted(set(U.cik.astype(int)) - set(recent[recent.tag.isin(rev_tags)].cik))
+        if missing_rev:
+            R.set(no_recent_revenue=", ".join(U[U.cik.astype(int).isin(missing_rev)].ticker.tolist()[:20]))
+        missing_ni = sorted(set(U.cik.astype(int)) - set(recent[recent.tag.isin({"NetIncomeLoss", "ProfitLoss", "NetIncomeLossAvailableToCommonStockholdersBasic", "ProfitLossAttributableToOwnersOfParent"})].cik))
+        if missing_ni:
+            R.set(no_recent_net_income=", ".join(U[U.cik.astype(int).isin(missing_ni)].ticker.tolist()[:20]))
+        if has_rev / max(nU, 1) < 0.9:
             R.warning("최근 매출 값이 있는 회사가 90% 미만 — 매출 태그 보강 필요 (은행·보험은 매출 태그가 다름)")
     R.set(fetched=len(todo) - len(fail), rows_new=len(todo) - len(fail))
     return R.done()

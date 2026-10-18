@@ -3,3 +3,4 @@ pyarrow>=14
 requests
 yfinance>=0.2.50
 lxml
+openpyxl
