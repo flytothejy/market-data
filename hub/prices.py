@@ -9,7 +9,7 @@ import time
 import numpy as np, pandas as pd
 import yfinance as yf
 
-from .core import DATA, Run, log, upsert
+from .core import DATA, Run, log, upsert, read
 from . import universe
 
 P_DIR = DATA / "prices"
@@ -19,11 +19,15 @@ CHUNK = 100
 
 def to_long(raw, tickers):
     out, acts = [], []
+    if raw is None or raw.empty:
+        return pd.DataFrame(), pd.DataFrame()
     single = not isinstance(raw.columns, pd.MultiIndex)
     for t in tickers:
         try:
             d = raw if single else raw[t]
         except KeyError:
+            continue
+        if "Close" not in d:
             continue
         d = d.dropna(subset=["Close"])
         if d.empty:
@@ -50,31 +54,37 @@ def run(limit=0, full=False, **_):
     tickers = list(U.ticker)
     if limit:
         tickers = tickers[:limit]
-    have = sorted(P_DIR.glob("daily/*.parquet"))
-    backfill = full or not have
-    kw = {"start": START} if backfill else {"period": "1mo"}
-    R.set(mode="전체(2006~)" if backfill else "최근 1개월", requested=len(tickers))
-    log(f"가격 수집 {len(tickers)}종목 · {'전체 이력' if backfill else '최근 1개월'}")
+    done_p = P_DIR / "_backfilled.parquet"
+    done = set(read(done_p).ticker) if done_p.exists() else set()
+    new_t = tickers if full else [t for t in tickers if t not in done]
+    old_t = [] if full else [t for t in tickers if t in done]
+    R.set(requested=len(tickers), backfill_tickers=len(new_t), update_tickers=len(old_t))
+    log(f"가격 수집: 전체 이력 {len(new_t)}종목 · 최근 1개월 {len(old_t)}종목")
+    groups = [(new_t, {"start": START}), (old_t, {"period": "1mo"})]
 
-    Ls, As, miss = [], [], []
-    for i in range(0, len(tickers), CHUNK):
-        part = tickers[i:i + CHUNK]
-        for attempt in range(3):
-            try:
-                raw = yf.download(part, auto_adjust=False, actions=True, group_by="ticker", threads=True, progress=False, **kw)
-                break
-            except Exception as e:
-                log(f"  재시도 {attempt+1}: {e}")
-                time.sleep(10 * (attempt + 1))
-        else:
-            R.warning(f"묶음 {i}~ 실패")
-            miss += part
-            continue
-        L, A = to_long(raw, part)
-        got = set(L.ticker) if not L.empty else set()
-        miss += [t for t in part if t not in got]
-        Ls.append(L); As.append(A)
-        log(f"  {min(i+CHUNK, len(tickers))}/{len(tickers)} · 행 {len(L):,}")
+    Ls, As, miss, n = [], [], [], 0
+    for group, kw in groups:
+        for i in range(0, len(group), CHUNK):
+            part = group[i:i + CHUNK]
+            for attempt in range(3):
+                try:
+                    raw = yf.download(part, auto_adjust=False, actions=True, group_by="ticker", threads=True, progress=False, **kw)
+                    break
+                except Exception as e:
+                    log(f"  재시도 {attempt+1}: {e}")
+                    time.sleep(10 * (attempt + 1))
+            else:
+                R.warning(f"묶음 실패: {part[0]}~")
+                miss += part
+                continue
+            L, A = to_long(raw, part)
+            got = set(L.ticker) if not L.empty else set()
+            miss += [t for t in part if t not in got]
+            Ls.append(L); As.append(A)
+            n += len(part)
+            log(f"  {n}/{len(tickers)} · 행 {len(L):,}")
+            if "start" in kw and got:
+                upsert(done_p, pd.DataFrame({"ticker": sorted(got)}), ["ticker"])
     L = pd.concat(Ls, ignore_index=True) if Ls else pd.DataFrame()
     A = pd.concat(As, ignore_index=True) if As else pd.DataFrame()
     if L.empty:
