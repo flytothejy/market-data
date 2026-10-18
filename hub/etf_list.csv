@@ -1,0 +1,160 @@
+ticker,etf_group
+SPY,미국 대표지수
+VOO,미국 대표지수
+IVV,미국 대표지수
+SPLG,미국 대표지수
+VTI,미국 대표지수
+QQQ,미국 대표지수
+QQQM,미국 대표지수
+DIA,미국 대표지수
+IWM,미국 대표지수
+RSP,미국 대표지수
+VUG,미국 대표지수
+VTV,미국 대표지수
+SCHG,미국 대표지수
+SCHX,미국 대표지수
+MGK,미국 대표지수
+IWF,미국 대표지수
+IWD,미국 대표지수
+SPYG,미국 대표지수
+SPYV,미국 대표지수
+MDY,미국 대표지수
+IJH,미국 대표지수
+IJR,미국 대표지수
+VB,미국 대표지수
+VO,미국 대표지수
+SCHD,배당·인컴
+VYM,배당·인컴
+VIG,배당·인컴
+DGRO,배당·인컴
+HDV,배당·인컴
+NOBL,배당·인컴
+SDY,배당·인컴
+DVY,배당·인컴
+SPYD,배당·인컴
+SPHD,배당·인컴
+FDVV,배당·인컴
+DIVO,배당·인컴
+JEPI,배당·인컴
+JEPQ,배당·인컴
+QYLD,배당·인컴
+XYLD,배당·인컴
+XLK,섹터
+XLF,섹터
+XLV,섹터
+XLE,섹터
+XLI,섹터
+XLY,섹터
+XLP,섹터
+XLU,섹터
+XLB,섹터
+XLRE,섹터
+XLC,섹터
+VGT,섹터
+SMH,섹터
+SOXX,섹터
+IGV,섹터
+IBB,섹터
+XBI,섹터
+KRE,섹터
+KBE,섹터
+ITA,섹터
+XAR,섹터
+XOP,섹터
+OIH,섹터
+ITB,섹터
+XHB,섹터
+JETS,섹터
+VNQ,섹터
+ARKK,테마·원자재·코인
+ARKW,테마·원자재·코인
+ARKG,테마·원자재·코인
+BOTZ,테마·원자재·코인
+ROBO,테마·원자재·코인
+AIQ,테마·원자재·코인
+CIBR,테마·원자재·코인
+HACK,테마·원자재·코인
+SKYY,테마·원자재·코인
+ICLN,테마·원자재·코인
+TAN,테마·원자재·코인
+LIT,테마·원자재·코인
+URA,테마·원자재·코인
+URNM,테마·원자재·코인
+PAVE,테마·원자재·코인
+BLOK,테마·원자재·코인
+IBIT,테마·원자재·코인
+FBTC,테마·원자재·코인
+ETHA,테마·원자재·코인
+GLD,테마·원자재·코인
+IAU,테마·원자재·코인
+SLV,테마·원자재·코인
+GDX,테마·원자재·코인
+GDXJ,테마·원자재·코인
+COPX,테마·원자재·코인
+USO,테마·원자재·코인
+UNG,테마·원자재·코인
+DBC,테마·원자재·코인
+PDBC,테마·원자재·코인
+TQQQ,레버리지·인버스
+SQQQ,레버리지·인버스
+SOXL,레버리지·인버스
+SOXS,레버리지·인버스
+UPRO,레버리지·인버스
+SPXU,레버리지·인버스
+SPXL,레버리지·인버스
+SSO,레버리지·인버스
+QLD,레버리지·인버스
+TECL,레버리지·인버스
+LABU,레버리지·인버스
+TNA,레버리지·인버스
+TZA,레버리지·인버스
+NVDL,레버리지·인버스
+TSLL,레버리지·인버스
+YINN,레버리지·인버스
+UVXY,레버리지·인버스
+TMF,레버리지·인버스
+TMV,레버리지·인버스
+SH,레버리지·인버스
+PSQ,레버리지·인버스
+SDS,레버리지·인버스
+BITX,레버리지·인버스
+USD,레버리지·인버스
+ROM,레버리지·인버스
+TLT,채권
+IEF,채권
+SHY,채권
+BND,채권
+AGG,채권
+LQD,채권
+HYG,채권
+JNK,채권
+TIP,채권
+BIL,채권
+SGOV,채권
+SHV,채권
+VCIT,채권
+VCSH,채권
+EMB,채권
+MUB,채권
+GOVT,채권
+EDV,채권
+ZROZ,채권
+VEA,해외
+VWO,해외
+EFA,해외
+EEM,해외
+IEFA,해외
+IEMG,해외
+VXUS,해외
+ACWI,해외
+VT,해외
+EWJ,해외
+EWY,해외
+EWT,해외
+EWZ,해외
+INDA,해외
+FXI,해외
+MCHI,해외
+KWEB,해외
+EWG,해외
+EWU,해외
