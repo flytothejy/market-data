@@ -35,17 +35,24 @@ def ishares_holdings(http, pid):
 
 def wiki_tickers(http, url, cols):
     html = http.get(url).text
+    seen = []
     for t in pd.read_html(io.StringIO(html)):
-        for c in cols:
-            if c in t.columns and 20 <= len(t) <= 120:
-                s = t[c].astype(str).str.replace(r"^.*:\s*", "", regex=True).str.strip()
-                return [x for x in s if x and x != "nan"]
-    raise RuntimeError(f"표를 찾지 못함: {url}")
+        names = [" ".join(map(str, c)) if isinstance(c, tuple) else str(c) for c in t.columns]
+        t.columns = names
+        seen.append(f"{len(t)}행:{'/'.join(n[:12] for n in names[:5])}")
+        for n in names:
+            low = n.lower()
+            if any(low.startswith(c.lower()) for c in cols) and 25 <= len(t) <= 130:
+                s = t[n].astype(str).str.replace(r"^.*:\s*", "", regex=True).str.replace(r"\[.*?\]", "", regex=True).str.strip()
+                s = [x for x in s if x and x != "nan" and len(x) <= 6]
+                if len(s) >= 25:
+                    return s
+    raise RuntimeError(f"표를 찾지 못함 (표 {len(seen)}개: {'; '.join(seen[:6])})")
 
 
 def norm_ticker(t, known):
-    t = str(t).strip().upper()
-    for c in (t, t.replace(".", "-"), t.replace("/", "-"), (t[:-1] + "-" + t[-1]) if len(t) > 2 else t):
+    t = " ".join(str(t).strip().upper().split())
+    for c in (t, t.replace(" ", "-"), t.replace(".", "-"), t.replace("/", "-"), (t[:-1] + "-" + t[-1]) if len(t) > 2 else t):
         if c in known:
             return c
     return t.replace(".", "-")
@@ -71,7 +78,10 @@ def run(limit=0, **_):
         try:
             h, asof = ishares_holdings(web, pid)
             for _, r in h.iterrows():
-                t = norm_ticker(r["Ticker"], known)
+                raw = str(r["Ticker"]).strip().upper()
+                if raw.endswith(" WS") or "-R-W" in raw or raw.endswith(" RT"):
+                    continue              # 워런트·권리 — 주식이 아님
+                t = norm_ticker(raw, known)
                 members.append({"index": idx, "ticker": t, "weight": r["Weight (%)"], "asof": asof})
                 d = rows.setdefault(t, {"ticker": t, "kind": "stock", "name": r.get("Name"), "gics_sector": r.get("Sector")})
             R.set(**{f"{idx}_n": len(h), f"{idx}_asof": asof})
