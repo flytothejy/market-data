@@ -46,6 +46,16 @@ def job(name):
             "short_volume": short.run, "profile": profile.run}[name]
 
 
+def _record_fail(name, msg):
+    """예외로 끝난 수집기도 점검 기록을 남김 (알림·Actions 주석에 원인이 보이게)"""
+    import os
+    r = core.Run(name)
+    r.warning("치명: " + str(msg)[:500])
+    r.done(ok=False)
+    if os.environ.get("GITHUB_ACTIONS"):
+        print(f"::error title={name}::" + str(msg).replace("\n", " ")[:900])
+
+
 def main():
     ap = argparse.ArgumentParser(prog="python -m hub", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -85,10 +95,16 @@ def main():
             rec = job(n)(**kw)
             if rec and not rec.get("ok"):
                 failed.append(n)
-        except SystemExit:
-            raise
-        except Exception:
+        except SystemExit as e:                     # 설정 누락 등 — 나머지 수집기는 계속
+            msg = str(e.code if e.code is not None else "")
+            print(msg)
+            _record_fail(n, msg)
+            failed.append(n)
+            if n == "universe":
+                break
+        except Exception as e:
             traceback.print_exc()
+            _record_fail(n, f"{type(e).__name__}: {e}")
             failed.append(n)
             if n == "universe":
                 break

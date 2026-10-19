@@ -28,8 +28,9 @@ def run(names, title="수집 점검", always=False):
         for n in names:
             r = recs.get(n) or {}
             w = "; ".join(r.get("warnings", [])[:3]).replace("\n", " ")[:900]
-            if not r or not r.get("ok"):
-                print(f"::error title={n}::{w or '기록 없음'}")
+            stale = r and dt.datetime.fromisoformat(r["finished_utc"]) < cutoff
+            if not r or stale or not r.get("ok"):
+                print(f"::error title={n}::{'이번 실행 기록 없음 (중간에 멈춤)' if (not r or stale) else w}")
             elif r.get("n_warnings"):
                 print(f"::warning title={n}::{w}")
         p = os.environ.get("GITHUB_STEP_SUMMARY")
