@@ -33,6 +33,9 @@ def run(names, title="수집 점검", always=False):
                 print(f"::error title={n}::{'이번 실행 기록 없음 (중간에 멈춤)' if (not r or stale) else w}")
             elif r.get("n_warnings"):
                 print(f"::warning title={n}::{w}")
+            if r and not (dt.datetime.fromisoformat(r["finished_utc"]) < cutoff):
+                keys = [k for k in r if k not in ("source", "ok", "finished_utc", "warnings", "n_warnings", "history")][:9]
+                print(f"::notice title={n} 결과::" + " · ".join(f"{k}={r[k]}" for k in keys)[:900])
         p = os.environ.get("GITHUB_STEP_SUMMARY")
         if p:
             with open(p, "a", encoding="utf-8") as f:
