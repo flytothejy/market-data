@@ -24,6 +24,18 @@ def run(names, title="수집 점검", always=False):
             lines.append(f"✅ {n} ({r.get('seconds', 0):.0f}초)")
     warn = sum(1 for l in lines if l.startswith("⚠️"))
     print("\n".join(lines))
+    if os.environ.get("GITHUB_ACTIONS"):               # Actions 화면·API에서 바로 보이게 주석과 요약으로도 남김
+        for n in names:
+            r = recs.get(n) or {}
+            w = "; ".join(r.get("warnings", [])[:3]).replace("\n", " ")[:900]
+            if not r or not r.get("ok"):
+                print(f"::error title={n}::{w or '기록 없음'}")
+            elif r.get("n_warnings"):
+                print(f"::warning title={n}::{w}")
+        p = os.environ.get("GITHUB_STEP_SUMMARY")
+        if p:
+            with open(p, "a", encoding="utf-8") as f:
+                f.write("### " + title + "\n\n" + "\n".join(f"- {html.unescape(l)}" for l in lines) + "\n")
     if not (tok and chat) or (not bad and not warn and not always):
         return bad
     head = f"<b>{html.escape(title)}</b> — 실패 {bad} · 주의 {warn}"
