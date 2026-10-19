@@ -35,8 +35,36 @@ def client():
         sys.exit("boto3가 없습니다 → pip install -r requirements-hub.txt")
     s3 = boto3.client("s3", endpoint_url=f"https://{m.group(1)}.r2.cloudflarestorage.com",
                       aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"], aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
-                      region_name="auto", config=Config(retries={"max_attempts": 5, "mode": "standard"}))
+                      region_name="auto", config=Config(retries={"max_attempts": 5, "mode": "standard"}, max_pool_connections=32))
     return s3, os.environ["R2_BUCKET"]
+
+
+WORKERS = 24
+
+
+def _parallel(fn, jobs):
+    """작은 파일 수천 개(화면용 JSON)도 빨리 오가도록 병렬 처리"""
+    from concurrent.futures import ThreadPoolExecutor
+    if not jobs:
+        return
+    with ThreadPoolExecutor(WORKERS) as ex:
+        for _ in ex.map(fn, jobs):
+            pass
+
+
+def _put(s3, b, p, key):
+    ct = "application/json" if key.endswith(".json") else None
+    if p.stat().st_size < 8 << 20:
+        with open(p, "rb") as f:
+            kw = {"ContentType": ct} if ct else {}
+            s3.put_object(Bucket=b, Key=key, Body=f.read(), **kw)
+    else:
+        s3.upload_file(str(p), b, key)
+
+
+def _get(s3, b, key, p):
+    p.parent.mkdir(parents=True, exist_ok=True)
+    s3.download_file(b, key, str(p))
 
 
 def _md5(p):
@@ -81,14 +109,16 @@ def push(dry=False):
     s3, b = client()
     rem = remote_index(s3, b)
     n = size = 0
+    todo = []
     for rel, p in local_files():
         st = p.stat().st_size
         r = rem.get(rel)
         if r and r[0] == st and ("-" in r[1] or r[1] == _md5(p)):   # 여러 조각 업로드면 크기만 비교
             continue
         n += 1; size += st
-        if not dry:
-            s3.upload_file(str(p), b, PREFIX + rel)
+        todo.append((p, PREFIX + rel))
+    if not dry:
+        _parallel(lambda j: _put(s3, b, *j), todo)
     # 화면용 결과물은 로컬이 정본: 로컬에서 사라진 파일(빠진 종목 등)은 R2에서도 지움
     gone = []
     if (DATA / "site").exists():
@@ -104,6 +134,7 @@ def pull(dry=False, only=None):
     s3, b = client()
     rem = remote_index(s3, b)
     n = size = 0
+    todo = []
     for rel, (sz, etag) in rem.items():
         if only and not any(rel.startswith(o) for o in only):
             continue
@@ -113,9 +144,9 @@ def pull(dry=False, only=None):
         if p.exists() and p.stat().st_size == sz and ("-" in etag or _md5(p) == etag):
             continue
         n += 1; size += sz
-        if not dry:
-            p.parent.mkdir(parents=True, exist_ok=True)
-            s3.download_file(b, PREFIX + rel, str(p))
+        todo.append((PREFIX + rel, p))
+    if not dry:
+        _parallel(lambda j: _get(s3, b, *j), todo)
     log(f"받음 {n}개 · {size/1e6:,.1f}MB" + (" (시험)" if dry else ""))
 
 
