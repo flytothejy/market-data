@@ -105,12 +105,15 @@ def local_files():
             yield p.relative_to(DATA).as_posix(), p
 
 
-def push(dry=False):
+def push(dry=False, only=None):
+    """only: 이 경로로 시작하는 파일만 올림 (예: PC에서 ref/ 만 올릴 때 — 오래된 PC 사본이 최신 R2를 덮어쓰지 않게)"""
     s3, b = client()
     rem = remote_index(s3, b)
     n = size = 0
     todo = []
     for rel, p in local_files():
+        if only and not any(rel.startswith(o) for o in only):
+            continue
         st = p.stat().st_size
         r = rem.get(rel)
         if r and r[0] == st and ("-" in r[1] or r[1] == _md5(p)):   # 여러 조각 업로드면 크기만 비교
@@ -121,7 +124,7 @@ def push(dry=False):
         _parallel(lambda j: _put(s3, b, *j), todo)
     # 화면용 결과물은 로컬이 정본: 로컬에서 사라진 파일(빠진 종목 등)은 R2에서도 지움
     gone = []
-    if (DATA / "site").exists():
+    if (DATA / "site").exists() and not only:
         loc = {rel for rel, _ in local_files() if rel.startswith("site/")}
         gone = [k for k in rem if k.startswith("site/") and k not in loc]
         if gone and not dry:

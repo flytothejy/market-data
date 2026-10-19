@@ -87,3 +87,12 @@ python -m hub run tenk --limit 5         :: PC 전용: 새 10-K만 받아 변화
 `data/hub/consensus/daily/YYYY-MM.parquet` (긴 형식: date, ticker, block, period, field, value). 지나간 날은 다시 받을 수 없으므로 빠지지 않는 게 중요합니다.
 날짜는 미국 동부 기준(그날 장 마감 후 스냅숏). 예전 S&P 500 수집분(저장소 `consensus/`)은 처음 실행 때 옮겨 담습니다.
 화면용 데이터: 최신 스냅숏 → universe.json의 c_* 지표, 일별 이력 → `pro/stock/{T}.json`의 `cons_hist`.
+
+## 10-K 변화 (tenk)
+
+`python -m hub run tenk` — 새로 제출된 10-K와 직전 연도 10-K를 SEC에서 받아 비교합니다 (daily 묶음, 새 건만). 원문은 저장하지 않습니다.
+결과: `sec/tenk_features.parquet`(유사도·새 위험 문장 비율·불확실성 단어 등), `sec/tenk_newsents.parquet`(새 위험 문장 원문).
+참고 파일은 R2에만 둡니다 (저장소 공개 금지): `ref/LM.csv`(Loughran-McDonald 사전, 상업 이용 전 라이선스 확인), `sec/tenk_idf.json`.
+처음 한 번 PC 연구 자료로 만든 과거 결과(`ref/text_features.csv`, `ref/tenk_newsents_backfill.jsonl.gz`)를 옮겨 담습니다.
+PC에서 R2로 올릴 때는 반드시 `--only`로 파일을 지정하세요 (PC의 오래된 사본이 최신 R2를 덮어쓰지 않게):
+`python -m hub sync push --only ref/LM.csv ref/text_features.csv ref/tenk_newsents_backfill.jsonl.gz sec/tenk_idf.json`

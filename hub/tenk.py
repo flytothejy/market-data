@@ -1,141 +1,130 @@
-"""10-K 변화 (PC 전용, 반자동) — 새로 제출된 10-K만 받아 위험요인·경영진 논의 변화를 계산
+"""10-K 변화 — 새로 제출된 10-K를 직전 연도 10-K와 비교 (Actions에서 매일, 새 건만)
 
-기존 PC 자료(C:\\project\\data_ext)의 수집·특성 코드를 그대로 재사용
-  원문 저장: data_ext/sec/10k/{티커}/{제출일}_{접수번호}.json.gz  (기존 보관소에 이어 붙임, 저장소에는 안 올림)
-  결과 저장: data/hub/sec/tenk_features.parquet  문서별 유사도·새 위험 문장 비율·불확실성 단어 비율 등
-            data/hub/sec/tenk_newsents.parquet  새로 들어온 위험 문장 원문 (문서당 최대 40개, 화면 표시용)
-임베딩(텍스트 경쟁사·톤)은 GPU 스크립트(emb_build.py)를 따로 돌림
-위치는 환경변수 DATA_EXT 로 바꿀 수 있음 (기본: 저장소 옆 data_ext)
+새 10-K가 올라오면 그 문서와 직전 연도(9~15개월 전) 10-K를 SEC에서 받아 비교하고 원문은 버림
+  결과: data/hub/sec/tenk_features.parquet  문서별 유사도(본문·위험요인·경영진 논의), 새 위험 문장 비율,
+                                           경영진 논의의 부정·긍정·불확실성 단어 비율, 소송 단어 비율, 포그 지수
+        data/hub/sec/tenk_newsents.parquet  새로 들어온 위험 문장 원문 (문서당 최대 40개, 화면 표시용)
+필요한 참고 파일 (R2, 저장소에는 올리지 않음)
+  ref/LM.csv           Loughran-McDonald 금융 감성 사전 (학술용 무료 — 상업 이용 전 라이선스 확인 필요)
+  sec/tenk_idf.json    단어 가중치 (PC 보관소 표본 2,000건으로 만든 것)
+처음 한 번: PC 연구 자료에서 만든 과거 결과(ref/text_features.csv, ref/tenk_newsents_backfill.jsonl.gz)를 옮겨 담음
 """
-import gzip, importlib.util, json, math, os, re, sys, glob, datetime as dt
+import gzip, json, math, datetime as dt
 import pandas as pd
 
-from .core import DATA, ROOT, Run, log, read, upsert, write, sec_http
-from . import universe
+from .core import DATA, Run, log, read, upsert, write, sec_http
+from . import universe, tenk_text as TT
 
 S_DIR = DATA / "sec"
+REF = DATA / "ref"
 FORMS = {"10-K", "10-K405", "10-KT"}
+FEAT = S_DIR / "tenk_features.parquet"
+SENTS = S_DIR / "tenk_newsents.parquet"
 
 
-def _load(path, name):
-    spec = importlib.util.spec_from_file_location(name, path)
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
-    return m
+def _clean(row):
+    return {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in row.items()}
 
 
-def new_sentences(cur_rf, prev_rf, TF, cap=40):
-    """올해 위험요인 문장 중 작년 어떤 문장과도 단어 자카드 0.5 미만인 문장 (원문)"""
-    from collections import Counter
-    split = lambda t: [s.strip() for s in TF.SENT.split(t or "") if len(set(TF.toks(s))) >= 8]
-    cur, prev = split(cur_rf), split(prev_rf)
-    if not cur or not prev:
-        return []
-    pv = [set(TF.toks(s)) for s in prev]
-    inv = {}
-    for i, s in enumerate(pv):
-        for w in s:
-            inv.setdefault(w, []).append(i)
-    out = []
-    for s in cur:
-        w = set(TF.toks(s))
-        cnt = Counter()
-        for x in w:
-            for i in inv.get(x, ()):
-                cnt[i] += 1
-        best = max((inter / len(w | pv[i]) for i, inter in cnt.most_common(20)), default=0.0)
-        if best < 0.5:
-            out.append(s[:600])
-    out.sort(key=len, reverse=True)
-    return out[:cap]
+def import_backfill(R, tickers):
+    """PC 연구 자료에서 만든 과거 결과를 한 번만 옮겨 담음 (표시: ref/.imported)"""
+    flag = REF / ".imported"
+    if flag.exists():
+        return 0, 0
+    n1 = n2 = 0
+    p = REF / "text_features.csv"
+    if p.exists():
+        d = pd.read_csv(p, dtype={"filed": str, "prev_filed": str, "report": str})
+        d = d[d.ticker.isin(tickers)]
+        upsert(FEAT, d, ["acc"], sort=["filed", "acc"])
+        n1 = len(d)
+    p = REF / "tenk_newsents_backfill.jsonl.gz"
+    if p.exists():
+        rows = [json.loads(l) for l in gzip.open(p, "rt", encoding="utf-8")]
+        S = pd.DataFrame(rows)
+        if not S.empty:
+            S = S[S.ticker.isin(tickers)]
+            old = read(SENTS)
+            if not old.empty:
+                S = pd.concat([S[~S.acc.isin(old.acc)], old], ignore_index=True)
+            write(SENTS, S)
+            n2 = S.acc.nunique()
+    if n1 or n2:
+        flag.write_text(dt.datetime.utcnow().isoformat())
+    return n1, n2
 
 
-def run(limit=0, full=False, **_):
+def fetch(http, r):
+    acc = r.accession.replace("-", "")
+    url = f"https://www.sec.gov/Archives/edgar/data/{int(r.cik)}/{acc}/{r.doc}"
+    raw = http.get(url).content.decode("utf-8", errors="ignore")
+    d = TT.parse(raw)
+    d.update(filed=str(pd.Timestamp(r.filed).date()), acc=r.accession, form=r.form,
+             report=str(pd.Timestamp(r.report_date).date()) if pd.notna(r.report_date) else "")
+    return d
+
+
+def run(limit=0, full=False, days=None, **_):
     R = Run("tenk")
-    ext = os.environ.get("DATA_EXT") or str(ROOT.parent / "data_ext")
-    fk, tfp = os.path.join(ext, "fetch_10k.py"), os.path.join(ext, "text_features.py")
-    if not (os.path.exists(fk) and os.path.exists(tfp) and os.path.exists(os.path.join(ext, "sec", "LM.csv"))):
-        R.warning(f"치명: {ext} 에 fetch_10k.py / text_features.py / sec/LM.csv 가 없음 (PC 전용 수집기)")
+    lm, idf_p = REF / "LM.csv", S_DIR / "tenk_idf.json"
+    if not lm.exists() or not idf_p.exists():
+        R.warning(f"치명: 참고 파일 없음 — {'ref/LM.csv ' if not lm.exists() else ''}{'sec/tenk_idf.json' if not idf_p.exists() else ''}"
+                  " (PC에서 python -m hub sync push --only ref/ sec/tenk_idf.json)")
         return R.done(ok=False)
-    FK, TF = _load(fk, "fetch_10k_ext"), _load(tfp, "text_features_ext")
-    src = os.path.join(ext, "sec", "10k")
-    F = read(S_DIR / "filings.parquet")
+    TT.init(json.loads(idf_p.read_text()), lm)
     U = universe.load("stock")
-    F = F[F.form.isin(FORMS) & F.ticker.isin(U.ticker)]
-    since = pd.Timestamp.today() - pd.Timedelta(days=3650 if full else 400)
-    F = F[F.filed >= since].sort_values("filed")
-    have = set(os.path.basename(p).split("_", 1)[1][:-8] for p in glob.glob(os.path.join(src, "*", "*.json.gz")))
-    todo = F[~F.accession.isin(have)]
+    tickers = set(U.ticker)
+    b1, b2 = import_backfill(R, tickers)
+
+    F = read(S_DIR / "filings.parquet")
+    K = F[F.form.isin(FORMS) & F.ticker.isin(tickers)].copy()
+    K["filed"] = pd.to_datetime(K.filed)
+    look = days or (3650 if full else 120)
+    have = set(read(FEAT, columns=["acc"]).acc) if FEAT.exists() else set()
+    todo = K[(K.filed >= pd.Timestamp.today() - pd.Timedelta(days=look)) & ~K.accession.isin(have)].sort_values("filed")
+    # 종목마다 최신 10-K가 결과에 없으면 함께 처리 (새로 편입된 종목, 과거 결과에 빠진 종목)
+    latest = K.sort_values("filed").groupby("ticker").tail(1)
+    missing = latest[~latest.accession.isin(have) & (latest.filed >= pd.Timestamp.today() - pd.Timedelta(days=400))]
+    todo = pd.concat([todo, missing]).drop_duplicates("accession").sort_values("filed")
     if limit:
         todo = todo.tail(limit)
-    # 비교 대상(직전 연도 10-K)이 보관소에 없으면 함께 받음 — 새로 편입된 종목 대비
-    allk = read(S_DIR / "filings.parquet")
-    allk = allk[allk.form.isin(FORMS)]
-    prevs = []
-    for r in (todo if limit else F).itertuples():
-        p = allk[(allk.ticker == r.ticker) & (allk.filed < r.filed - pd.Timedelta(days=270)) & (allk.filed > r.filed - pd.Timedelta(days=460))]
-        if not p.empty and p.accession.iloc[-1] not in have:
-            prevs.append(p.sort_values("filed").iloc[-1])
-    if prevs:
-        todo = pd.concat([pd.DataFrame(prevs), todo]).drop_duplicates("accession").sort_values("filed")
-    log(f"새 10-K {len(todo)}건 다운로드 (최근 {'10년' if full else '400일'} 중 보관소에 없는 것)")
-    # 1) 원문 받기 — 기존 fetch_10k 의 추출 함수 사용
+    log(f"10-K 처리 대상 {len(todo)}건 (최근 {look}일 신규 + 결과 없는 최신분)")
+
     http = sec_http()
-    got, fail = [], []
+    rows, sents, fail, nprev = [], [], [], 0
     for r in todo.itertuples():
-        acc = r.accession.replace("-", "")
-        url = f"https://www.sec.gov/Archives/edgar/data/{int(r.cik)}/{acc}/{r.doc}"
         try:
-            raw = http.get(url).content.decode("utf-8", errors="ignore")
-            text = FK.to_text(raw) if ("<html" in raw[:5000].lower() or "<div" in raw[:20000].lower()) else raw
-            rf, md = FK.section(text, FK.RF_S, FK.RF_E), FK.section(text, FK.MD_S, FK.MD_E)
-            d = os.path.join(src, r.ticker)
-            os.makedirs(d, exist_ok=True)
-            rec = dict(ticker=r.ticker, cik=int(r.cik), form=r.form, filed=str(r.filed.date()), report=str(r.report_date.date()) if pd.notna(r.report_date) else "",
-                       acc=r.accession, full=text, rf=rf, mdna=md)
-            with gzip.open(os.path.join(d, f"{rec['filed']}_{r.accession}.json.gz"), "wt", encoding="utf-8") as g:
-                json.dump(rec, g)
-            got.append(r.ticker)
+            doc = fetch(http, r)
+            p = K[(K.ticker == r.ticker) & (K.filed < r.filed - pd.Timedelta(days=270)) & (K.filed > r.filed - pd.Timedelta(days=460))]
+            prev = fetch(http, p.sort_values("filed").iloc[-1]) if not p.empty else None
+            nprev += prev is not None
+            row = TT.features(doc, prev)
+            row["ticker"] = r.ticker
+            rows.append(_clean(row))
+            if prev is not None:
+                for k, s in enumerate(TT.new_sentences(doc["rf"], prev["rf"])):
+                    sents.append({"ticker": r.ticker, "acc": doc["acc"], "filed": doc["filed"], "prev_acc": prev["acc"], "rank": k, "sentence": s})
+            if not doc["rf"]:
+                R.warning(f"{r.ticker} {doc['filed']}: 위험요인(Item 1A) 구간을 찾지 못함")
         except Exception as e:
-            fail.append(f"{r.ticker}: {str(e)[:40]}")
-    # 2) 특성 계산 — 바뀐 종목만 (IDF는 한 번 만들어 저장)
-    idf_p = S_DIR / "tenk_idf.json"
-    if idf_p.exists():
-        idf = json.loads(idf_p.read_text())
-    else:
-        log("IDF 계산 (표본 2,000건, 처음 한 번)")
-        TF.SRC = src
-        idf = TF.build_idf(sorted(os.listdir(src)))
-        idf_p.parent.mkdir(parents=True, exist_ok=True)
-        idf_p.write_text(json.dumps(idf))
-    TF.SRC = src
-    TF.init(idf)
-    targets = sorted(set(got) | set(pd.DataFrame(prevs).ticker if prevs else [])) if not full else sorted(set(F.ticker) & set(os.listdir(src)))
-    rows, sents = [], []
-    for t in targets:
-        for row in TF.process_ticker(t):
-            rows.append(row)
-        # 최신 문서의 새 위험 문장 원문
-        docs = sorted(glob.glob(os.path.join(src, t, "*.json.gz")))
-        if len(docs) >= 2:
-            cur, prev = (json.load(gzip.open(p, "rt", encoding="utf-8")) for p in docs[-2:][::-1])
-            for k, s in enumerate(new_sentences(cur.get("rf"), prev.get("rf"), TF)):
-                sents.append({"ticker": t, "acc": cur["acc"], "filed": cur["filed"], "prev_acc": prev["acc"], "rank": k, "sentence": s})
+            fail.append(f"{r.ticker}: {str(e)[:50]}")
     if rows:
-        upsert(S_DIR / "tenk_features.parquet", pd.DataFrame(rows), ["acc"], sort=["filed", "acc"])
+        upsert(FEAT, pd.DataFrame(rows), ["acc"], sort=["filed", "acc"])
     if sents:
         S = pd.DataFrame(sents)
-        old = read(S_DIR / "tenk_newsents.parquet")
+        old = read(SENTS)
         if not old.empty:
-            old = old[~old.acc.isin(S.acc)]
-            S = pd.concat([old, S], ignore_index=True)
-        write(S_DIR / "tenk_newsents.parquet", S)
+            S = pd.concat([old[~old.acc.isin(S.acc)], S], ignore_index=True)
+        write(SENTS, S)
     if fail:
-        R.warning(f"다운로드 실패 {len(fail)}건 — 예: {fail[0]}")
-    T = read(S_DIR / "tenk_features.parquet")
-    R.set(new_10k=len(got), failed=len(fail), recomputed_tickers=len(targets), feature_rows_total=len(T),
-          new_sentence_docs=len(set(x["acc"] for x in sents)), rows_new=len(got), http=http.stats())
-    if not T.empty and "rf_new" in T:
-        lt = T.sort_values("filed").groupby("ticker").tail(1)
-        R.set(top_rf_new=", ".join(f"{r.ticker} {r.rf_new*100:.0f}%" for r in lt.nlargest(5, "rf_new").itertuples()))
-    return R.done()
+        R.warning(f"실패 {len(fail)}건 — 예: {'; '.join(fail[:3])}")
+    T = read(FEAT)
+    lt = T[T.ticker.isin(tickers)].sort_values("filed").groupby("ticker").tail(1) if not T.empty else T
+    R.set(processed=len(rows), with_prev=nprev, failed=len(fail), new_sentence_docs=len({x["acc"] for x in sents}),
+          coverage=f"{len(lt)}/{len(tickers)}", rf_new_coverage=int(lt.rf_new.notna().sum()) if len(lt) else 0,
+          backfill_rows=b1, backfill_sent_docs=b2, rows_new=len(rows), http=http.stats())
+    if len(lt) and "rf_new" in lt:
+        recent = lt[pd.to_datetime(lt.filed) >= pd.Timestamp.today() - pd.Timedelta(days=30)]
+        if len(recent):
+            R.set(top_rf_new_30d=", ".join(f"{r.ticker} {r.rf_new*100:.0f}%" for r in recent.nlargest(5, "rf_new").itertuples() if r.rf_new == r.rf_new))
+    return R.done(ok=len(fail) <= max(3, len(todo) // 5))
