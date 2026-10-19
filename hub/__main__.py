@@ -100,13 +100,13 @@ def main():
             print(msg)
             _record_fail(n, msg)
             failed.append(n)
-            if n == "universe":
-                break
+            if n == "universe" and not (core.DATA / "universe" / "universe.parquet").exists():
+                break                               # 이전 종목 목록이 있으면 그걸로 나머지 계속
         except Exception as e:
             traceback.print_exc()
             _record_fail(n, f"{type(e).__name__}: {e}")
             failed.append(n)
-            if n == "universe":
+            if n == "universe" and not (core.DATA / "universe" / "universe.parquet").exists():
                 break
     if len(names) > 1:
         core.print_report([s for s in core.load_status() if s["source"] in set(names)])
