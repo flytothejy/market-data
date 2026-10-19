@@ -35,6 +35,22 @@ python -m hub status                    :: 마지막 점검표 다시 보기
 | short_volume | 일별 공매도 거래량 | FINRA Reg SHO 파일 | 최근 1년, 2~3분 | 최근 10일 |
 | profile | 업종·설명·ETF 보수·공매도 잔고 | yfinance | 10분 안팎 | 주 1회 |
 
+## 2차 수집기
+
+```bat
+pip install -r requirements-hub.txt      :: pykrx 추가됨
+python -m hub run etf --limit 10
+python -m hub run options --limit 10
+python -m hub run kr_etf --limit 5       :: 한국거래소 접속 시험 겸용
+python -m hub run phase2                 :: 전체
+```
+
+| 이름 | 내용 | 출처 | 시간(예상) |
+|---|---|---|---|
+| etf | ETF 구성 종목(운용사 파일: SPDR·Invesco·ProShares·Direxion·ARK), 그 외 상위 10개 + 섹터·자산 비중 | 운용사, yfinance | 5분 안팎 |
+| options | 시총 상위 200 + ETF: 30일 ATM 내재변동성, 풋/콜 비율, 왜곡 | yfinance | 10분 안팎 |
+| kr_etf | 국내 상장 미국 주식형 ETF: 가격·NAV·괴리율·추적오차·구성 | 한국거래소(pykrx) | 5~10분 |
+
 ## 결과 확인
 실행이 끝날 때마다 점검표가 나옵니다 (종목 수, 빠진 종목, 최신 날짜, 걸린 시간, 주의 사항).
 `[확인 필요]`가 뜨거나 주의 사항이 많으면 그 부분을 그대로 복사해서 알려 주세요.

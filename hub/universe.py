@@ -52,11 +52,15 @@ def wiki_tickers(http, url, cols):
     raise RuntimeError(f"표를 찾지 못함 (표 {len(seen)}개: {'; '.join(seen)})")
 
 
+import re
+TICK_RE = re.compile(r"[A-Z][A-Z0-9.\-]{0,6}")
+
+
 def ndx_nasdaq(http):
     j = http.get(NASDAQ_NDX, headers={"Accept": "application/json, text/plain, */*", "Origin": "https://www.nasdaq.com",
                                       "Referer": "https://www.nasdaq.com/"}).json()
     rows = (j.get("data") or {}).get("data", {}).get("rows") or []
-    ts = [r["symbol"] for r in rows if r.get("symbol")]
+    ts = [r["symbol"].strip().upper() for r in rows if r.get("symbol") and TICK_RE.fullmatch(r["symbol"].strip().upper())]
     if len(ts) < 90:
         raise RuntimeError(f"나스닥 API 종목 수 이상: {len(ts)}")
     return ts
@@ -67,7 +71,7 @@ def dji_ssga(http):
     hdr = next(i for i in range(min(15, len(raw))) if "Ticker" in raw.iloc[i].astype(str).tolist())
     df = raw.iloc[hdr + 1:].copy()
     df.columns = raw.iloc[hdr].astype(str)
-    ts = [t for t in df["Ticker"].astype(str).str.strip() if t and t != "nan" and t.upper() != "CASH_USD" and len(t) <= 6]
+    ts = [t for t in df["Ticker"].astype(str).str.strip().str.upper() if TICK_RE.fullmatch(t) and t != "CASH_USD"]
     if not 28 <= len(ts) <= 32:
         raise RuntimeError(f"DIA 구성 수 이상: {len(ts)}")
     return ts
@@ -121,6 +125,8 @@ def run(limit=0, **_):
                 R.warning(f"{idx} 기본 출처 실패 → 위키백과로 대체: {str(e1)[:80]}")
                 ts = wiki_tickers(web, url, cols)
             for t in ts:
+                if not TICK_RE.fullmatch(str(t).strip().upper()):
+                    continue
                 t = norm_ticker(t, known)
                 members.append({"index": idx, "ticker": t, "weight": None, "asof": dt.date.today().isoformat()})
                 if t not in rows:
@@ -160,7 +166,10 @@ def run(limit=0, **_):
     stocks = U[U.kind == "stock"]
     no_cik = stocks[stocks.cik.isna()].ticker.tolist()
     if no_cik:
-        R.warning(f"CIK 못 찾은 종목 {len(no_cik)}개: {', '.join(no_cik[:15])}")
+        R.warning(f"SEC 목록에 없어 제외한 종목 {len(no_cik)}개 (상장폐지·비상장 전환 가능): {', '.join(no_cik[:15])}")
+        U = U[~U.ticker.isin(no_cik)]
+        write(U_DIR / "universe.parquet", U)
+        stocks = U[U.kind == "stock"]
     if not old.empty and not limit:
         added = sorted(set(stocks.ticker) - set(old[old.kind == "stock"].ticker))
         removed = sorted(set(old[old.kind == "stock"].ticker) - set(stocks.ticker))
