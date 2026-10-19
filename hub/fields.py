@@ -8,7 +8,7 @@ F = {
     "t": ("티커", "info", "text", "free"), "n": ("이름", "info", "text", "free"), "k": ("종류", "info", "text", "free"),
     "sec": ("업종", "info", "text", "free"), "ind": ("세부 업종", "info", "text", "free"),
     "mcap": ("시가총액", "info", "usd", "free"), "px": ("종가", "info", "usd", "free"),
-    "idx": ("지수 편입", "info", "text", "free"), "cur": ("재무 통화", "info", "text", "free"),
+    "idx": ("지수 편입", "info", "text", "free"), "s1": ("한 줄 요약", "info", "text", "free"), "cur": ("재무 통화", "info", "text", "free"),
     # 컨센서스 (S&P500부터, 확대 예정)
     "c_up": ("전망 상향(30일)", "cons", "int", "free"), "c_dn": ("전망 하향(30일)", "cons", "int", "free"),
     "c_ratio": ("순상향률", "cons", "pct", "free"), "c_n": ("애널리스트 수", "cons", "int", "free"),

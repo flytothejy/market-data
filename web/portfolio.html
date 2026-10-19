@@ -52,7 +52,7 @@ function render() {
   } else {
     rows.sort((a, b) => b.v - a.v);
     h += `<div class="card"><h3>보유 종목</h3><div class="tbl-wrap"><table class="t"><thead><tr><th>티커</th><th class="l">이름</th><th>종가</th><th>1일</th><th>주식 수</th><th>평가액</th><th>비중</th><th>매입가</th><th>손익</th><th></th></tr></thead><tbody>
-      ${rows.map(x => `<tr><td><a href="stock.html?t=${x.t}"><b>${x.t}</b></a></td><td class="l nm">${esc(x.r.n)}</td><td class="num">${fmt(x.r.px, 'px')}</td><td>${pctS(x.r.r1d)}</td>
+      ${rows.map(x => `<tr><td><a href="stock.html?t=${x.t}"><b>${x.t}</b></a></td><td class="l nm" title="${esc(x.r.s1 || '')}">${esc(x.r.n)}${x.r.s1 ? `<div class="small mut" style="white-space:normal;max-width:360px">${esc(x.r.s1)}</div>` : ''}</td><td class="num">${fmt(x.r.px, 'px')}</td><td>${pctS(x.r.r1d)}</td>
         <td class="num">${x.sh.toLocaleString()}</td><td class="num">${money(x.v)}</td><td class="num">${fmt(val ? x.v / val : null, 'pct')}</td><td class="num">${x.cost ? fmt(x.cost, 'px') : '-'}</td>
         <td>${x.c ? pctS(x.v / x.c - 1) : '-'}</td><td><button class="btn" data-del="${x.t}" style="min-height:28px;padding:2px 8px">삭제</button></td></tr>`).join('')}</tbody></table></div></div>`;
 

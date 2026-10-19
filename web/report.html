@@ -33,6 +33,7 @@
 .hm th:first-child{text-align:left;width:64px}
 .hm td{border-radius:7px;padding:7px 6px;text-align:center;line-height:1.25;height:44px}
 .hm td:first-child{text-align:left;font-weight:700;background:none;padding-left:0}
+.hm tr.s1 td{height:auto;padding:0 4px 8px;text-align:left;font-size:12px;color:var(--muted);background:none;border-radius:0}
 .hm td small{display:block;font-size:10.5px;opacity:.8}
 .c-p2{background:#c2410c;color:#fff}.c-p1{background:#fed7aa;color:#7c2d12}.c-0{background:var(--soft);color:var(--muted)}
 .c-n1{background:#bfdbfe;color:#1e3a8a}.c-n2{background:#1d4ed8;color:#fff}.c-na{background:transparent;color:var(--faint);border:1px dashed var(--line)}
@@ -246,9 +247,9 @@ function perfChart(dates, a, b) {
     <div class="blk"><h2><span class="n">3</span>평소와 다른 일</h2>
       ${A.length ? `<div class="alerts">${A.map(a => `<div class="alert"><span class="tag" style="white-space:nowrap"><span class="cat-dot c-${a.k}"></span>${CAT_KO[a.k]}</span><div><b>${a.t} · ${esc(a.h)}</b><p>${esc(a.p)}</p></div></div>`).join('')}</div>` : '<div class="mut s13">이번 주는 보유 종목에서 눈에 띄는 변화가 없었습니다.</div>'}
       <div class="cap">각 종목의 평소 수준(자기 변동성·평소 거래량·평소 공시 빈도)과 비교해 큰 것부터</div></div>
-    <div class="blk"><h2><span class="n">4</span>종목 × 다섯 카테고리</h2>
+    <div class="blk"><h2><span class="n">4</span>종목 × 다섯 카테고리</h2><div class="cap" style="margin-top:-4px">칸 = 카테고리별 신호, 아래 줄 = 종목 한 줄 요약</div>
       <table class="hm"><thead><tr><th>종목</th>${cats.map(([k, l]) => `<th><span class="cat-dot c-${k}"></span>${l}</th>`).join('')}</tr></thead><tbody>
-      ${rows.map(x => { const S = sig(x.r); return `<tr><td>${x.t}<small class="faint" style="font-weight:400">${fmt(x.w, 'pct')}</small></td>${cats.map(([k]) => { const c = S[k]; return `<td class="${cellCls(c)}" ${c && c.hot ? 'style="box-shadow:inset 0 0 0 2px ' + css('--accent') + '"' : ''} data-tip="${c ? esc(x.t + ' · ' + c.t + (c.d ? ' — ' + c.d : '')) : '해당 없음'}">${c ? esc(c.t) : '–'}</td>`; }).join('')}</tr>`; }).join('')}
+      ${rows.map(x => { const S = sig(x.r); return `<tr><td>${x.t}<small class="faint" style="font-weight:400">${fmt(x.w, 'pct')}</small></td>${cats.map(([k]) => { const c = S[k]; return `<td class="${cellCls(c)}" ${c && c.hot ? 'style="box-shadow:inset 0 0 0 2px ' + css('--accent') + '"' : ''} data-tip="${c ? esc(x.t + ' · ' + c.t + (c.d ? ' — ' + c.d : '')) : '해당 없음'}">${c ? esc(c.t) : '–'}</td>`; }).join('')}</tr>${x.r.s1 ? `<tr class="s1"><td></td><td colspan="5">${esc(x.r.s1)}</td></tr>` : ''}`; }).join('')}
       </tbody></table>
       <div class="legend2"><span><i class="c-n2"></i>뚜렷한 약세 신호</span><span><i class="c-n1"></i>약세</span><span><i class="c-0"></i>중립</span><span><i class="c-p1"></i>강세</span><span><i class="c-p2"></i>뚜렷한 강세 신호</span><span>– 자료 없음 (ETF·컨센서스 미제공)</span></div></div>
     <div class="row2">

@@ -109,7 +109,8 @@ function headBlock(m, extraTags) {
   return `<div class="hero"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h1>${esc(m.t)}</h1><span class="mut" style="font-size:17px">${esc(m.n)}</span></div>
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b style="font-size:28px" class="num">${fmt(m.px, 'px')}</b>${pctS(m.r1d)}
     <span class="mut s13">${m.mcap ? '시가총액 ' + fmtUsd(m.mcap) : m.aum ? '순자산 ' + fmtUsd(m.aum) : ''}</span></div>
-    <div class="pill-row">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>`;
+    <div class="pill-row">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+    ${m.s1 ? `<p style="margin:6px 0 0;font-size:15px;color:var(--ink)">${esc(m.s1)}</p>` : ''}</div>`;
 }
 
 // ================================================================ 종목

@@ -258,6 +258,82 @@ def tech(g):
             "asof": pd.Timestamp(d[-1])}
 
 
+
+# ---------------------------------------------------------------- 종목 한 줄 요약 (규칙 기반, 토큰 0)
+def _p(x, sign=True):
+    v = x * 100
+    return (("+" if sign and v > 0 else "") + (f"{v:.0f}" if abs(v) >= 10 else f"{v:.1f}")) + "%"
+
+
+def _usd(v):
+    a = abs(v)
+    return f"${a/1e12:.1f}조" if a >= 1e12 else f"${a/1e8:,.0f}억" if a >= 1e8 else f"${a/1e4:,.0f}만"
+
+
+def summary_line(r, today):
+    """지표에서 눈에 띄는 것만 골라 개조식 한 줄. (문구, 극성 +1/-1/0, 중요도)를 모아 상위만 씀
+    나중에 LLM 요약이 붙으면 같은 자리(s1)를 대체하고, 검사에 실패하면 이 문장이 남는다"""
+    g = lambda k: r.get(k)
+    C = []
+    add = lambda txt, pol, w: C.append((txt, pol, w))
+    if r.get("k") == "etf":
+        if g("hi52") is not None and g("hi52") >= -0.01: add("52주 신고가", 1, 3)
+        elif g("hi52") is not None and g("hi52") <= -0.2: add(f"고점 대비 {_p(g('hi52'))}", -1, 3)
+        if g("r1m") is not None: add(f"1개월 {_p(g('r1m'))}", 1 if g("r1m") > 0 else -1, 1 + abs(g("r1m")) * 10)
+        if g("dy") and g("dy") >= 0.03: add(f"배당수익률 {_p(g('dy'), False)}", 1, 1.5)
+        if g("exp") is not None: add(f"총보수 {g('exp')*100:.2f}%", 0, 1)
+    else:
+        rg, oc = g("rev_g"), g("om_chg")
+        if rg is not None:
+            if rg >= 1: add(f"매출 {rg + 1:.1f}배로 급증", 1, 4)
+            elif rg >= 0.25: add(f"매출 {_p(rg)} 고성장", 1, 2 + rg * 3)
+            elif rg >= 0.1: add(f"매출 {_p(rg)} 성장", 1, 1.5)
+            elif rg < -0.05: add(f"매출 {_p(rg)} 감소", -1, 2 + abs(rg) * 3)
+        if oc is not None and abs(oc) >= 0.04:
+            add(f"영업이익률 {'개선' if oc > 0 else '하락'}({oc*100:+.1f}%p)", 1 if oc > 0 else -1, 1.5 + abs(oc) * 10)
+        if g("c_n") and g("c_ratio") is not None and abs(g("c_ratio")) >= 0.2:
+            add(f"애널리스트 전망 {'상향' if g('c_ratio') > 0 else '하향'} 우세", 1 if g("c_ratio") > 0 else -1, 2 + abs(g("c_ratio")) * 3)
+        if g("c_n") and (g("c_upside") or 0) >= 0.3:
+            add(f"평균 목표가까지 {_p(g('c_upside'), False)} 여력", 1, 1.5)
+        if (g("ibn") or 0) >= 2: add(f"내부자 {int(g('ibn'))}명 장내 매수", 1, 3 + g("ibn") * 0.3)
+        elif (g("ib") or 0) > 0: add(f"내부자 장내 매수 {_usd(g('ib'))}", 1, 2)
+        elif (g("is") or 0) >= 5e7: add(f"90일 내부자 매도 {_usd(g('is'))}", -1, 1.2)
+        if (g("k8") or 0) >= 3: add(f"30일간 8-K {g('k8')}건", 0, 1.5)
+        pe = g("pe")
+        if pe and pe >= 60: add(f"PER {pe:.0f}배로 높은 편", -1, 1.2)
+        elif pe and 0 < pe <= 12: add(f"PER {pe:.0f}배로 낮은 편", 1, 1.2)
+        if (g("dy") or 0) >= 0.035: add(f"배당수익률 {_p(g('dy'), False)}", 1, 1.3)
+        if (g("si") or 0) >= 0.1: add(f"공매도 잔고 {_p(g('si'), False)}", -1, 1.5 + g("si") * 5)
+        elif (g("sv_chg") or 0) >= 0.08: add("공매도 거래 비중 상승", -1, 1.4)
+        h52, r1m = g("hi52"), g("r1m")
+        if h52 is not None and h52 >= -0.01: add("52주 신고가", 1, 2.5)
+        elif h52 is not None and h52 <= -0.35: add(f"고점 대비 {_p(h52)}", -1, 2 + abs(h52) * 2)
+        if r1m is not None and abs(r1m) >= 0.12: add(f"1개월 {_p(r1m)} {'급등' if r1m > 0 else '급락'}", 1 if r1m > 0 else -1, 2 + abs(r1m) * 5)
+        if (g("vr") or 0) >= 1.5: add(f"거래량 {g('vr'):.1f}배", 0, 1.2)
+    pos = sorted([c for c in C if c[1] > 0], key=lambda c: -c[2])
+    neg = sorted([c for c in C if c[1] < 0], key=lambda c: -c[2])
+    neu = sorted([c for c in C if c[1] == 0], key=lambda c: -c[2])
+    if pos and neg:
+        txt = ", ".join(c[0] for c in pos[:2]) + ". 다만 " + ", ".join(c[0] for c in neg[:1])
+    elif pos or neg:
+        txt = ", ".join(c[0] for c in (pos or neg)[:3])
+    elif neu:
+        txt = ", ".join(c[0] for c in neu[:2])
+    else:
+        bits = []
+        if r.get("r1m") is not None: bits.append(f"1개월 {_p(r['r1m'])}")
+        if r.get("pe"): bits.append(f"PER {r['pe']:.0f}배")
+        txt = "뚜렷한 변화 없음" + (" · " + " · ".join(bits) if bits else "")
+    if (pos or neg) and neu and len(txt) < 40:
+        txt += ", " + neu[0][0]
+    txt += "."
+    nx = r.get("c_next")
+    if nx is not None:
+        d = pd.Timestamp(nx).date()
+        if today <= d <= today + dt.timedelta(days=14):
+            txt += f" {d.month}/{d.day} 실적 발표 예정."
+    return txt
+
 # ---------------------------------------------------------------- 컨센서스 (저장소 consensus/ 최신 파일)
 def consensus_table():
     files = sorted((ROOT / "consensus").glob("*/*.csv.gz"))
@@ -460,6 +536,7 @@ def run(limit=0, **_):
         row["etfn"] = len(etf_in.get(t, []))
         if t in g13:
             row["g13"], row["g13_chg"] = len(g13[t]["holders"]), g13[t]["net"]
+        row["s1"] = summary_line(row, now.date())
         rows.append(row)
 
         # ---- 종목 상세 (free / pro)
@@ -523,6 +600,7 @@ def run(limit=0, **_):
             op = OP[OP.ticker == t].sort_values("date")
             if len(op):
                 row.update(iv=op.iv_atm30.iloc[-1], pcr=op.pc_vol.iloc[-1])
+        row["s1"] = summary_line(row, now.date())
         rows.append(row)
         h = EH[EH.etf == t].sort_values("weight", ascending=False) if not EH.empty else EH
         info = efi.loc[t].to_dict() if t in efi.index else {}
