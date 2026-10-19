@@ -19,11 +19,21 @@ PREFIX = "hub/"
 def client():
     need = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"]
     miss = [k for k in need if not os.environ.get(k)]
-    if miss:
+    if miss and not (os.environ.get("R2_ENDPOINT") and "R2_ACCOUNT_ID" in miss and len(miss) == 1):
         sys.exit("R2 설정이 없습니다: " + ", ".join(miss) + "\n  .env 파일이나 GitHub Secrets에 넣어 주세요")
-    import boto3
-    from botocore.config import Config
-    s3 = boto3.client("s3", endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
+    import re
+    acc = os.environ.get("R2_ACCOUNT_ID", "").strip()
+    m = re.search(r"([0-9a-f]{32})", os.environ.get("R2_ENDPOINT", "") + " " + acc)
+    if not m:
+        sys.exit("R2_ACCOUNT_ID 형식이 이상합니다 (32자리 16진수여야 함, 지금 길이 %d).\n"
+                 "  Cloudflare 대시보드 → R2 → 개요 화면의 'Account ID', 또는 버킷 설정의\n"
+                 "  S3 API 주소 https://<여기>.r2.cloudflarestorage.com 의 <여기> 부분입니다." % len(acc))
+    try:
+        import boto3
+        from botocore.config import Config
+    except ImportError:
+        sys.exit("boto3가 없습니다 → pip install -r requirements-hub.txt")
+    s3 = boto3.client("s3", endpoint_url=f"https://{m.group(1)}.r2.cloudflarestorage.com",
                       aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"], aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
                       region_name="auto", config=Config(retries={"max_attempts": 5, "mode": "standard"}))
     return s3, os.environ["R2_BUCKET"]
@@ -38,6 +48,16 @@ def _md5(p):
 
 
 def remote_index(s3, bucket):
+    try:
+        return _remote_index(s3, bucket)
+    except Exception as e:
+        msg = str(e)
+        hint = ("버킷 이름 확인" if "NoSuchBucket" in msg else "토큰 권한(개체 읽기·쓰기, 이 버킷 대상)과 키 값 확인" if ("AccessDenied" in msg or "InvalidAccessKeyId" in msg or "SignatureDoesNotMatch" in msg or "Unauthorized" in msg)
+                else "인터넷 연결·계정 ID 확인")
+        sys.exit(f"R2 접속 실패: {msg[:200]}\n  → {hint}")
+
+
+def _remote_index(s3, bucket):
     out, tok = {}, None
     while True:
         kw = {"Bucket": bucket, "Prefix": PREFIX}
