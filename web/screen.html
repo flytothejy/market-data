@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>종목 허브 — 검색</title>
+<link rel="stylesheet" href="assets/app.css">
+<script src="assets/data.js"></script>
+<script src="assets/ui.js"></script>
+<style>
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;gap:6px;align-items:center;font-size:13px;padding:5px 10px;border-radius:99px;background:var(--soft);border:1px solid var(--line)}
+.chip button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px}
+.presets .btn{font-size:12.5px}
+th.sort.asc::after{content:' ▲';font-size:9px}
+th.sort.desc::after{content:' ▼';font-size:9px}
+#addf{display:none;gap:6px;flex-wrap:wrap;align-items:center;padding:10px;border:1px dashed var(--line);border-radius:10px}
+#addf.on{display:flex}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">불러오는 중…</div></div>
+<script>
+header('검색');
+const COLS = {
+  info: ['n', 'sec', 'mcap', 'px', 'r1d', 'r1y', 'pe', 'rev_g', 'c_ratio'],
+  cons: ['n', 'mcap', 'c_n', 'c_ratio', 'c_up', 'c_dn', 'c_chg90', 'c_upside', 'c_buy', 'c_fpe', 'c_surp', 'c_next'],
+  fin: ['n', 'mcap', 'rev', 'rev_g', 'rev_qg', 'gm', 'om', 'om_chg', 'nm', 'fcfy', 'roe', 'pe', 'ps', 'dy', 'shy'],
+  tech: ['n', 'mcap', 'r1w', 'r1m', 'r3m', 'r1y', 'd200', 'rsi', 'hi52', 'vr', 'vol', 'sv', 'sv_chg', 'si', 'iv', 'pcr'],
+  doc: ['n', 'mcap', 'ib', 'is', 'ibn', 'ib_last', 'k8', 'k8_last', 'f144', 'g13d', 'k10'],
+  news: ['n', 'mcap', 'nw7', 'nw_last'],
+  etf: ['n', 'grp', 'aum', 'exp', 'dy', 'r1m', 'r3m', 'rytd', 'r1y', 'd200', 'vol', 'iv'],
+};
+const EXTRA = { grp: ['분류', 'info', 'text'], fam: ['운용사', 'info', 'text'], aum: ['순자산', 'info', 'usd'], exp: ['총보수', 'info', 'pct2'] };
+const PRESETS = [
+  ['전망 상향 + 상승 추세', { c_ratio: [0.2, null], d200: [0, null], c_n: [5, null] }, 'cons'],
+  ['고성장·흑자', { rev_g: [0.2, null], om: [0.1, null], mcap: [1e10, null] }, 'fin'],
+  ['내부자 매수', { ib: [1e5, null] }, 'doc'],
+  ['배당 + 주주환원', { dy: [0.03, null], shy: [0.05, null] }, 'fin'],
+  ['52주 신고가 부근', { hi52: [-0.03, null], vr: [1.2, null] }, 'tech'],
+  ['낙폭 과대', { hi52: [null, -0.3], rsi: [null, 35], mcap: [1e10, null] }, 'tech'],
+  ['공매도 비중 높음', { sv: [0.55, null], mcap: [5e9, null] }, 'tech'],
+];
+let U, F, kind = qs('kind') === 'etf' ? 'etf' : 'stock', cat = qs('cat') || 'info', sortK = null, sortD = -1, shown = 100;
+const filt = {};           // key → [min,max]
+let sector = qs('sec') || '', index = '', query = '';
+
+const lab = k => (F[k] || {}).label || (EXTRA[k] || [k])[0];
+const fm = k => (F[k] || {}).fmt || (EXTRA[k] || [])[2] || 'text';
+const SIGNED = new Set(['r1d', 'r1w', 'r1m', 'r3m', 'r6m', 'r1y', 'rytd', 'r12_1', 'd50', 'd200', 'hi52', 'rev_g', 'rev_qg', 'ni_g', 'c_ratio', 'c_chg90', 'c_upside', 'c_surp', 'c_eps_g', 'c_rev_g']);
+function cell(r, k) {
+  const v = r[k];
+  if (k === 'n') return `<td class="l nm">${esc(v)}</td>`;
+  if (k === 'sec') return `<td class="l mut">${secKo(v)}</td>`;
+  if (k === 'grp' || k === 'k8_last' || k === 'nw_last') return `<td class="l nm mut">${esc(v || '-')}</td>`;
+  if (SIGNED.has(k)) return `<td>${pctS(v)}</td>`;
+  if (k === 'om_chg' || k === 'sv_chg') return `<td class="num ${cls(v)}">${v == null ? '-' : (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%p'}</td>`;
+  return `<td class="num">${fmt(v, fm(k))}</td>`;
+}
+// 입력 단위: pct 지표는 % 숫자로, usd는 억 달러로
+const unitOf = k => ['pct', 'pct2'].includes(fm(k)) ? '%' : fm(k) === 'usd' ? '억$' : '';
+const toRaw = (k, x) => x === '' || x == null ? null : unitOf(k) === '%' ? +x / 100 : unitOf(k) === '억$' ? +x * 1e8 : +x;
+const toIn = (k, v) => v == null ? '' : unitOf(k) === '%' ? +(v * 100).toFixed(2) : unitOf(k) === '억$' ? v / 1e8 : v;
+
+function rows() {
+  const q = query.toLowerCase();
+  return U.rows.filter(r => r.k === kind
+    && (!sector || r.sec === sector) && (!index || (r.idx || '').split(',').includes(index))
+    && (!q || r.t.toLowerCase().startsWith(q) || (r.n || '').toLowerCase().includes(q))
+    && Object.entries(filt).every(([k, [a, b]]) => r[k] != null && (a == null || r[k] >= a) && (b == null || r[k] <= b)));
+}
+
+function render() {
+  const cols = kind === 'etf' ? COLS.etf : COLS[cat];
+  let R = rows();
+  const sk = sortK && cols.concat(['t']).includes(sortK) ? sortK : (kind === 'etf' ? 'aum' : 'mcap');
+  R.sort((a, b) => { const x = a[sk], y = b[sk]; if (x == null) return 1; if (y == null) return -1; return (x > y ? 1 : x < y ? -1 : 0) * (sortK ? sortD : -1); });
+  $('#count').textContent = `${R.length.toLocaleString()}개`;
+  $('#chips').innerHTML = Object.entries(filt).map(([k, [a, b]]) => `<span class="chip">${esc(lab(k))} ${a != null ? '≥ ' + fmt(a, fm(k)) : ''}${a != null && b != null ? ' · ' : ''}${b != null ? '≤ ' + fmt(b, fm(k)) : ''}<button data-k="${k}" aria-label="삭제">×</button></span>`).join('');
+  $('#chips').querySelectorAll('button').forEach(b => b.onclick = () => { delete filt[b.dataset.k]; render(); });
+  $('#tbl').innerHTML = `<thead><tr><th class="sort ${sortK === 't' ? (sortD > 0 ? 'asc' : 'desc') : ''}" data-k="t">티커</th>${cols.map(k => `<th class="sort ${sortK === k ? (sortD > 0 ? 'asc' : 'desc') : ''} ${['n', 'sec', 'grp', 'k8_last', 'nw_last'].includes(k) ? 'l' : ''}" data-k="${k}">${esc(lab(k))}</th>`).join('')}</tr></thead>
+    <tbody>${R.slice(0, shown).map(r => `<tr><td><a href="stock.html?t=${encodeURIComponent(r.t)}"><b>${esc(r.t)}</b></a></td>${cols.map(k => cell(r, k)).join('')}</tr>`).join('')}</tbody>`;
+  $('#tbl').querySelectorAll('th.sort').forEach(th => th.onclick = () => { const k = th.dataset.k; sortD = sortK === k ? -sortD : (k === 't' || k === 'n' ? 1 : -1); sortK = k; render(); });
+  $('#more').style.display = R.length > shown ? '' : 'none';
+  document.querySelectorAll('#cats .btn').forEach(b => b.classList.toggle('on', b.dataset.c === cat));
+  document.querySelectorAll('#kinds .btn').forEach(b => b.classList.toggle('on', b.dataset.k === kind));
+  $('#cats').style.display = kind === 'etf' ? 'none' : '';
+  $('#presets').style.display = kind === 'etf' ? 'none' : '';
+}
+
+(async () => {
+  U = await Data.universe(); F = U.fields;
+  const secs = [...new Set(U.rows.filter(r => r.sec).map(r => r.sec))].sort((a, b) => secKo(a).localeCompare(secKo(b), 'ko'));
+  const fkeys = Object.keys(F).filter(k => !['t', 'n', 'k', 'sec', 'ind', 'idx', 'cur', 'fq', 'k8_last', 'nw_last', 'gc', 'ib_last', 'k10', 'c_next'].includes(k) && F[k].tier === 'free');
+  $('#app').innerHTML = `<div class="hero"><h1>검색</h1><p>다섯 카테고리 지표를 섞어 종목을 걸러보세요. 러셀 1000 + 나스닥 100 ${U.rows.filter(r => r.k === 'stock').length.toLocaleString()}종목 · ETF ${U.rows.filter(r => r.k === 'etf').length}개</p></div>
+  <div class="card">
+    <div class="filters"><div class="seg" id="kinds"><button class="btn" data-k="stock">주식</button><button class="btn" data-k="etf">ETF</button></div>
+      <input class="f" id="q" type="search" placeholder="티커·이름" style="width:150px">
+      <select class="f" id="sec"><option value="">전체 업종</option>${secs.map(s => `<option value="${esc(s)}">${secKo(s)}</option>`).join('')}</select>
+      <select class="f" id="idx"><option value="">전체 지수</option><option value="S&P500">S&P 500</option><option value="NDX">나스닥 100</option><option value="DOW">다우 30</option></select>
+      <button class="btn" id="addbtn">+ 조건 추가</button>
+      <button class="btn" id="reset">초기화</button></div>
+    <div id="addf"><select class="f" id="fk">${['info', 'cons', 'fin', 'tech', 'doc', 'news'].map(c => `<optgroup label="${c === 'info' ? '기본' : CAT_KO[c]}">${fkeys.filter(k => F[k].cat === c).map(k => `<option value="${k}">${esc(F[k].label)}</option>`).join('')}</optgroup>`).join('')}</select>
+      <input class="f" id="fa" type="number" step="any" placeholder="최소" style="width:100px"><span class="mut">~</span><input class="f" id="fb" type="number" step="any" placeholder="최대" style="width:100px"><span class="mut s13" id="fu"></span>
+      <button class="btn dark" id="fok">적용</button></div>
+    <div class="filters" id="chips"></div>
+    <div class="filters presets" id="presets"><span class="mut s13">추천 조건</span>${PRESETS.map((p, i) => `<button class="btn" data-i="${i}">${esc(p[0])}</button>`).join('')}</div>
+  </div>
+  <div class="card">
+    <div class="filters"><div class="seg" id="cats">${[['info', '기본'], ['cons', '컨센서스'], ['fin', '재무'], ['tech', '차트·수급'], ['doc', '공시·내부자'], ['news', '뉴스']].map(([c, l]) => `<button class="btn" data-c="${c}">${c === 'info' ? '' : `<span class="cat-dot c-${c}"></span>`}${l}</button>`).join('')}</div>
+      <span class="mut s13" id="count" style="margin-left:auto"></span>
+      <button class="btn" disabled title="프로 멤버십">조건 저장 <span class="pro">PRO</span></button><button class="btn" disabled title="프로 멤버십">알림 <span class="pro">PRO</span></button><button class="btn" disabled title="프로 멤버십">CSV <span class="pro">PRO</span></button></div>
+    <div class="tbl-wrap" style="max-height:72vh;overflow:auto"><table class="t" id="tbl"></table></div>
+    <button class="btn" id="more">100개 더 보기</button>
+  </div>`;
+  $('#sec').value = sector;
+  $('#q').oninput = e => { query = e.target.value.trim(); shown = 100; render(); };
+  $('#sec').onchange = e => { sector = e.target.value; render(); };
+  $('#idx').onchange = e => { index = e.target.value; render(); };
+  $('#kinds').querySelectorAll('.btn').forEach(b => b.onclick = () => { kind = b.dataset.k; sortK = null; Object.keys(filt).forEach(k => delete filt[k]); render(); });
+  $('#cats').querySelectorAll('.btn').forEach(b => b.onclick = () => { cat = b.dataset.c; render(); });
+  $('#more').onclick = () => { shown += 100; render(); };
+  $('#addbtn').onclick = () => { $('#addf').classList.toggle('on'); $('#fk').dispatchEvent(new Event('change')); };
+  $('#fk').onchange = () => { const k = $('#fk').value; $('#fu').textContent = unitOf(k) ? `단위: ${unitOf(k)}` : ''; $('#fa').value = toIn(k, (filt[k] || [])[0]); $('#fb').value = toIn(k, (filt[k] || [])[1]); };
+  $('#fok').onclick = () => { const k = $('#fk').value, a = toRaw(k, $('#fa').value), b = toRaw(k, $('#fb').value); if (a == null && b == null) delete filt[k]; else filt[k] = [a, b]; cat = F[k].cat === 'info' ? cat : F[k].cat; render(); };
+  $('#reset').onclick = () => { Object.keys(filt).forEach(k => delete filt[k]); sector = index = query = ''; $('#sec').value = $('#idx').value = $('#q').value = ''; sortK = null; render(); };
+  $('#presets').querySelectorAll('.btn').forEach(b => b.onclick = () => { const p = PRESETS[+b.dataset.i]; Object.keys(filt).forEach(k => delete filt[k]); Object.assign(filt, JSON.parse(JSON.stringify(p[1]))); cat = p[2]; sortK = null; render(); });
+  render();
+  footer();
+})();
+</script>
+</body>
+</html>

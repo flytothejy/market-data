@@ -546,8 +546,8 @@ def run(limit=0, **_):
     KD = pd.concat([read(p) for p in sorted((DATA / "kr_etf" / "daily").glob("*.parquet"))], ignore_index=True) if list((DATA / "kr_etf" / "daily").glob("*.parquet")) else pd.DataFrame()
     if not KD.empty:
         KD = KD.sort_values(["code", "date"])
-        US_MAP = [("NASDAQ", "QQQ"), ("나스닥", "QQQ"), ("S&P 500", "VOO"), ("S&P500", "VOO"), ("다우존스 U.S. Dividend", "SCHD"),
-                  ("Dividend 100", "SCHD"), ("배당다우", "SCHD"), ("필라델피아", "SOXX"), ("PHLX", "SOXX"), ("반도체", "SOXX")]
+        US_MAP = [("PHLX", "SOXX"), ("필라델피아", "SOXX"), ("Dividend 100", "SCHD"), ("배당다우", "SCHD"), ("NASDAQ 100", "QQQ"),
+                  ("NASDAQ-100", "QQQ"), ("나스닥100", "QQQ"), ("S&P 500", "VOO"), ("S&P500", "VOO")]
         from .kr_etf import US_KEYS
         krows = []
         for code, g in KD.groupby("code"):
@@ -560,7 +560,9 @@ def run(limit=0, **_):
             last = g.iloc[-1]
             name = str(last.get("name"))
             iname = str(last.get("index_name", ""))
-            us = next((u for k, u in US_MAP if k in iname or k in name), None)
+            us = next((u for k, u in US_MAP if k in iname), None) or next((u for k, u in US_MAP if k in name), None)
+            if us and re.search(r"레버리지|인버스|커버드|채권|2X|합성", name):
+                us = None
             c = g.close.values
             k = {"code": code, "n": name, "idx": iname, "us": us, "px": last.close, "nav": last.get("nav"), "dev": last.get("deviation"),
                  "aum": last.get("net_assets"), "val": g.value.tail(20).mean() if "value" in g else None,
