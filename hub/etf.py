@@ -51,7 +51,8 @@ def ssga(http, t):
 
 
 def invesco(http, t):
-    df = pd.read_csv(io.StringIO(http.get(INVESCO.format(T=t)).text))
+    df = pd.read_csv(io.StringIO(http.get(INVESCO.format(T=t), headers={"Accept": "text/csv,application/csv,text/plain,*/*",
+                                                                      "Referer": "https://www.invesco.com/"}).text))
     w = next(c for c in df.columns if "weight" in c.lower())
     tc = next((c for c in df.columns if c.lower() in ("holding ticker", "ticker")), df.columns[1])
     nc = next((c for c in df.columns if "name" in c.lower()), tc)

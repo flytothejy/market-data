@@ -43,7 +43,9 @@ def run(limit=0, days=None, full=False, **_):
             break
         d -= dt.timedelta(days=1)
     if not lst:
-        R.warning("치명: 한국거래소 ETF 목록을 받지 못함 (접속 차단 또는 로그인 요구 가능)")
+        import pykrx
+        R.set(pykrx_version=getattr(pykrx, "__version__", "?"))
+        R.warning("치명: 한국거래소 ETF 목록을 받지 못함 — pykrx 최신판(pip install -U pykrx)으로도 안 되면 공공데이터포털 API로 전환")
         return R.done(ok=False)
     rows = []
     for c in lst:

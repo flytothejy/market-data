@@ -111,7 +111,7 @@ def run(limit=0, **_):
     if fail:
         R.warning(f"실패 {len(fail)}개 — 예: {fail[0]}")
     ok_iv = D.iv_atm30.notna().mean()
-    R.set(requested=len(tickers), ok=len(rows), no_options=len(none), failed=len(fail), asof=str(asof),
+    R.set(requested=len(tickers), fetched=len(rows), no_options=len(none), failed=len(fail), asof=str(asof),
           iv_coverage=f"{ok_iv*100:.0f}%", median_iv30=f"{D.iv_atm30.median()*100:.0f}%",
           spy_iv30=f"{D.set_index('ticker').iv_atm30.get('SPY', np.nan)*100:.1f}%", rows_new=len(D))
     return R.done()

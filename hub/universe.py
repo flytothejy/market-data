@@ -71,6 +71,8 @@ def dji_ssga(http):
     hdr = next(i for i in range(min(15, len(raw))) if "Ticker" in raw.iloc[i].astype(str).tolist())
     df = raw.iloc[hdr + 1:].copy()
     df.columns = raw.iloc[hdr].astype(str)
+    w = pd.to_numeric(df.get("Weight"), errors="coerce") if "Weight" in df else pd.Series(1.0, index=df.index)
+    df = df[w.notna() & (w > 0)]
     ts = [t for t in df["Ticker"].astype(str).str.strip().str.upper() if TICK_RE.fullmatch(t) and t != "CASH_USD"]
     if not 28 <= len(ts) <= 32:
         raise RuntimeError(f"DIA 구성 수 이상: {len(ts)}")
