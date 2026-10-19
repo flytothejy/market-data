@@ -36,7 +36,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - run: pip install -q boto3 pandas
+      - run: pip install -q boto3 pandas requests
       - name: pull site data from R2
         run: python -m hub sync pull --only site/
       - name: assemble
