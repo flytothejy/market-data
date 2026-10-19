@@ -38,6 +38,9 @@ def _frame(df, etf, src, tcol, ncol, wcol, scol=None, vcol=None):
                         "weight": pd.to_numeric(df[wcol].astype(str).str.replace("%", "").str.replace(",", ""), errors="coerce") if wcol in df else None,
                         "shares": pd.to_numeric(df[scol].astype(str).str.replace(",", ""), errors="coerce") if scol and scol in df else None,
                         "value": pd.to_numeric(df[vcol].astype(str).str.replace("[$,]", "", regex=True), errors="coerce") if vcol and vcol in df else None})
+    if out.weight.notna().sum() == 0 and out.value.notna().sum() > 0:     # 비중 열이 비어 있으면 시장가치로 계산
+        out["weight"] = out.value / out.value.abs().sum() * 100
+    out.attrs["cols"] = list(map(str, df.columns))[:10]
     out = out[out.weight.notna()]
     return out
 
@@ -175,7 +178,7 @@ def run(limit=0, **_):
             try:
                 full = ad(http, t, lname.get(t)) if ad is ishares else ad(http, t)
                 if full.empty or full.weight.sum() < 50:
-                    raise RuntimeError(f"비중 합 {full.weight.sum():.0f}%")
+                    raise RuntimeError(f"비중 합 {full.weight.sum():.0f}%, 열 {full.attrs.get('cols')}")
             except Exception as e:
                 fail_issuer.append(f"{t}({ad.__name__}): {str(e)[:50]}")
                 full = None

@@ -6,6 +6,24 @@ import pandas as pd
 import requests
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_env_file():
+    """저장소 최상위의 .env (KEY=VALUE, 커밋 안 됨)를 읽어 환경변수로 — setx가 안 먹을 때를 위한 대안"""
+    p = ROOT / ".env"
+    if not p.exists():
+        return
+    for line in p.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k, v = k.strip(), v.strip().strip('"').strip("'")
+        if k and v and not os.environ.get(k):
+            os.environ[k] = v
+
+
+_load_env_file()
 DATA = Path(os.environ.get("HUB_DATA", ROOT / "data" / "hub"))
 STATUS = DATA / "_status"
 UA_BROWSER = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "

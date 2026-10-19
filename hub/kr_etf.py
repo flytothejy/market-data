@@ -95,6 +95,7 @@ def run(limit=0, days=None, full=False, **_):
     import os
     from .core import data_go_kr_key
     key = data_go_kr_key("etf")
+    R.set(api_key="있음" if key else "없음(DATA_GO_KR_KEY)")
     if key:
         return run_api(R, key, limit, days, full)
     try:
