@@ -5,7 +5,7 @@
 본문은 저장하지 않음(저작권) — 제목·링크·요약만
 어조 점수는 화면용 데이터 만들 때 별도로 계산
 """
-import hashlib, re, time, datetime as dt
+import hashlib, html, re, time, datetime as dt
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 import pandas as pd
@@ -20,6 +20,11 @@ RSS = {
     "PR Newswire": "https://www.prnewswire.com/rss/news-releases-list.rss",
     "Business Wire": "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFpRWQ==",
 }
+# 소송 권유 광고(법무법인), 다국어 중복본은 제외
+SPAM = re.compile(r"securities fraud|class action|investors? (have|who|are encouraged)|shareholder alert|investor alert|law firm|"
+                  r"rosen law|pomerantz|levi & korsinsky|bragar|faruqi|schall law|glancy|kessler topaz|bronstein|gross law|"
+                  r"kirby mcinerney|robbins geller|sbs law|deadline (reminder|alert)|lead plaintiff", re.I)
+NON_EN = re.compile(r"[àâçéèêëîïôûùüÿñæœäöß]")
 TICK = re.compile(r"\((?:NASDAQ|Nasdaq|NYSE|NYSE American|NYSE Arca|Cboe|CBOE|NasdaqGS|NasdaqGM)\s*[:：]\s*([A-Z]{1,5}(?:[.\-][A-Z])?)\)")
 
 
@@ -27,9 +32,21 @@ def _id(url, title):
     return hashlib.sha1(f"{url}|{title}".encode()).hexdigest()[:16]
 
 
+STATS = {"raw": 0, "keys": None}
+
+
 def yf_news(t):
     out = []
-    for it in (yf.Ticker(t).news or []):
+    T = yf.Ticker(t)
+    try:
+        items = T.get_news(count=20) if hasattr(T, "get_news") else T.news
+    except TypeError:
+        items = T.news
+    items = items or []
+    STATS["raw"] += len(items)
+    if items and STATS["keys"] is None:
+        STATS["keys"] = list(items[0].keys())[:8] + list((items[0].get("content") or {}).keys())[:8]
+    for it in items:
         c = it.get("content", it)
         title = c.get("title")
         url = (c.get("canonicalUrl") or {}).get("url") or (c.get("clickThroughUrl") or {}).get("url") or c.get("link")
@@ -56,7 +73,9 @@ def rss_press(http, keep):
         items = root.findall(".//item")
         hit = 0
         for it in items:
-            title = (it.findtext("title") or "").strip()
+            title = html.unescape((it.findtext("title") or "").strip())
+            if SPAM.search(title) or len(NON_EN.findall(title)) >= 2:
+                continue
             link = (it.findtext("link") or "").strip()
             desc = re.sub(r"<[^>]+>", " ", it.findtext("description") or "")
             cats = " ".join(c.text or "" for c in it.findall("category"))
@@ -97,7 +116,7 @@ def run(limit=0, **_):
         return R.done(ok=False)
     A = pd.DataFrame(rows)
     A["published"] = pd.to_datetime(A["published"], utc=True, errors="coerce")
-    A = A.drop_duplicates(["id", "ticker"])
+    A = A.drop_duplicates(["id", "ticker"]).drop_duplicates(["ticker", "title"])
     A["ym"] = A.published.dt.strftime("%Y-%m").fillna("unknown")
     for ym, g in A.groupby("ym"):
         upsert(N_DIR / f"{ym}.parquet", g.drop(columns="ym"), ["id", "ticker"], sort=["published", "id"])
@@ -105,6 +124,11 @@ def run(limit=0, **_):
     recent = news[news.published >= pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=2)]
     if fail:
         R.warning(f"뉴스 실패 {len(fail)}개: {', '.join(fail[:10])}")
+    R.set(yf_raw_items=STATS["raw"])
+    if STATS["raw"] and news.empty:
+        R.warning(f"yfinance 기사 {STATS['raw']}건을 받았지만 해석 0건 — 항목 키: {STATS['keys']}")
+    if not STATS["raw"]:
+        R.warning("yfinance 뉴스가 0건 (야후 응답 변경 또는 차단 가능)")
     R.set(tickers=len(tickers), articles=len(news), tickers_with_news=news.ticker.nunique(),
           last48h=len(recent), press_releases=int((A.kind == "press").sum()), rss=", ".join(f"{k} {v}" for k, v in stat.items()),
           latest=str(A.published.max()), rows_new=len(A),

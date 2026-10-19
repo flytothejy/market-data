@@ -68,6 +68,16 @@ def run(limit=0, full=False, **_):
     todo = F[~F.accession.isin(have)]
     if limit:
         todo = todo.tail(limit)
+    # 비교 대상(직전 연도 10-K)이 보관소에 없으면 함께 받음 — 새로 편입된 종목 대비
+    allk = read(S_DIR / "filings.parquet")
+    allk = allk[allk.form.isin(FORMS)]
+    prevs = []
+    for r in (todo if limit else F).itertuples():
+        p = allk[(allk.ticker == r.ticker) & (allk.filed < r.filed - pd.Timedelta(days=270)) & (allk.filed > r.filed - pd.Timedelta(days=460))]
+        if not p.empty and p.accession.iloc[-1] not in have:
+            prevs.append(p.sort_values("filed").iloc[-1])
+    if prevs:
+        todo = pd.concat([pd.DataFrame(prevs), todo]).drop_duplicates("accession").sort_values("filed")
     log(f"새 10-K {len(todo)}건 다운로드 (최근 {'10년' if full else '400일'} 중 보관소에 없는 것)")
     # 1) 원문 받기 — 기존 fetch_10k 의 추출 함수 사용
     http = sec_http()
@@ -100,7 +110,7 @@ def run(limit=0, full=False, **_):
         idf_p.write_text(json.dumps(idf))
     TF.SRC = src
     TF.init(idf)
-    targets = sorted(set(got)) if not full else sorted(set(F.ticker) & set(os.listdir(src)))
+    targets = sorted(set(got) | set(pd.DataFrame(prevs).ticker if prevs else [])) if not full else sorted(set(F.ticker) & set(os.listdir(src)))
     rows, sents = [], []
     for t in targets:
         for row in TF.process_ticker(t):
