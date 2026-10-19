@@ -132,3 +132,4 @@ footer.foot{font-size:12px;color:var(--faint);text-align:center;margin-top:24px;
 .news-i .m{font-size:12px;color:var(--muted)}
 .clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
 .clamp.open{display:block}
+@media (max-width:760px){table.t td:first-child,table.t th:first-child{position:sticky;left:0;background:var(--card);z-index:1}table.t th:first-child{z-index:2}}
