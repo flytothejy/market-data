@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       set:
-        description: "daily 또는 weekly"
+        description: "daily · weekly · 또는 수집기 이름(예: consensus)"
         default: "daily"
 
 permissions:

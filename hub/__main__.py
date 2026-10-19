@@ -34,15 +34,15 @@ from . import core
 
 ORDER = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "profile"]
 ORDER2 = ["etf", "options", "kr_etf"]
-ORDER3 = ["news", "f13"]
+ORDER3 = ["news", "f13", "consensus"]
 # Actions 일정용 묶음
-DAILY = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "etf", "options", "kr_etf", "news", "build"]
+DAILY = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "etf", "options", "kr_etf", "news", "consensus", "build"]
 WEEKLY = ["profile", "f13", "build"]
 
 
 def job(name):
-    from . import universe, prices, sec, short, profile, etf, options, kr_etf, news, f13, tenk, build
-    return {"build": build.run, "news": news.run, "f13": f13.run, "tenk": tenk.run, "etf": etf.run, "options": options.run, "kr_etf": kr_etf.run, "universe": universe.run, "prices": prices.run, "sec_filings": sec.run_filings,
+    from . import universe, prices, sec, short, profile, etf, options, kr_etf, news, f13, tenk, build, consensus
+    return {"consensus": consensus.run, "build": build.run, "news": news.run, "f13": f13.run, "tenk": tenk.run, "etf": etf.run, "options": options.run, "kr_etf": kr_etf.run, "universe": universe.run, "prices": prices.run, "sec_filings": sec.run_filings,
             "sec_insider": sec.run_insider, "sec_financials": sec.run_financials,
             "short_volume": short.run, "profile": profile.run}[name]
 
@@ -67,7 +67,7 @@ def main():
     r.add_argument("--days", type=int, default=None)
     sub.add_parser("status")
     nt = sub.add_parser("notify")
-    nt.add_argument("set", choices=["daily", "weekly"])
+    nt.add_argument("set", help="daily · weekly · 또는 수집기 이름")
     nt.add_argument("--always", action="store_true")
     sy = sub.add_parser("sync")
     sy.add_argument("action", choices=["push", "pull", "ls"])
@@ -81,8 +81,9 @@ def main():
         return
     if a.cmd == "notify":
         from . import notify
-        names = DAILY if a.set == "daily" else WEEKLY
-        sys.exit(1 if notify.run(names, f"종목 허브 {'매일' if a.set == 'daily' else '주간'} 수집", a.always) else 0)
+        names = {"daily": DAILY, "weekly": WEEKLY}.get(a.set, [a.set])
+        title = {"daily": "매일", "weekly": "주간"}.get(a.set, a.set)
+        sys.exit(1 if notify.run(names, f"종목 허브 {title} 수집", a.always) else 0)
     if a.cmd == "status":
         core.print_report(core.load_status())
         return

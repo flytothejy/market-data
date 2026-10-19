@@ -335,12 +335,41 @@ def summary_line(r, today):
     return txt
 
 # ---------------------------------------------------------------- 컨센서스 (저장소 consensus/ 최신 파일)
-def consensus_table():
-    files = sorted((ROOT / "consensus").glob("*/*.csv.gz"))
-    if not files:
-        return pd.DataFrame(), None
-    d = pd.read_csv(files[-1])
-    asof = files[-1].name[:10]
+def consensus_latest():
+    """종목별 가장 최근 스냅숏(최근 7일 안) + 전체 이력. 허브 수집분이 없으면 저장소 S&P 500 파일로"""
+    from . import consensus as cons
+    H = cons.load(400)
+    if H.empty:
+        files = sorted((ROOT / "consensus").glob("*/*.csv.gz"))
+        if not files:
+            return pd.DataFrame(), None, H
+        d = pd.read_csv(files[-1], dtype={"period": str, "field": str})
+        d["ticker"] = d.ticker.str.replace(".", "-", regex=False)
+        return d, files[-1].name[:10], H
+    last = H.date.max()
+    recent = H[H.date >= (pd.Timestamp(last) - pd.Timedelta(days=7)).strftime("%Y-%m-%d")]
+    mx = recent.groupby("ticker").date.transform("max")
+    return recent[recent.date == mx], last, H
+
+
+def consensus_hist(H):
+    """프로: 종목별 일별 이력 — 내년 EPS 전망, 30일 상향·하향 수, 평균 목표가, 애널리스트 수"""
+    if H.empty:
+        return {}
+    sel = [("eps_trend", "+1y", "current", "eps1y"), ("eps_rev", "+1y", "upLast30days", "up"), ("eps_rev", "+1y", "downLast30days", "dn"),
+           ("pt", "now", "mean", "pt"), ("eps", "+1y", "numberOfAnalysts", "n")]
+    parts = []
+    for b, per, f, name in sel:
+        x = H[(H.block == b) & (H.period == per) & (H.field == f)][["date", "ticker", "value"]].rename(columns={"value": name})
+        parts.append(x.set_index(["ticker", "date"]))
+    W = pd.concat(parts, axis=1).reset_index().sort_values(["ticker", "date"])
+    return {t: {"d": g.date.tolist(), **{c: g[c].round(4).tolist() for c in ["eps1y", "up", "dn", "pt", "n"] if c in g}}
+            for t, g in W.groupby("ticker")}
+
+
+def consensus_table(d, asof):
+    if d is None or d.empty:
+        return pd.DataFrame(), asof
     piv = lambda b, p, f: d[(d.block == b) & (d.period == p) & (d.field == f)].set_index("ticker").value
     up, dn = piv("eps_rev", "+1y", "upLast30days"), piv("eps_rev", "+1y", "downLast30days")
     n = piv("eps", "+1y", "numberOfAnalysts")
@@ -409,7 +438,9 @@ def run(limit=0, **_):
     MG = read(DATA / "f13" / "managers.parquet")
     TK = read(DATA / "sec" / "tenk_features.parquet")
     TS = read(DATA / "sec" / "tenk_newsents.parquet")
-    C, c_asof = consensus_table()
+    c_snap, c_asof, c_H = consensus_latest()
+    C, c_asof = consensus_table(c_snap, c_asof)
+    c_hist = consensus_hist(c_H)
     now = pd.Timestamp.now().normalize()
     if not FL.empty:
         FL = FL[FL.cik.isin(set(S.cik.dropna().astype(int)))]
@@ -573,6 +604,8 @@ def run(limit=0, **_):
             detail["g13"] = g13[t]
         dump(OUT / "free" / "stock" / f"{t}.json", detail)
         pro = {"t": t}
+        if t in c_hist:
+            pro["cons_hist"] = c_hist[t]
         if cik in ftab:
             pro["fin_annual_full"] = ftab[cik][0]
         if len(tk):

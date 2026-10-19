@@ -80,3 +80,10 @@ python -m hub run tenk --limit 5         :: PC 전용: 새 10-K만 받아 변화
 
 `site.new/`에 다 만든 뒤 `site/`와 바꿔 끼우므로 중간에 실패해도 이전 결과가 남습니다.
 배포는 `.github/workflows/pages.yml` (Settings → Pages → Source: GitHub Actions 필요): `docs/` + `web/`(→ /hub/) + R2의 `site/api`(→ /api/).
+
+## 컨센서스 (consensus)
+
+`python -m hub run consensus [--limit N]` — 전체 종목(약 1,035개)의 애널리스트 전망을 매일 스냅숏으로 쌓습니다 (daily 묶음에 포함, 약 15분).
+`data/hub/consensus/daily/YYYY-MM.parquet` (긴 형식: date, ticker, block, period, field, value). 지나간 날은 다시 받을 수 없으므로 빠지지 않는 게 중요합니다.
+날짜는 미국 동부 기준(그날 장 마감 후 스냅숏). 예전 S&P 500 수집분(저장소 `consensus/`)은 처음 실행 때 옮겨 담습니다.
+화면용 데이터: 최신 스냅숏 → universe.json의 c_* 지표, 일별 이력 → `pro/stock/{T}.json`의 `cons_hist`.
