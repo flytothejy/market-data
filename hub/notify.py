@@ -25,7 +25,8 @@ def run(names, title="수집 점검", always=False):
     warn = sum(1 for l in lines if l.startswith("⚠️"))
     print("\n".join(lines))
     if os.environ.get("GITHUB_ACTIONS"):               # Actions 화면·API에서 바로 보이게 주석과 요약으로도 남김
-        for n in names:
+        # 한 단계당 주석은 종류별 10개까지만 보이므로 마지막 단계(build)를 먼저
+        for n in sorted(names, key=lambda x: x != "build"):
             r = recs.get(n) or {}
             w = "; ".join(r.get("warnings", [])[:3]).replace("\n", " ")[:900]
             stale = r and dt.datetime.fromisoformat(r["finished_utc"]) < cutoff
