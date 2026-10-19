@@ -18,6 +18,8 @@
   python -m hub run tenk [--full]       10-K 변화 (PC 전용, 주 1회 수동)
   python -m hub status                  마지막 실행 점검표
   python -m hub sync push|pull|ls [--dry]  Cloudflare R2 동기화
+  python -m hub run daily | weekly      Actions 일정용 묶음
+  python -m hub notify daily|weekly     실패·주의 시 텔레그램 알림
 
 공통 옵션: --limit N  (소량 시험: 종목 N개 / Form 4 N건 / 공매도 N일)
 """
@@ -32,6 +34,9 @@ from . import core
 ORDER = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "profile"]
 ORDER2 = ["etf", "options", "kr_etf"]
 ORDER3 = ["news", "f13"]
+# Actions 일정용 묶음
+DAILY = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "etf", "options", "kr_etf", "news"]
+WEEKLY = ["profile", "f13"]
 
 
 def job(name):
@@ -45,11 +50,14 @@ def main():
     ap = argparse.ArgumentParser(prog="python -m hub", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("source", choices=ORDER + ORDER2 + ORDER3 + ["tenk", "phase1", "phase2", "phase3"])
+    r.add_argument("source", choices=ORDER + ORDER2 + ORDER3 + ["tenk", "phase1", "phase2", "phase3", "daily", "weekly"])
     r.add_argument("--limit", type=int, default=0)
     r.add_argument("--full", action="store_true")
     r.add_argument("--days", type=int, default=None)
     sub.add_parser("status")
+    nt = sub.add_parser("notify")
+    nt.add_argument("set", choices=["daily", "weekly"])
+    nt.add_argument("--always", action="store_true")
     sy = sub.add_parser("sync")
     sy.add_argument("action", choices=["push", "pull", "ls"])
     sy.add_argument("--dry", action="store_true")
@@ -59,10 +67,14 @@ def main():
         from . import sync
         {"push": lambda: sync.push(a.dry), "pull": lambda: sync.pull(a.dry), "ls": sync.ls}[a.action]()
         return
+    if a.cmd == "notify":
+        from . import notify
+        names = DAILY if a.set == "daily" else WEEKLY
+        sys.exit(1 if notify.run(names, f"종목 허브 {'매일' if a.set == 'daily' else '주간'} 수집", a.always) else 0)
     if a.cmd == "status":
         core.print_report(core.load_status())
         return
-    names = {"phase1": ORDER, "phase2": ORDER2, "phase3": ORDER3}.get(a.source, [a.source])
+    names = {"phase1": ORDER, "phase2": ORDER2, "phase3": ORDER3, "daily": DAILY, "weekly": WEEKLY}.get(a.source, [a.source])
     failed = []
     for n in names:
         core.log(f"▶ {n} 시작")
