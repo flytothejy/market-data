@@ -23,8 +23,79 @@ def classify(name):
     return "기타 미국"
 
 
+API = "https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo"
+
+
+def run_api(R, key, limit=0, days=None, full=False):
+    """공공데이터포털 '금융위원회_증권상품시세정보' (전 영업일 기준, 하루 늦게 갱신)"""
+    import os
+    from .core import Http
+    http = Http(rate=5)
+    have = sorted((K_DIR / "daily").glob("*.parquet"))
+    span = days or (730 if full or not have else 14)
+    end = dt.date.today()
+    dates = [end - dt.timedelta(days=k) for k in range(span, -1, -1)]
+    dates = [d for d in dates if d.weekday() < 5]
+    if limit:
+        dates = dates[-limit:]
+    rows, empty = [], 0
+    for d in dates:
+        page = 1
+        while True:
+            r = http.get(API, params={"serviceKey": key, "resultType": "json", "numOfRows": 1000, "pageNo": page,
+                                      "basDt": d.strftime("%Y%m%d")})
+            try:
+                body = r.json()["response"]["body"]
+            except Exception:
+                raise RuntimeError(f"API 응답 해석 실패: {r.text[:200]}")
+            items = (body.get("items") or {}).get("item") or []
+            if isinstance(items, dict):
+                items = [items]
+            rows += items
+            if page * 1000 >= int(body.get("totalCount") or 0):
+                break
+            page += 1
+        if not items and page == 1:
+            empty += 1
+    if not rows:
+        R.warning("치명: API에서 받은 행이 없음 (키 승인 대기·일일 한도·휴장 확인)")
+        return R.done(ok=False)
+    A = pd.DataFrame(rows)
+    num = ["clpr", "nav", "trqu", "trPrc", "mrktTotAmt", "nPptTotAmt", "stLstgCnt", "bssIdxClpr", "fltRt"]
+    for c in num:
+        if c in A:
+            A[c] = pd.to_numeric(A[c], errors="coerce")
+    A = A.rename(columns={"basDt": "date", "srtnCd": "code", "itmsNm": "name", "clpr": "close", "trqu": "volume", "trPrc": "value",
+                          "mrktTotAmt": "mktcap", "nPptTotAmt": "net_assets", "bssIdxIdxNm": "index_name", "bssIdxClpr": "index_close"})
+    A["date"] = pd.to_datetime(A["date"], format="%Y%m%d")
+    us = A["name"].astype(str).str.contains(US_KEYS) | A.get("index_name", pd.Series("", index=A.index)).astype(str).str.contains(r"S&P|NASDAQ|Nasdaq|Dow|NYSE|PHLX|US")
+    A = A[us & ~A["name"].astype(str).str.contains(EXCLUDE)].copy()
+    A["deviation"] = (A["close"] / A["nav"] - 1) * 100
+    keep = [c for c in ["date", "code", "name", "close", "nav", "volume", "value", "mktcap", "net_assets", "index_name", "index_close", "deviation"] if c in A]
+    A = A[keep]
+    for y, g in A.groupby(A.date.dt.year):
+        upsert(K_DIR / "daily" / f"{y}.parquet", g, ["date", "code"])
+    L = A.sort_values("date").groupby("code").last().reset_index()[["code", "name"] + (["index_name"] if "index_name" in A else [])]
+    L["group"] = L["name"].map(classify)
+    write(K_DIR / "list.parquet", L)
+    # 추적오차: NAV 수익률 - 기초지수 수익률의 연환산 표준편차 (최근 1년, 원화 환산 차이 포함 주의)
+    allA = pd.concat([read(p) for p in sorted((K_DIR / "daily").glob("*.parquet"))], ignore_index=True).sort_values(["code", "date"])
+    allA["d"] = allA.groupby("code").nav.pct_change() - allA.groupby("code").index_close.pct_change()
+    te = allA[allA.date >= allA.date.max() - pd.Timedelta(days=365)].groupby("code").d.std() * (252 ** 0.5) * 100
+    R.set(data_source="공공데이터포털", days_fetched=len(dates) - empty, us_equity_etf=len(L), rows_new=len(A),
+          first=str(A.date.min().date()), latest=str(A.date.max().date()),
+          nav_coverage=f"{A.nav.notna().mean()*100:.0f}%", median_deviation=f"{A.deviation.abs().median():.2f}%",
+          median_tracking_diff=f"{te.median():.1f}%p" if len(te) else "-",
+          groups=", ".join(f"{k} {v}" for k, v in L.group.value_counts().items()), http=http.stats())
+    return R.done()
+
+
 def run(limit=0, days=None, full=False, **_):
     R = Run("kr_etf")
+    import os
+    key = os.environ.get("DATA_GO_KR_KEY", "").strip()
+    if key:
+        return run_api(R, key, limit, days, full)
     try:
         from pykrx import stock
     except ImportError:
@@ -45,7 +116,7 @@ def run(limit=0, days=None, full=False, **_):
     if not lst:
         import pykrx
         R.set(pykrx_version=getattr(pykrx, "__version__", "?"))
-        R.warning("치명: 한국거래소 ETF 목록을 받지 못함 — pykrx 최신판(pip install -U pykrx)으로도 안 되면 공공데이터포털 API로 전환")
+        R.warning("치명: 한국거래소 ETF 목록을 받지 못함 — 공공데이터포털 API 키를 환경변수 DATA_GO_KR_KEY로 설정하면 그쪽으로 받습니다")
         return R.done(ok=False)
     rows = []
     for c in lst:

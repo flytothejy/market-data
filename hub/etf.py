@@ -18,6 +18,14 @@ SSGA = "https://www.ssga.com/us/en/intermediary/library-content/products/fund-da
 INVESCO = "https://www.invesco.com/us/financial-products/etfs/holdings/main/holdings/0?audienceType=Investor&action=download&ticker={T}"
 PROSHARES = "https://accounts.profunds.com/etfdata/ByFund/{T}-psdlyhld.csv"
 DIREXION = "https://www.direxion.com/holdings/{T}.csv"
+# iShares 상품 번호 (틀린 번호는 다른 펀드를 가리킬 수 있어, 파일 첫 줄 펀드명을 yfinance 이름과 대조)
+ISHARES_ID = {"IVV": 239726, "IWB": 239707, "IWM": 239710, "IWF": 239706, "IWD": 239708, "IJH": 239763, "IJR": 239774,
+              "EFA": 239623, "EEM": 239637, "IEFA": 244049, "IEMG": 244050, "ACWI": 239600, "AGG": 239458, "TLT": 239454,
+              "IEF": 239456, "SHY": 239452, "LQD": 239566, "HYG": 239565, "TIP": 239467, "SHV": 239466, "EMB": 239572,
+              "MUB": 239766, "GOVT": 239468, "SOXX": 239705, "IBB": 239699, "IGV": 239771, "ITA": 239502, "ITB": 239512,
+              "EWJ": 239665, "EWY": 239681, "EWT": 239686, "EWZ": 239612, "EWG": 239650, "EWU": 239690, "INDA": 239659,
+              "MCHI": 239619, "DGRO": 264623, "HDV": 239563, "DVY": 239500, "IAU": 239561, "SLV": 239855, "IBIT": 333011}
+ISH_URL = "https://www.ishares.com/us/products/{pid}/x/latest-holdings.csv"
 ARK = {"ARKK": "ARK_INNOVATION_ETF_ARKK_HOLDINGS", "ARKW": "ARK_NEXT_GENERATION_INTERNET_ETF_ARKW_HOLDINGS",
        "ARKG": "ARK_GENOMIC_REVOLUTION_ETF_ARKG_HOLDINGS"}
 ARK_URL = "https://ark-funds.com/wp-content/uploads/funds-etf-csv/{f}.csv"
@@ -96,11 +104,32 @@ def ark(http, t):
     return _frame(df, t, "ark", "ticker", "company", w, "shares", next((c for c in df.columns if "market value" in c.lower()), None))
 
 
+def ishares(http, t, expect_name=None):
+    import difflib
+    txt = http.get(ISH_URL.format(pid=ISHARES_ID[t])).text
+    lines = txt.splitlines()
+    fund = lines[0].strip().strip('"') if lines else ""
+    if expect_name:
+        sim = difflib.SequenceMatcher(None, fund.lower().replace("®", ""), str(expect_name).lower().replace("®", "")).ratio()
+        if sim < 0.6:
+            raise RuntimeError(f"펀드명 불일치: '{fund[:40]}' vs '{str(expect_name)[:40]}'")
+    start = next(i for i, l in enumerate(lines) if l.startswith("Ticker,"))
+    body = []
+    for l in lines[start:]:
+        if not l.strip() or l.startswith("\xa0") or l.startswith('"The content'):
+            break
+        body.append(l)
+    df = pd.read_csv(io.StringIO("\n".join(body)), thousands=",")
+    q = next((c for c in df.columns if c in ("Quantity", "Shares")), None)
+    return _frame(df, t, "ishares", "Ticker", "Name", "Weight (%)", q, "Market Value")
+
+
 def adapter(family, t):
     f = (family or "").lower()
     if t in ARK: return ark
+    if t in ISHARES_ID: return ishares
     if "spdr" in f or "state street" in f: return ssga
-    if "invesco" in f: return invesco
+    # Invesco는 자동 다운로드를 막음(406) → 상위 10개로 대체
     if "proshares" in f: return proshares
     if "direxion" in f: return direxion
     return None
@@ -134,6 +163,7 @@ def run(limit=0, **_):
     E = universe.load("etf")
     P = read(DATA / "profile" / "profile.parquet")
     fam = dict(zip(P.ticker, P.get("fundFamily", pd.Series(dtype=str)))) if not P.empty else {}
+    lname = dict(zip(P.ticker, P.get("longName", pd.Series(dtype=str)))) if not P.empty else {}
     if limit:
         E = E.head(limit)
     http = Http(rate=2)
@@ -143,7 +173,7 @@ def run(limit=0, **_):
         ad = adapter(fam.get(t), t)
         if ad:
             try:
-                full = ad(http, t)
+                full = ad(http, t, lname.get(t)) if ad is ishares else ad(http, t)
                 if full.empty or full.weight.sum() < 50:
                     raise RuntimeError(f"비중 합 {full.weight.sum():.0f}%")
             except Exception as e:
