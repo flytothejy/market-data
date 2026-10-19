@@ -75,16 +75,19 @@ def invesco(http, t):
 def proshares(http, t):
     txt = http.get(PROSHARES.format(T=t)).text
     lines = txt.splitlines()
-    start = next(i for i, l in enumerate(lines) if "Ticker" in l and ("Weight" in l or "Market Value" in l))
+    start = next(i for i, l in enumerate(lines) if "Ticker" in l and ("Weight" in l or "Market Value" in l or "Shares" in l))
     df = pd.read_csv(io.StringIO("\n".join(lines[start:])))
+    df.columns = [str(c).strip() for c in df.columns]
     w = next((c for c in df.columns if "weight" in c.lower()), None)
     if w is None:                      # 비중 열이 없으면 시장가치로 계산
         mv = next(c for c in df.columns if "market value" in c.lower())
         df["_w"] = pd.to_numeric(df[mv].astype(str).str.replace("[$,]", "", regex=True), errors="coerce")
         df["_w"] = df["_w"] / df["_w"].sum() * 100
         w = "_w"
-    nc = next((c for c in df.columns if "description" in c.lower() or "name" in c.lower()), "Ticker")
-    return _frame(df, t, "proshares", "Ticker", nc, w)
+    tc = next((c for c in df.columns if c.lower() in ("ticker", "security ticker", "holding ticker")), None) or \
+         next(c for c in df.columns if "ticker" in c.lower() and "fund" not in c.lower())
+    nc = next((c for c in df.columns if ("description" in c.lower() or "name" in c.lower()) and "fund" not in c.lower()), tc)
+    return _frame(df, t, "proshares", tc, nc, w)
 
 
 def direxion(http, t):
@@ -92,6 +95,7 @@ def direxion(http, t):
     lines = txt.splitlines()
     start = next(i for i, l in enumerate(lines) if "Ticker" in l or "StockTicker" in l)
     df = pd.read_csv(io.StringIO("\n".join(lines[start:])))
+    df.columns = [str(c).strip() for c in df.columns]
     tc = next(c for c in df.columns if "ticker" in c.lower())
     nc = next((c for c in df.columns if "description" in c.lower() or "name" in c.lower()), tc)
     mv = next((c for c in df.columns if "marketvalue" in c.lower().replace(" ", "")), None)

@@ -78,14 +78,9 @@ def run_api(R, key, limit=0, days=None, full=False):
     L = A.sort_values("date").groupby("code").last().reset_index()[["code", "name"] + (["index_name"] if "index_name" in A else [])]
     L["group"] = L["name"].map(classify)
     write(K_DIR / "list.parquet", L)
-    # 추적오차: NAV 수익률 - 기초지수 수익률의 연환산 표준편차 (최근 1년, 원화 환산 차이 포함 주의)
-    allA = pd.concat([read(p) for p in sorted((K_DIR / "daily").glob("*.parquet"))], ignore_index=True).sort_values(["code", "date"])
-    allA["d"] = allA.groupby("code").nav.pct_change() - allA.groupby("code").index_close.pct_change()
-    te = allA[allA.date >= allA.date.max() - pd.Timedelta(days=365)].groupby("code").d.std() * (252 ** 0.5) * 100
     R.set(data_source="공공데이터포털", days_fetched=len(dates) - empty, us_equity_etf=len(L), rows_new=len(A),
           first=str(A.date.min().date()), latest=str(A.date.max().date()),
           nav_coverage=f"{A.nav.notna().mean()*100:.0f}%", median_deviation=f"{A.deviation.abs().median():.2f}%",
-          median_tracking_diff=f"{te.median():.1f}%p" if len(te) else "-",
           groups=", ".join(f"{k} {v}" for k, v in L.group.value_counts().items()), http=http.stats())
     return R.done()
 
