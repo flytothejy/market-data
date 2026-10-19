@@ -51,6 +51,21 @@ python -m hub run phase2                 :: 전체
 | options | 시총 상위 200 + ETF: 30일 ATM 내재변동성, 풋/콜 비율, 왜곡 | yfinance | 10분 안팎 |
 | kr_etf | 국내 상장 미국 주식형 ETF: 가격·NAV·괴리율·추적오차·구성 | 한국거래소(pykrx) | 5~10분 |
 
+## 3차 수집기
+
+```bat
+python -m hub run news --limit 30
+python -m hub run f13 --limit 5
+python -m hub run phase3                 :: 전체 (news, f13)
+python -m hub run tenk --limit 5         :: PC 전용: 새 10-K만 받아 변화 계산 (C:\project\data_ext 재사용)
+```
+
+| 이름 | 내용 | 출처 | 주기 |
+|---|---|---|---|
+| news | 종목별 기사 제목·링크 + 기업 보도자료(종목 표기로 짝짓기) | yfinance, GlobeNewswire·PR Newswire·Business Wire RSS | 매일 |
+| f13 | 유명 투자자·대형 운용사 약 30곳의 분기 보유 종목 | SEC 13F-HR | 분기 (마감 45일 후) |
+| tenk | 10-K 위험요인 유사도·새 문장 비율·불확실성 단어·새 위험 문장 원문 | SEC 원문 + 기존 data_ext 코드 | 주 1회 PC에서 |
+
 ## 결과 확인
 실행이 끝날 때마다 점검표가 나옵니다 (종목 수, 빠진 종목, 최신 날짜, 걸린 시간, 주의 사항).
 `[확인 필요]`가 뜨거나 주의 사항이 많으면 그 부분을 그대로 복사해서 알려 주세요.

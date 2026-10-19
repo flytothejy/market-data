@@ -12,6 +12,10 @@
   python -m hub run options             옵션 내재변동성·풋콜 (2차)
   python -m hub run kr_etf              국내 상장 미국 ETF (2차, pykrx 필요)
   python -m hub run phase2              2차 전부
+  python -m hub run news                뉴스 제목·보도자료 (3차)
+  python -m hub run f13                 13F 유명 투자자·대형 운용사 보유 (3차, 분기)
+  python -m hub run phase3              3차 전부 (news, f13)
+  python -m hub run tenk [--full]       10-K 변화 (PC 전용, 주 1회 수동)
   python -m hub status                  마지막 실행 점검표
 
 공통 옵션: --limit N  (소량 시험: 종목 N개 / Form 4 N건 / 공매도 N일)
@@ -26,11 +30,12 @@ from . import core
 
 ORDER = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "profile"]
 ORDER2 = ["etf", "options", "kr_etf"]
+ORDER3 = ["news", "f13"]
 
 
 def job(name):
-    from . import universe, prices, sec, short, profile, etf, options, kr_etf
-    return {"etf": etf.run, "options": options.run, "kr_etf": kr_etf.run, "universe": universe.run, "prices": prices.run, "sec_filings": sec.run_filings,
+    from . import universe, prices, sec, short, profile, etf, options, kr_etf, news, f13, tenk
+    return {"news": news.run, "f13": f13.run, "tenk": tenk.run, "etf": etf.run, "options": options.run, "kr_etf": kr_etf.run, "universe": universe.run, "prices": prices.run, "sec_filings": sec.run_filings,
             "sec_insider": sec.run_insider, "sec_financials": sec.run_financials,
             "short_volume": short.run, "profile": profile.run}[name]
 
@@ -39,7 +44,7 @@ def main():
     ap = argparse.ArgumentParser(prog="python -m hub", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("source", choices=ORDER + ORDER2 + ["phase1", "phase2"])
+    r.add_argument("source", choices=ORDER + ORDER2 + ORDER3 + ["tenk", "phase1", "phase2", "phase3"])
     r.add_argument("--limit", type=int, default=0)
     r.add_argument("--full", action="store_true")
     r.add_argument("--days", type=int, default=None)
@@ -49,7 +54,7 @@ def main():
     if a.cmd == "status":
         core.print_report(core.load_status())
         return
-    names = ORDER if a.source == "phase1" else ORDER2 if a.source == "phase2" else [a.source]
+    names = {"phase1": ORDER, "phase2": ORDER2, "phase3": ORDER3}.get(a.source, [a.source])
     failed = []
     for n in names:
         core.log(f"▶ {n} 시작")

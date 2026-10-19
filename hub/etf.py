@@ -31,13 +31,14 @@ ARK = {"ARKK": "ARK_INNOVATION_ETF_ARKK_HOLDINGS", "ARKW": "ARK_NEXT_GENERATION_
 ARK_URL = "https://ark-funds.com/wp-content/uploads/funds-etf-csv/{f}.csv"
 
 
-def _frame(df, etf, src, tcol, ncol, wcol, scol=None, vcol=None):
+def _frame(df, etf, src, tcol, ncol, wcol, scol=None, vcol=None, idcol=None):
     out = pd.DataFrame({"etf": etf, "source": src,
                         "holding": df[tcol].astype(str).str.strip().str.upper() if tcol in df else None,
                         "name": df[ncol].astype(str).str.strip() if ncol in df else None,
                         "weight": pd.to_numeric(df[wcol].astype(str).str.replace("%", "").str.replace(",", ""), errors="coerce") if wcol in df else None,
                         "shares": pd.to_numeric(df[scol].astype(str).str.replace(",", ""), errors="coerce") if scol and scol in df else None,
-                        "value": pd.to_numeric(df[vcol].astype(str).str.replace("[$,]", "", regex=True), errors="coerce") if vcol and vcol in df else None})
+                        "value": pd.to_numeric(df[vcol].astype(str).str.replace("[$,]", "", regex=True), errors="coerce") if vcol and vcol in df else None,
+                        "cusip": df[idcol].astype(str).str.strip().str.upper() if idcol and idcol in df else None})
     if out.weight.notna().sum() == 0 and out.value.notna().sum() > 0:     # 비중 열이 비어 있으면 시장가치로 계산
         out["weight"] = out.value / out.value.abs().sum() * 100
     out.attrs["cols"] = list(map(str, df.columns))[:10]
@@ -58,7 +59,7 @@ def _header_at(raw, key):
 def ssga(http, t):
     raw = pd.read_excel(io.BytesIO(http.get(SSGA.format(t=t.lower())).content), header=None)
     df = _header_at(raw, "Ticker")
-    return _frame(df, t, "ssga", "Ticker", "Name", "Weight", "Shares Held")
+    return _frame(df, t, "ssga", "Ticker", "Name", "Weight", "Shares Held", idcol="Identifier")
 
 
 def invesco(http, t):
