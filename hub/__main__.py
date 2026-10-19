@@ -17,6 +17,7 @@
   python -m hub run phase3              3차 전부 (news, f13)
   python -m hub run tenk [--full]       10-K 변화 (PC 전용, 주 1회 수동)
   python -m hub status                  마지막 실행 점검표
+  python -m hub sync push|pull|ls [--dry]  Cloudflare R2 동기화
 
 공통 옵션: --limit N  (소량 시험: 종목 N개 / Form 4 N건 / 공매도 N일)
 """
@@ -49,8 +50,15 @@ def main():
     r.add_argument("--full", action="store_true")
     r.add_argument("--days", type=int, default=None)
     sub.add_parser("status")
+    sy = sub.add_parser("sync")
+    sy.add_argument("action", choices=["push", "pull", "ls"])
+    sy.add_argument("--dry", action="store_true")
     a = ap.parse_args()
 
+    if a.cmd == "sync":
+        from . import sync
+        {"push": lambda: sync.push(a.dry), "pull": lambda: sync.pull(a.dry), "ls": sync.ls}[a.action]()
+        return
     if a.cmd == "status":
         core.print_report(core.load_status())
         return

@@ -94,6 +94,28 @@ def rss_press(http, keep):
     return rows, stat
 
 
+YAHOO_RSS = "https://feeds.finance.yahoo.com/rss/2.0/headline?s={t}&region=US&lang=en-US"
+
+
+def yahoo_rss(http, t):
+    """yfinance 뉴스가 비어 있을 때 쓰는 야후 종목 RSS"""
+    r = http.get(YAHOO_RSS.format(t=t), ok404=True)
+    if r is None:
+        return []
+    out = []
+    for it in ET.fromstring(r.content).findall(".//item"):
+        title = html.unescape((it.findtext("title") or "").strip())
+        link = (it.findtext("link") or "").strip()
+        try:
+            pub = pd.Timestamp(parsedate_to_datetime(it.findtext("pubDate"))).tz_convert("UTC")
+        except Exception:
+            pub = pd.NaT
+        if title and link:
+            out.append({"id": _id(link, title), "ticker": t, "published": pub, "title": title, "source": "Yahoo Finance",
+                        "url": link, "kind": "news", "summary": re.sub(r"<[^>]+>", " ", it.findtext("description") or "")[:300]})
+    return out
+
+
 def run(limit=0, **_):
     R = Run("news")
     U = universe.load("stock")
@@ -101,9 +123,16 @@ def run(limit=0, **_):
     if limit:
         tickers = tickers[:limit]
     rows, fail = [], []
+    http = Http(rate=3)
+    use_rss = False
     for i, t in enumerate(tickers):
         try:
-            rows += yf_news(t)
+            got = [] if use_rss else yf_news(t)
+            if not got:
+                got = yahoo_rss(http, t)
+                if got and i < 5 and STATS["raw"] == 0:
+                    use_rss = True          # yfinance가 계속 비면 처음부터 RSS로
+            rows += got
         except Exception as e:
             fail.append(t)
         time.sleep(0.15)
@@ -128,7 +157,7 @@ def run(limit=0, **_):
     if STATS["raw"] and news.empty:
         R.warning(f"yfinance 기사 {STATS['raw']}건을 받았지만 해석 0건 — 항목 키: {STATS['keys']}")
     if not STATS["raw"]:
-        R.warning("yfinance 뉴스가 0건 (야후 응답 변경 또는 차단 가능)")
+        R.set(news_source="야후 RSS (yfinance 뉴스 0건)")
     R.set(tickers=len(tickers), articles=len(news), tickers_with_news=news.ticker.nunique(),
           last48h=len(recent), press_releases=int((A.kind == "press").sum()), rss=", ".join(f"{k} {v}" for k, v in stat.items()),
           latest=str(A.published.max()), rows_new=len(A),
