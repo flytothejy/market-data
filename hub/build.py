@@ -596,6 +596,11 @@ def run(limit=0, **_):
     if vix.exists():
         v = pd.read_csv(vix).dropna()
         mk["vix"] = float(v.iloc[-1, 4])
+    fx = ROOT / "data" / "KRW_X.csv"                 # 원/달러 (원화 기준 수익률용, 최근 2년)
+    if fx.exists():
+        f = pd.read_csv(fx, usecols=["Date", "Close"]).dropna()
+        f = f[f.Date >= str((pd.Timestamp.now() - pd.Timedelta(days=740)).date())]
+        mk["krw"] = {"d": f.Date.tolist(), "c": f.Close.round(2).tolist()}
     dump(OUT / "free" / "market.json", mk)
     stat = {s["source"]: {k: s.get(k) for k in ("ok", "finished_utc", "seconds", "rows_new", "n_warnings")} for s in load_status()}
     dump(OUT / "meta.json", {"built": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "price_asof": PX.date.max(),

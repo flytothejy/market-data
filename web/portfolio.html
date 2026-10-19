@@ -44,7 +44,7 @@ function render() {
     <input class="f" id="ac" type="number" step="any" min="0" placeholder="평균 매입가($, 선택)" style="width:170px">
     <button class="btn dark" id="add" ${left <= 0 ? 'disabled' : ''}>추가</button>
     <span class="mut s13" id="msg">${left <= 0 ? '무료 한도(10종목)에 도달했어요' : `${left}종목 더 넣을 수 있어요`}</span>
-    <span style="margin-left:auto;display:flex;gap:6px"><button class="btn" disabled>포트폴리오 추가 <span class="pro">PRO</span></button><button class="btn" disabled>알림 받기 <span class="pro">PRO</span></button></span></div>
+    <span style="margin-left:auto;display:flex;gap:6px"><a class="btn dark" href="report.html" style="text-decoration:none">주간 리포트 보기</a><button class="btn" disabled>포트폴리오 추가 <span class="pro">PRO</span></button><button class="btn" disabled>알림 받기 <span class="pro">PRO</span></button></span></div>
     <datalist id="tick">${U.rows.map(r => `<option value="${r.t}">${esc(r.n)}</option>`).join('')}</datalist></div>`;
 
   if (!rows.length) {
