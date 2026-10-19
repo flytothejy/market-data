@@ -16,6 +16,7 @@
   python -m hub run f13                 13F 유명 투자자·대형 운용사 보유 (3차, 분기)
   python -m hub run phase3              3차 전부 (news, f13)
   python -m hub run tenk [--full]       10-K 변화 (PC 전용, 주 1회 수동)
+  python -m hub run build               화면용 JSON 만들기 (site/api/v1, daily·weekly 끝에 자동 실행)
   python -m hub status                  마지막 실행 점검표
   python -m hub sync push|pull|ls [--dry]  Cloudflare R2 동기화
   python -m hub run daily | weekly      Actions 일정용 묶음
@@ -35,13 +36,13 @@ ORDER = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "
 ORDER2 = ["etf", "options", "kr_etf"]
 ORDER3 = ["news", "f13"]
 # Actions 일정용 묶음
-DAILY = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "etf", "options", "kr_etf", "news"]
-WEEKLY = ["profile", "f13"]
+DAILY = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "etf", "options", "kr_etf", "news", "build"]
+WEEKLY = ["profile", "f13", "build"]
 
 
 def job(name):
-    from . import universe, prices, sec, short, profile, etf, options, kr_etf, news, f13, tenk
-    return {"news": news.run, "f13": f13.run, "tenk": tenk.run, "etf": etf.run, "options": options.run, "kr_etf": kr_etf.run, "universe": universe.run, "prices": prices.run, "sec_filings": sec.run_filings,
+    from . import universe, prices, sec, short, profile, etf, options, kr_etf, news, f13, tenk, build
+    return {"build": build.run, "news": news.run, "f13": f13.run, "tenk": tenk.run, "etf": etf.run, "options": options.run, "kr_etf": kr_etf.run, "universe": universe.run, "prices": prices.run, "sec_filings": sec.run_filings,
             "sec_insider": sec.run_insider, "sec_financials": sec.run_financials,
             "short_volume": short.run, "profile": profile.run}[name]
 
@@ -60,7 +61,7 @@ def main():
     ap = argparse.ArgumentParser(prog="python -m hub", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("source", choices=ORDER + ORDER2 + ORDER3 + ["tenk", "phase1", "phase2", "phase3", "daily", "weekly"])
+    r.add_argument("source", choices=ORDER + ORDER2 + ORDER3 + ["tenk", "build", "phase1", "phase2", "phase3", "daily", "weekly"])
     r.add_argument("--limit", type=int, default=0)
     r.add_argument("--full", action="store_true")
     r.add_argument("--days", type=int, default=None)
@@ -70,12 +71,13 @@ def main():
     nt.add_argument("--always", action="store_true")
     sy = sub.add_parser("sync")
     sy.add_argument("action", choices=["push", "pull", "ls"])
+    sy.add_argument("--only", nargs="*", help="이 경로로 시작하는 파일만 (예: site/)")
     sy.add_argument("--dry", action="store_true")
     a = ap.parse_args()
 
     if a.cmd == "sync":
         from . import sync
-        {"push": lambda: sync.push(a.dry), "pull": lambda: sync.pull(a.dry), "ls": sync.ls}[a.action]()
+        {"push": lambda: sync.push(a.dry), "pull": lambda: sync.pull(a.dry, a.only), "ls": sync.ls}[a.action]()
         return
     if a.cmd == "notify":
         from . import notify

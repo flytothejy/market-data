@@ -12,7 +12,7 @@ import pandas as pd
 from .core import DATA, Run, log, read, upsert, write
 
 K_DIR = DATA / "kr_etf"
-US_KEYS = re.compile(r"미국|나스닥|S&P|다우|필라델피아|NYSE|테슬라|엔비디아|애플|마이크로소프트|빅테크|팡|FANG|US|글로벌반도체|美")
+US_KEYS = re.compile(r"미국|나스닥|S&P|다우|필라델피아|NYSE|테슬라|엔비디아|애플|마이크로소프트|빅테크|팡|FANG|(?<![A-Z])US(?![A-Z])|U\.S\.|글로벌반도체|美")
 EXCLUDE = re.compile(r"채권|국채|달러|선물|레버리지|인버스|커버드|액티브")   # 1차 범위: 주식형·현물·패시브
 
 
@@ -68,7 +68,7 @@ def run_api(R, key, limit=0, days=None, full=False):
     A = A.rename(columns={"basDt": "date", "srtnCd": "code", "itmsNm": "name", "clpr": "close", "trqu": "volume", "trPrc": "value",
                           "mrktTotAmt": "mktcap", "nPptTotAmt": "net_assets", "bssIdxIdxNm": "index_name", "bssIdxClpr": "index_close"})
     A["date"] = pd.to_datetime(A["date"], format="%Y%m%d")
-    us = A["name"].astype(str).str.contains(US_KEYS) | A.get("index_name", pd.Series("", index=A.index)).astype(str).str.contains(r"S&P|NASDAQ|Nasdaq|Dow|NYSE|PHLX|US")
+    us = A["name"].astype(str).str.contains(US_KEYS) | A.get("index_name", pd.Series("", index=A.index)).astype(str).str.contains(r"S&P|NASDAQ|Nasdaq|Dow|NYSE|PHLX|(?<![A-Z])US(?![A-Z])|U\.S\.")
     A = A[us & ~A["name"].astype(str).str.contains(EXCLUDE)].copy()
     A["deviation"] = (A["close"] / A["nav"] - 1) * 100
     keep = [c for c in ["date", "code", "name", "close", "nav", "volume", "value", "mktcap", "net_assets", "index_name", "index_close", "deviation"] if c in A]

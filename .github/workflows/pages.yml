@@ -1,0 +1,54 @@
+name: pages
+
+# 사이트 배포 — 기존 대시보드(docs/) + 허브 화면(web/ → /hub/) + 화면용 데이터(R2 site/api → /api/)
+# 저장소 Settings → Pages → Source 를 "GitHub Actions"로 바꿔야 동작
+on:
+  workflow_run:
+    workflows: ["hub", "update-market-data", "consensus"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths: ["docs/**", "web/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pip install -q boto3 pandas
+      - name: pull site data from R2
+        run: python -m hub sync pull --only site/
+      - name: assemble
+        run: |
+          rm -rf _site && mkdir -p _site/hub
+          cp -r docs/. _site/
+          cp -r web/. _site/hub/ 2>/dev/null || true
+          if [ -d data/hub/site/api ]; then cp -r data/hub/site/api _site/api; fi
+          touch _site/.nojekyll
+          du -sh _site; find _site -type f | wc -l
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - id: d
+        uses: actions/deploy-pages@v4

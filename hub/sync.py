@@ -73,7 +73,7 @@ def _remote_index(s3, bucket):
 
 def local_files():
     for p in DATA.rglob("*"):
-        if p.is_file() and not p.name.endswith(".tmp"):
+        if p.is_file() and not p.name.endswith(".tmp") and not p.relative_to(DATA).as_posix().startswith("site.new/"):
             yield p.relative_to(DATA).as_posix(), p
 
 
@@ -89,7 +89,15 @@ def push(dry=False):
         n += 1; size += st
         if not dry:
             s3.upload_file(str(p), b, PREFIX + rel)
-    log(f"올림 {n}개 · {size/1e6:,.1f}MB" + (" (시험)" if dry else ""))
+    # 화면용 결과물은 로컬이 정본: 로컬에서 사라진 파일(빠진 종목 등)은 R2에서도 지움
+    gone = []
+    if (DATA / "site").exists():
+        loc = {rel for rel, _ in local_files() if rel.startswith("site/")}
+        gone = [k for k in rem if k.startswith("site/") and k not in loc]
+        if gone and not dry:
+            for i in range(0, len(gone), 1000):
+                s3.delete_objects(Bucket=b, Delete={"Objects": [{"Key": PREFIX + k} for k in gone[i:i + 1000]]})
+    log(f"올림 {n}개 · {size/1e6:,.1f}MB" + (f" · 지움 {len(gone)}개" if gone else "") + (" (시험)" if dry else ""))
 
 
 def pull(dry=False, only=None):
@@ -98,6 +106,8 @@ def pull(dry=False, only=None):
     n = size = 0
     for rel, (sz, etag) in rem.items():
         if only and not any(rel.startswith(o) for o in only):
+            continue
+        if not only and rel.startswith("site/"):      # 화면용 결과물은 수집에 필요 없음 (매번 새로 만듦)
             continue
         p = DATA / rel
         if p.exists() and p.stat().st_size == sz and ("-" in etag or _md5(p) == etag):

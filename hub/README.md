@@ -69,3 +69,14 @@ python -m hub run tenk --limit 5         :: PC 전용: 새 10-K만 받아 변화
 ## 결과 확인
 실행이 끝날 때마다 점검표가 나옵니다 (종목 수, 빠진 종목, 최신 날짜, 걸린 시간, 주의 사항).
 `[확인 필요]`가 뜨거나 주의 사항이 많으면 그 부분을 그대로 복사해서 알려 주세요.
+
+## 화면용 데이터 (build)
+
+`python -m hub run build` — 원자료로 `data/hub/site/api/v1/` 아래 JSON을 만듭니다 (daily·weekly 끝에 자동 실행).
+
+- `free/universe.json` 종목·ETF 한 줄 요약 + 지표 사전(`hub/fields.py`)
+- `free/stock/{T}.json`, `pro/stock/{T}.json` 종목 상세 (무료/프로)
+- `free/etf/{T}.json`, `free/kr_etf.json`, `free/kr_etf/{코드}.json`, `free/market.json`, `meta.json`
+
+`site.new/`에 다 만든 뒤 `site/`와 바꿔 끼우므로 중간에 실패해도 이전 결과가 남습니다.
+배포는 `.github/workflows/pages.yml` (Settings → Pages → Source: GitHub Actions 필요): `docs/` + `web/`(→ /hub/) + R2의 `site/api`(→ /api/).
