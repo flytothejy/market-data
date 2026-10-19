@@ -602,16 +602,20 @@ def run(limit=0, **_):
         detail["etf_in"] = etf_in.get(t, [])
         if t in g13:
             detail["g13"] = g13[t]
+        if len(tk):                                       # 10-K 변화 숫자는 무료 (최근 6건)
+            cols = [c for c in ["filed", "form", "prev_filed", "rf_new", "sim_rf", "sim_md", "sim_full", "md_unc", "md_neg", "n_rf"] if c in tk]
+            detail["tenk"] = tk.tail(6)[cols].to_dict("records")
         dump(OUT / "free" / "stock" / f"{t}.json", detail)
         pro = {"t": t}
         if t in c_hist:
             pro["cons_hist"] = c_hist[t]
         if cik in ftab:
             pro["fin_annual_full"] = ftab[cik][0]
-        if len(tk):
-            pro["tenk"] = tk.tail(6).to_dict("records")
-            if t in TSg:
-                pro["tenk_new"] = TSg[t].sort_values("rank").head(40)[["acc", "filed", "sentence"]].to_dict("records")
+        if t in TSg:                                      # 새 위험 문장 원문은 프로 — 가장 최근 10-K 것만
+            ts = TSg[t]
+            ts = ts[ts.filed == ts.filed.max()].sort_values("rank").head(40)
+            pro["tenk_new"] = {"filed": ts.filed.iloc[0], "prev_acc": ts.prev_acc.iloc[0] if "prev_acc" in ts else None,
+                               "sentences": ts.sentence.tolist()}
         dump(OUT / "pro" / "stock" / f"{t}.json", pro)
         n_files += 2
 

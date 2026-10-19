@@ -52,6 +52,13 @@ function header(active) {
   <nav class="main">${items.map(([h, l]) => `<a href="${h}" class="${l === active ? 'on' : ''}">${l}</a>`).join('')}</nav>
   <div class="search"><input type="search" placeholder="티커 또는 회사명" aria-label="종목 검색" autocomplete="off"><div class="sugg"></div></div></div>`;
   document.body.prepend(el);
+  if (Plan.isPro()) {                                  // 로그인 전 확인용 프로 미리보기 표시
+    const bar = document.createElement('div');
+    bar.style.cssText = 'background:var(--ink);color:var(--bg);font-size:12.5px;text-align:center;padding:6px 12px';
+    const off = new URL(location.href); off.searchParams.set('pro', '0');
+    bar.innerHTML = `프로 미리보기 중 — 이 브라우저에서만 프로 화면이 보입니다 · <a href="${off.href}" style="color:inherit;text-decoration:underline">끄기</a>`;
+    el.after(bar);
+  }
   const inp = $('input', el), box = $('.sugg', el);
   let sel = -1, list = [];
   const go = r => location.href = `stock.html?t=${encodeURIComponent(r.t)}`;

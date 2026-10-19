@@ -14,7 +14,18 @@ function getJSON(path) {
 }
 
 // 등급: 지금은 모두 무료 사용자. 로그인·결제가 붙으면 여기서 판단
-const Plan = { isPro: () => false, PORTFOLIO_MAX: 10 };
+// 로그인 전 확인용 미리보기: 주소에 ?pro=1 (끄기 ?pro=0) — 이 브라우저에만 기억
+const Plan = {
+  isPro() {
+    try {
+      const q = new URLSearchParams(location.search).get('pro');
+      if (q === '1') localStorage.setItem('hub.preview.pro', '1');
+      if (q === '0') localStorage.removeItem('hub.preview.pro');
+      return localStorage.getItem('hub.preview.pro') === '1';
+    } catch (e) { return new URLSearchParams(location.search).get('pro') === '1'; }
+  },
+  PORTFOLIO_MAX: 10,
+};
 
 const Data = {
   meta: () => getJSON('meta.json'),

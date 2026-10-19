@@ -46,8 +46,8 @@ F = {
     "ib": ("내부자 매수 금액(90일)", "doc", "usd", "free"), "is": ("내부자 매도 금액(90일)", "doc", "usd", "free"),
     "ibn": ("내부자 매수 인원(90일)", "doc", "int", "free"), "ib_last": ("최근 내부자 매수일", "doc", "date", "free"),
     "k8": ("8-K 건수(30일)", "doc", "int", "free"), "k8_last": ("최근 8-K", "doc", "text", "free"),
-    "k10": ("최근 10-K 제출일", "doc", "date", "free"), "rf_new": ("10-K 새 위험 문장 비율", "doc", "pct", "pro"),
-    "rf_sim": ("10-K 위험요인 유사도", "doc", "num", "pro"), "md_unc": ("경영진 논의 불확실성 단어", "doc", "pct", "pro"),
+    "k10": ("최근 10-K 제출일", "doc", "date", "free"), "rf_new": ("10-K 새 위험 문장 비율", "doc", "pct", "free"),
+    "rf_sim": ("10-K 위험요인 유사도", "doc", "num", "free"), "md_unc": ("경영진 논의 불확실성 단어", "doc", "pct", "free"),
     "f144": ("매도 예정 신고(Form 144, 30일)", "doc", "int", "free"), "g13d": ("대주주 지분 신고(13D/G, 90일)", "doc", "int", "free"),
     # 뉴스
     "nw7": ("뉴스 건수(7일)", "news", "int", "free"), "nw_last": ("최근 뉴스", "news", "text", "free"),
