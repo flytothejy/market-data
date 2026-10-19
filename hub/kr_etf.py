@@ -23,7 +23,7 @@ def classify(name):
     return "기타 미국"
 
 
-API = "https://apis.data.go.kr/1160100/service/GetSecuritiesProductInfoService/getETFPriceInfo"
+API = "https://apis.data.go.kr/1160100/GetSecuritiesProductInfoService_V2/getETFPriceInfo_V2"
 
 
 def run_api(R, key, limit=0, days=None, full=False):
