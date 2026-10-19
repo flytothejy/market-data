@@ -93,7 +93,8 @@ def run_api(R, key, limit=0, days=None, full=False):
 def run(limit=0, days=None, full=False, **_):
     R = Run("kr_etf")
     import os
-    key = os.environ.get("DATA_GO_KR_KEY", "").strip()
+    from .core import data_go_kr_key
+    key = data_go_kr_key("etf")
     if key:
         return run_api(R, key, limit, days, full)
     try:

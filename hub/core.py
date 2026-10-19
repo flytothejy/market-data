@@ -73,6 +73,12 @@ def sec_http():
     return Http({"User-Agent": f"market-data-hub {email}", "Accept-Encoding": "gzip, deflate"}, rate=8)
 
 
+def data_go_kr_key(api):
+    """공공데이터포털 키: 계정당 하나라 보통 DATA_GO_KR_KEY 하나로 충분.
+    특정 API만 다른 키를 써야 하면 DATA_GO_KR_KEY_<API> 로 덮어씀 (예: DATA_GO_KR_KEY_ETF)"""
+    return (os.environ.get(f"DATA_GO_KR_KEY_{api.upper()}") or os.environ.get("DATA_GO_KR_KEY") or "").strip()
+
+
 # ---------------------------------------------------------------- 저장
 def upsert(path: Path, new: pd.DataFrame, keys, sort=None):
     """parquet 파일에 행 추가 — 같은 키는 새 값으로 덮어씀"""
