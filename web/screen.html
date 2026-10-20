@@ -78,7 +78,7 @@ function render() {
   $('#count').textContent = `${R.length.toLocaleString()}개`;
   $('#chips').innerHTML = Object.entries(filt).map(([k, [a, b]]) => `<span class="chip">${esc(lab(k))} ${a != null ? '≥ ' + fmt(a, fm(k)) : ''}${a != null && b != null ? ' · ' : ''}${b != null ? '≤ ' + fmt(b, fm(k)) : ''}<button data-k="${k}" aria-label="삭제">×</button></span>`).join('');
   $('#chips').querySelectorAll('button').forEach(b => b.onclick = () => { delete filt[b.dataset.k]; render(); });
-  $('#tbl').innerHTML = `<thead><tr><th class="sort ${sortK === 't' ? (sortD > 0 ? 'asc' : 'desc') : ''}" data-k="t">티커</th>${cols.map(k => `<th class="sort ${sortK === k ? (sortD > 0 ? 'asc' : 'desc') : ''} ${['n', 'sec', 'grp', 'k8_last', 'nw_last'].includes(k) ? 'l' : ''}" data-k="${k}">${esc(lab(k))}</th>`).join('')}</tr></thead>
+  $('#tbl').innerHTML = `<thead><tr><th class="sort ${sortK === 't' ? (sortD > 0 ? 'asc' : 'desc') : ''}" data-k="t">티커</th>${cols.map(k => `<th class="sort ${sortK === k ? (sortD > 0 ? 'asc' : 'desc') : ''} ${['n', 'sec', 'grp', 'k8_last', 'nw_last'].includes(k) ? 'l' : ''}" data-k="${k}">${esc(lab(k))}${tip(k)}</th>`).join('')}</tr></thead>
     <tbody>${R.slice(0, shown).map(r => `<tr><td><a href="stock.html?t=${encodeURIComponent(r.t)}"><b>${esc(r.t)}</b></a></td>${cols.map(k => cell(r, k)).join('')}</tr>`).join('')}</tbody>`;
   $('#tbl').querySelectorAll('th.sort').forEach(th => th.onclick = () => { const k = th.dataset.k; sortD = sortK === k ? -sortD : (k === 't' || k === 'n' ? 1 : -1); sortK = k; render(); });
   $('#more').style.display = R.length > shown ? '' : 'none';

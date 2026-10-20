@@ -133,3 +133,15 @@ footer.foot{font-size:12px;color:var(--faint);text-align:center;margin-top:24px;
 .clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
 .clamp.open{display:block}
 @media (max-width:760px){table.t td:first-child,table.t th:first-child{position:sticky;left:0;background:var(--card);z-index:1}table.t th:first-child{z-index:2}}
+
+/* 관심 종목 별 */
+.star{font:inherit;font-size:16px;line-height:1;background:none;border:0;color:var(--faint);cursor:pointer;padding:2px 4px;min-width:28px;min-height:28px}
+.star.on,.btn.watch.on{color:var(--accent)}
+.btn.watch.on{background:var(--card);color:var(--accent);border-color:var(--accent)}
+/* 지표 설명 */
+.tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--line);color:var(--faint);font-size:10px;font-weight:700;margin-left:4px;cursor:help;position:relative;vertical-align:1px;font-style:normal}
+.tip:hover,.tip:focus{color:var(--ink);border-color:var(--muted);outline:none}
+.tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:50%;top:20px;transform:translateX(-50%);width:max-content;max-width:min(260px,70vw);white-space:normal;text-align:left;
+  background:var(--ink);color:var(--bg);font-size:12px;font-weight:400;line-height:1.5;padding:8px 10px;border-radius:8px;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+th .tip:hover::after,th .tip:focus::after{left:auto;right:-8px;transform:none}
+.kv{overflow:visible}

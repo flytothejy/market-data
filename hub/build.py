@@ -605,8 +605,15 @@ def run(limit=0, **_):
         ts_ = p.get("earningsTimestampStart") if p.get("earningsTimestampStart") == p.get("earningsTimestampStart") else p.get("earningsTimestamp")
         if ts_ is not None and ts_ == ts_:
             try:
-                ed = pd.to_datetime(float(ts_), unit="s").date()
-                row["c_next"] = ed if ed >= (now - pd.Timedelta(days=3)).date() else None
+                et = pd.to_datetime(float(ts_), unit="s", utc=True).tz_convert("America/New_York")
+                ed = et.date()
+                if ed >= (now - pd.Timedelta(days=3)).date():
+                    row["c_next"] = ed
+                    est = p.get("isEarningsDateEstimate")
+                    # 시각이 장 전/후로 확정된 경우만 표시 (예상일이면 시각이 의미 없음)
+                    if est is not True and est == est:
+                        row["c_when"] = "장 전" if et.hour < 12 else "장 후" if et.hour >= 16 else None
+                    row["c_est"] = bool(est) if est == est and est is not None else None
             except Exception:
                 pass
         # 공매도·옵션
@@ -638,6 +645,50 @@ def run(limit=0, **_):
         k10 = fl[fl.form.isin(["10-K", "20-F", "40-F"])]
         row["k10"] = k10.filed.max() if len(k10) else None
         row["f144"] = int(((fl.form == "144") & (fl.filed >= now - pd.Timedelta(days=30))).sum())
+        # 실적 발표 때 주가 반응: 8-K(2.02 실적 발표) 제출일 기준 전날 종가 → 다음날 종가 (장 전·장 후 발표 모두 포함)
+        er_hist = []
+        if g is not None and len(g) and len(fl):
+            e8 = sorted(set(fl[fl.form.str.startswith("8-K") & fl["items"].astype(str).str.contains("2.02", regex=False)].filed.dropna().dt.normalize()))
+            # 2.02는 인도량 발표 등에도 쓰임(테슬라) → 분기·연간 보고서 제출일 직전 40일 안의 마지막 2.02만 실적 발표로 봄
+            rq = sorted(set(fl[fl.form.isin(["10-Q", "10-K", "20-F", "40-F", "10-Q/A"]) & ~fl.form.str.endswith("/A")].filed.dropna().dt.normalize()))
+            ds = []
+            for f in rq:
+                c = [d for d in e8 if f - pd.Timedelta(days=40) <= d <= f + pd.Timedelta(days=1)]
+                if c and (not ds or c[-1] != ds[-1]):
+                    ds.append(c[-1])
+            if e8 and (not ds or e8[-1] > ds[-1]) and (not rq or e8[-1] > rq[-1]) and (now - e8[-1]).days <= 40:
+                ds.append(e8[-1])                         # 방금 발표하고 보고서는 아직 안 낸 경우
+            pxa = g.set_index("date").adj_close
+            for d in ds[-12:]:
+                i = pxa.index.searchsorted(d)
+                if 1 <= i and i + 1 < len(pxa):
+                    er_hist.append([str(d.date()), round(float(pxa.iloc[i + 1] / pxa.iloc[i - 1] - 1), 4)])
+        if er_hist:
+            mv = [abs(x[1]) for x in er_hist[-8:]]
+            row["er_avg"] = sum(mv) / len(mv)
+        er_exp = None
+        opx = OPg.get(t)
+        if opx is not None and len(opx) and row.get("c_next"):
+            o = opx.sort_values("date").iloc[-1]
+            try:
+                # 발표일 이후 첫 만기(가까운 만기 → 30일 만기 순)의 등가격 내재변동성 → 그 만기까지 예상 변동폭 (±1 표준편차)
+                for ek, ik in (("exp_near", "iv_atm_near"), ("exp30", "iv_atm30")):
+                    ex = pd.Timestamp(o[ek])
+                    dte = (ex - pd.Timestamp(o["date"])).days
+                    # 발표 뒤 7일 안에 끝나는 만기만 (멀면 발표와 무관한 평소 변동이 섞여 과거 발표 반응과 비교할 수 없음)
+                    if row["c_next"] <= ex.date() <= row["c_next"] + dt.timedelta(days=7) and 0 < dte <= 14 and o[ik] == o[ik]:
+                        # 만기까지에는 발표와 무관한 평소 거래일도 섞임 → 평소 변동성(60일)만큼의 분산을 빼서
+                        # 과거 발표 반응(전날→다음 날, 2거래일)과 같은 기준으로 맞춤
+                        var = float(o[ik]) ** 2 * dte / 365
+                        nd = max(0, int(np.busday_count(pd.Timestamp(o["date"]).date() + dt.timedelta(days=1), ex.date() + dt.timedelta(days=1))) - 2)
+                        hv = row.get("vol")
+                        if hv is not None and hv == hv:
+                            var = max(var - hv ** 2 * nd / 252, var * 0.25)
+                        row["er_imp"] = math.sqrt(var)
+                        er_exp = str(ex.date())
+                        break
+            except Exception:
+                pass
         row["g13d"] = int((fl.form.str.contains("13D|13G", regex=True) & (fl.filed >= now - pd.Timedelta(days=90))).sum())
         ins = INSg.get(t, INS.iloc[0:0])
         if len(ins):
@@ -690,6 +741,8 @@ def run(limit=0, **_):
         if len(nw):
             detail["news"] = [{"d": x.published, "t": x.title, "s": x.source, "u": x.url, "k": x.kind} for x in nw.sort_values("published", ascending=False).head(25).itertuples()]
         detail["etf_in"] = etf_in.get(t, [])
+        detail["er"] = {"next": row.get("c_next"), "when": row.get("c_when"), "est": row.get("c_est"), "imp": row.get("er_imp"),
+                        "exp": er_exp, "avg": row.get("er_avg"), "hist": er_hist}
         if t in g13:
             detail["g13"] = g13[t]
         if len(tk):                                       # 10-K 변화 숫자는 무료 (최근 6건)
@@ -783,7 +836,7 @@ def run(limit=0, **_):
     # ---- universe.json + market.json + meta.json
     U2 = pd.DataFrame(rows)
     fields = {k: {"label": v[0], "cat": v[1], "fmt": v[2], "tier": v[3]} for k, v in FIELDS.items()}
-    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next"]
+    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est"]
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")

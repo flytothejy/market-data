@@ -85,7 +85,7 @@ function kvGrid(m, keys, F) {
     let txt = f.fmt === 'pct' && ['r1d', 'r1w', 'r1m', 'r3m', 'r6m', 'r1y', 'rytd', 'r12_1', 'd50', 'd200', 'hi52', 'lo52', 'rev_g', 'rev_qg', 'ni_g', 'c_chg90', 'c_upside', 'c_eps_g', 'c_rev_g', 'c_surp', 'c_ratio'].includes(k) ? pctS(v)
       : k === 'om_chg' || k === 'sv_chg' ? (v == null ? '-' : `<span class="${cls(v)}">${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%p</span>`) : fmt(v, f.fmt);
     if (f.tier === 'pro' && !Plan.isPro()) txt = '<span class="pro">PRO</span>';
-    return `<div><span>${esc(f.label)}</span><b>${txt}</b></div>`;
+    return `<div><span>${esc(f.label)}${tip(k)}</span><b>${txt}</b></div>`;
   }).join('')}</div>`;
 }
 
@@ -109,7 +109,8 @@ function headBlock(m, extraTags) {
   return `<div class="hero"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h1>${esc(m.t)}</h1><span class="mut" style="font-size:17px">${esc(m.n)}</span></div>
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b style="font-size:28px" class="num">${fmt(m.px, 'px')}</b>${pctS(m.r1d)}
     <span class="mut s13">${m.mcap ? '시가총액 ' + fmtUsd(m.mcap) : m.aum ? '순자산 ' + fmtUsd(m.aum) : ''}</span></div>
-    <div class="pill-row">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
+    <div class="pill-row" style="align-items:center">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}
+      <span style="margin-left:auto;display:flex;gap:6px">${watchBtn(m.t)}<a class="btn" href="compare.html?t=${encodeURIComponent([m.t, ...Watch.list().filter(x => x !== m.t)].slice(0, 3).join(','))}" style="text-decoration:none">비교하기</a></span></div>
     ${m.s1 ? `<p style="margin:6px 0 0;font-size:15px;color:var(--ink)">${esc(m.s1)}</p>` : ''}</div>`;
 }
 
@@ -136,11 +137,33 @@ async function renderStock(U, d, P) {
   h += sec('ov', '', '개요', `${esc(d.asof || '')} 종가 기준`, chartCard('pc') +
     (d.summary ? card('회사 소개', `${d.web ? `<a href="${esc(d.web)}" target="_blank" rel="noopener">${esc(d.web.replace(/^https?:\/\//, ''))}</a>` : ''}${d.emp ? ` · 직원 ${Math.round(d.emp).toLocaleString()}명` : ''}`, `<p class="clamp" onclick="this.classList.toggle('open')" style="margin:0;font-size:14px;color:var(--muted)">${esc(d.summary)}</p>`) : ''));
 
+  // 실적 발표
+  const er = d.er || {};
+  let erCard = '';
+  if (er.next || (er.hist && er.hist.length)) {
+    const hist = (er.hist || []).slice(-8);
+    const mx = Math.max(0.05, ...hist.map(x => Math.abs(x[1])));
+    const bars8 = hist.length ? `<div style="display:flex;align-items:center;gap:4px;height:120px;position:relative;border-bottom:0">
+        ${hist.map(([dd, v]) => `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;height:100%" title="${dd} ${fmt(v, 'pct', { sign: true })}">
+          <div style="height:50%;display:flex;align-items:flex-end">${v > 0 ? `<i style="display:block;width:100%;height:${v / mx * 100}%;background:var(--up);border-radius:3px 3px 0 0"></i>` : ''}</div>
+          <div style="height:50%;display:flex;align-items:flex-start;border-top:1px solid var(--line)">${v < 0 ? `<i style="display:block;width:100%;height:${-v / mx * 100}%;background:var(--dn);border-radius:0 0 3px 3px"></i>` : ''}</div></div>`).join('')}</div>
+      <div style="display:flex;gap:4px;font-size:11px;color:var(--faint)">${hist.map(([dd, v]) => `<span style="flex:1;text-align:center"><span class="${cls(v)}">${fmt(v, 'pct', { sign: true })}</span><br>${dd.slice(2, 7).replace('-', '.')}</span>`).join('')}</div>` : '';
+    const ratio = er.imp && er.avg ? er.imp / er.avg : null;
+    const verdict = ratio == null ? '' : ratio > 1.5 ? '옵션 시장은 이번 발표에서 평소보다 큰 움직임을 예상하고 있어요' : ratio < 0.8 ? '옵션 시장은 이번 발표에서 평소보다 작은 움직임을 예상하고 있어요' : '옵션 시장의 예상은 과거 평균과 비슷한 수준이에요';
+    erCard = card('실적 발표', '과거 발표 때 주가 반응과 옵션 시장이 예상하는 이번 변동폭',
+      `<div class="kv"><div><span>다음 발표${tip('c_next')}</span><b>${er.next ? esc(er.next) : '-'}</b>${er.when || er.est ? `<span>${er.when ? er.when + ' 발표' : ''}${er.est ? '예상일' : ''}</span>` : ''}</div>
+        <div><span>옵션 예상 변동폭${tip('er_imp')}</span><b>${er.imp != null ? '±' + fmt(er.imp, 'pct') : '-'}</b></div>
+        <div><span>과거 평균 변동${tip('er_avg')}</span><b>${er.avg != null ? '±' + fmt(er.avg, 'pct') : '-'}</b></div>
+        <div><span>최근 서프라이즈${tip('c_surp')}</span><b>${pctS(m.c_surp)}</b></div></div>
+      ${verdict ? `<div class="s13">${verdict}${er.exp ? ` <span class="faint">(만기 ${esc(er.exp)} 옵션 기준)</span>` : ''}</div>` : er.next && er.imp == null ? '<div class="small faint">옵션 예상 변동폭은 옵션을 수집하는 시가총액 상위 종목만, 발표 직후 끝나는 만기가 생기면(보통 발표 주간) 보여요</div>' : ''}
+      ${hist.length ? `<div class="small mut">최근 ${hist.length}번의 실적 발표 때 주가 변동 (발표 전날 → 다음 날 종가)</div>${bars8}` : ''}`);
+  }
+
   // 컨센서스
   const consKeys = ['c_n', 'c_up', 'c_dn', 'c_ratio', 'c_chg90', 'c_eps_g', 'c_rev_g', 'c_fpe', 'c_upside', 'c_buy', 'c_surp', 'c_beats', 'c_next'];
   const fakeHist = `<div style="height:140px;background:linear-gradient(180deg,transparent 40%,var(--soft));border-radius:10px"></div>`;
   h += sec('cons', 'cons', '컨센서스', '애널리스트 전망과 그 변화',
-    (m.c_n ? card('', '', kvGrid(m, consKeys, F)) : card('', '', `<div class="mut s13">이 종목의 컨센서스는 준비 중입니다. 지금은 S&P 500 종목부터 제공하고 있어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
+    erCard + (m.c_n ? card('', '', kvGrid(m, consKeys, F)) : card('', '', `<div class="mut s13">이 종목의 컨센서스는 준비 중입니다. 지금은 S&P 500 종목부터 제공하고 있어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
     card('전망치 일별 이력 <span class="pro">PRO</span>', '내년 EPS 전망과 30일 상향·하향 건수를 날마다 쌓은 기록',
       !isPro ? lockBox(fakeHist, '전망치가 언제, 얼마나 바뀌었는지 일별로 볼 수 있어요')
         : P.cons_hist ? `<div class="small mut">내년 EPS 전망 ($)</div><div class="chart sm" id="ch-eps"></div><div class="small mut">30일 상향(위) · 하향(아래) 건수</div><div class="chart sm" id="ch-rev" style="height:130px"></div>

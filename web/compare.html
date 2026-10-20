@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>종목 허브 — 비교</title>
+<link rel="stylesheet" href="assets/app.css">
+<script src="assets/vendor/lightweight-charts.standalone.production.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/ui.js"></script>
+<style>
+.cmp-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.cmp-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 10px;border:1px solid var(--line);border-radius:99px;font-size:13px;background:var(--card)}
+.cmp-chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.cmp-chip button{border:0;background:none;color:var(--faint);cursor:pointer;font-size:15px;min-width:24px;min-height:24px}
+table.t td.best{font-weight:750}
+table.t td.best::after{content:' ●';font-size:8px;color:var(--accent);vertical-align:2px}
+tr.grp td{background:var(--soft);font-weight:700;font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">불러오는 중…</div></div>
+<script>
+header('비교');
+const COLORS = ['#c2410c', '#1d4ed8', '#15803d', '#7c3aed', '#a16207'];
+const MAX = 5;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+// 방향: 1 = 높을수록 좋음, -1 = 낮을수록 좋음, 0 = 표시만
+const GROUPS = [
+  ['info', '기본', [['mcap', 0], ['sec', 0]]],
+  ['cons', '컨센서스', [['c_ratio', 1], ['c_upside', 1], ['c_buy', 1], ['c_eps_g', 1], ['c_rev_g', 1], ['c_fpe', -1], ['c_surp', 1], ['c_beats', 1], ['c_next', 0], ['er_avg', 0], ['er_imp', 0]]],
+  ['fin', '재무', [['rev', 0], ['rev_g', 1], ['rev_qg', 1], ['gm', 1], ['om', 1], ['om_chg', 1], ['nm', 1], ['roe', 1], ['fcfy', 1], ['pe', -1], ['ps', -1], ['pb', -1], ['de', -1], ['dy', 0], ['shy', 1]]],
+  ['tech', '차트·수급', [['r1m', 0], ['r3m', 0], ['r1y', 0], ['rytd', 0], ['d200', 0], ['hi52', 0], ['rsi', 0], ['vol', 0], ['sv', 0], ['si', 0], ['iv', 0]]],
+  ['doc', '공시·내부자', [['ib', 0], ['is', 0], ['k8', 0], ['rf_new', 0]]],
+];
+const SIGNED = new Set(['r1m', 'r3m', 'r1y', 'rytd', 'd200', 'hi52', 'rev_g', 'rev_qg', 'c_ratio', 'c_upside', 'c_eps_g', 'c_rev_g', 'c_surp']);
+
+let U, tickers = [];
+const setUrl = () => { const u = new URL(location.href); u.searchParams.set('t', tickers.join(',')); history.replaceState(null, '', u); };
+
+function cell(k, v, F) {
+  const f = F[k] || {};
+  if (k === 'sec') return esc(secKo(v));
+  if (k === 'om_chg') return v == null ? '-' : `<span class="${cls(v)}">${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%p</span>`;
+  if (k === 'er_avg' || k === 'er_imp') return v == null ? '-' : '±' + fmt(v, 'pct');
+  if (SIGNED.has(k)) return pctS(v);
+  return fmt(v, f.fmt);
+}
+
+async function render() {
+  const F = U.fields;
+  const rows = tickers.map(t => U.rows.find(r => r.t === t)).filter(Boolean);
+  const S = U.rows.filter(r => r.k === 'stock' || r.k === 'etf');
+  let h = `<div class="hero"><h1>종목 비교</h1><p>최대 ${MAX}개 종목·ETF를 같은 기준으로 나란히 봅니다. ● 표시는 그 줄에서 가장 좋은 값이에요(높을수록·낮을수록 좋은 지표만).</p></div>`;
+  h += `<div class="card"><div class="cmp-add">${rows.map((r, i) => `<span class="cmp-chip"><i style="background:${COLORS[i]}"></i><a href="stock.html?t=${encodeURIComponent(r.t)}"><b>${esc(r.t)}</b></a><span class="mut">${esc((r.n || '').slice(0, 16))}</span><button data-rm="${esc(r.t)}" aria-label="${esc(r.t)} 빼기">×</button></span>`).join('')}
+    ${rows.length < MAX ? `<input class="f" id="add" list="tk" placeholder="티커 추가 (예: MSFT)" autocomplete="off" style="width:180px"><datalist id="tk">${S.map(r => `<option value="${esc(r.t)}">${esc(r.n || '')}</option>`).join('')}</datalist><button class="btn" id="addb">추가</button>` : ''}
+    ${Watch.list().length ? `<button class="btn" id="usew">관심 종목으로 채우기</button>` : ''}</div></div>`;
+  if (!rows.length) {
+    h += `<div class="card"><div class="mut s13">위에서 비교할 종목을 추가하세요. 예: <a href="?t=AAPL,MSFT,GOOGL">AAPL · MSFT · GOOGL</a> · <a href="?t=NVDA,AMD,AVGO,INTC">NVDA · AMD · AVGO · INTC</a> · <a href="?t=SPY,QQQ,SCHD">SPY · QQQ · SCHD</a></div></div>`;
+    $('#app').innerHTML = h; bind(); footer(); return;
+  }
+  h += `<div class="card"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h3>수익률 비교</h3><span class="small mut">시작일을 0%로 맞춘 주간 종가(배당 포함 수정주가)</span><div class="seg" id="seg" style="margin-left:auto"></div></div><div class="chart" id="cc"></div><div class="pill-row s13" id="leg"></div></div>`;
+  let tb = `<thead><tr><th>지표</th>${rows.map((r, i) => `<th><span class="cat-dot" style="background:${COLORS[i]}"></span>${esc(r.t)}</th>`).join('')}</tr></thead><tbody>`;
+  for (const [cat, title, keys] of GROUPS) {
+    const ks = keys.filter(([k]) => rows.some(r => r[k] != null));
+    if (!ks.length) continue;
+    tb += `<tr class="grp"><td colspan="${rows.length + 1}"><span class="cat-dot c-${cat}"></span>${title}</td></tr>`;
+    for (const [k, dir] of ks) {
+      const vals = rows.map(r => r[k]);
+      let best = -1;
+      if (dir && rows.length > 1) {
+        const ok = vals.map((v, i) => [v, i]).filter(([v]) => v != null && typeof v === 'number' && !(k === 'pe' || k === 'c_fpe' || k === 'ps' || k === 'pb' ? v <= 0 : false));
+        if (ok.length > 1) {
+          const top = ok.sort((a, b) => dir * (b[0] - a[0]))[0][0];
+          if (ok.some(([v]) => v !== top)) best = top;               // 모두 같으면 표시 안 함
+        }
+      }
+      const isBest = v => best !== -1 && v === best;
+      tb += `<tr><td>${esc((F[k] || {}).label || (k === 'sec' ? '업종' : k))}${tip(k)}</td>${vals.map(v => `<td class="num ${isBest(v) ? 'best' : ''}">${cell(k, v, F)}</td>`).join('')}</tr>`;
+    }
+  }
+  tb += `<tr><td>한 줄 요약</td>${rows.map(r => `<td style="white-space:normal;min-width:160px;text-align:left;font-size:12.5px" class="mut">${esc(r.s1 || '')}</td>`).join('')}</tr></tbody>`;
+  h += `<div class="card"><h3>지표 비교</h3><div class="tbl-wrap"><table class="t">${tb}</table></div></div>`;
+  $('#app').innerHTML = h;
+  bind();
+  footer();
+  // 가격 이력
+  const ds = await Promise.all(rows.map(r => (r.k === 'etf' ? Data.etf(r.t) : Data.stock(r.t)).catch(() => null)));
+  const chart = LightweightCharts.createChart($('#cc'), {
+    autoSize: true, layout: { background: { color: 'transparent' }, textColor: css('--muted'), fontSize: 11 },
+    grid: { vertLines: { visible: false }, horzLines: { color: css('--line2') } },
+    rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false }, localization: { locale: 'ko-KR' },
+  });
+  const series = rows.map((r, i) => chart.addLineSeries({ color: COLORS[i], lineWidth: 2, priceFormat: { type: 'custom', formatter: v => (v > 0 ? '+' : '') + v.toFixed(0) + '%' } }));
+  const draw = years => {
+    const from = new Date(Date.now() - years * 365.25 * 864e5).toISOString().slice(0, 10);
+    const start = ds.reduce((s, d) => d && d.wk ? (d.wk.d.find(x => x >= from) > s ? d.wk.d.find(x => x >= from) : s) : s, from);
+    const leg = [];
+    ds.forEach((d, i) => {
+      if (!d || !d.wk) { series[i].setData([]); return; }
+      const pts = d.wk.d.map((t, j) => [t, d.wk.c[j]]).filter(([t]) => t >= start);
+      if (!pts.length) { series[i].setData([]); return; }
+      const b = pts[0][1];
+      series[i].setData(pts.map(([t, c]) => ({ time: t, value: (c / b - 1) * 100 })));
+      leg.push(`<span><span class="cat-dot" style="background:${COLORS[i]}"></span><b>${esc(rows[i].t)}</b> <span class="${cls(pts.at(-1)[1] / b - 1)}">${fmt(pts.at(-1)[1] / b - 1, 'pct', { sign: true })}</span></span>`);
+    });
+    $('#leg').innerHTML = leg.join('') + `<span class="faint">${esc(start)}부터</span>`;
+    chart.timeScale().fitContent();
+  };
+  const seg = $('#seg');
+  [['1년', 1], ['3년', 3], ['5년', 5], ['10년', 10]].forEach(([l, y], i) => {
+    const b = document.createElement('button'); b.className = 'btn' + (i === 0 ? ' on' : ''); b.textContent = l;
+    b.onclick = () => { seg.querySelectorAll('.btn').forEach(x => x.classList.remove('on')); b.classList.add('on'); draw(y); };
+    seg.append(b);
+  });
+  draw(1);
+}
+
+function bind() {
+  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { tickers = tickers.filter(t => t !== b.dataset.rm); setUrl(); render(); });
+  const add = () => {
+    const v = ($('#add').value || '').trim().toUpperCase();
+    const r = U.rows.find(x => x.t === v) || U.rows.find(x => (x.n || '').toUpperCase().includes(v));
+    if (!r) { $('#add').value = ''; $('#add').placeholder = '찾을 수 없어요'; return; }
+    if (!tickers.includes(r.t) && tickers.length < MAX) tickers.push(r.t);
+    setUrl(); render();
+  };
+  if ($('#addb')) { $('#addb').onclick = add; $('#add').onkeydown = e => { if (e.key === 'Enter') add(); }; }
+  if ($('#usew')) $('#usew').onclick = () => { tickers = [...new Set([...tickers, ...Watch.list()])].filter(t => U.rows.some(r => r.t === t)).slice(0, MAX); setUrl(); render(); };
+}
+
+(async () => {
+  try { U = await Data.universe(); }
+  catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
+  tickers = [...new Set((qs('t') || '').toUpperCase().split(',').map(x => x.trim()).filter(Boolean))].filter(t => U.rows.some(r => r.t === t)).slice(0, MAX);
+  render();
+})();
+</script>
+</body>
+</html>

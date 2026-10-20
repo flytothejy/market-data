@@ -45,7 +45,7 @@ const pctS = v => `<span class="${cls(v)} num">${fmt(v, 'pct', { sign: true })}<
 
 // ---- 상단
 function header(active) {
-  const items = [['index.html', '둘러보기'], ['stock.html', '종목'], ['screen.html', '검색'], ['portfolio.html', '포트폴리오']];
+  const items = [['index.html', '둘러보기'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['portfolio.html', '포트폴리오']];
   const el = document.createElement('header');
   el.className = 'top';
   el.innerHTML = `<div class="in"><a class="brand" href="index.html">종목 허브</a>
@@ -110,3 +110,77 @@ function lockBox(inner, msg = '프로 멤버십에서 볼 수 있어요') {
 }
 
 const qs = k => new URLSearchParams(location.search).get(k);
+
+// ---- 관심 종목 (이 브라우저에 저장 — 로그인이 붙으면 서버 저장으로 바꿈)
+const Watch = {
+  KEY: 'hub.watch.v1',
+  list() { try { return JSON.parse(localStorage.getItem(this.KEY)) || []; } catch (e) { return this._mem || []; } },
+  save(a) { this._mem = a; try { localStorage.setItem(this.KEY, JSON.stringify(a)); } catch (e) { } },
+  has(t) { return this.list().includes(t); },
+  toggle(t) { const a = this.list(); const i = a.indexOf(t); i >= 0 ? a.splice(i, 1) : a.unshift(t); this.save(a); return i < 0; },
+};
+// 포트폴리오 보유 종목 (포트폴리오 화면과 같은 저장소)
+function portfolioTickers() {
+  try { const p = JSON.parse(localStorage.getItem('hub.portfolio.v1')); return (p && p.items || []).map(x => x.t); } catch (e) { return []; }
+}
+const watchBtn = t => `<button class="btn watch ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" aria-pressed="${Watch.has(t)}">${Watch.has(t) ? '★ 관심 종목' : '☆ 관심 종목에 추가'}</button>`;
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-watch]');
+  if (!b) return;
+  e.preventDefault();
+  const on = Watch.toggle(b.dataset.watch);
+  document.querySelectorAll(`[data-watch="${CSS.escape(b.dataset.watch)}"]`).forEach(x => {
+    x.classList.toggle('on', on); x.setAttribute('aria-pressed', on);
+    if (x.classList.contains('watch')) x.textContent = on ? '★ 관심 종목' : '☆ 관심 종목에 추가';
+    else x.textContent = on ? '★' : '☆';
+  });
+  document.dispatchEvent(new CustomEvent('watch-change'));
+});
+const starBtn = t => `<button class="star ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" title="관심 종목" aria-label="${esc(t)} 관심 종목">${Watch.has(t) ? '★' : '☆'}</button>`;
+
+// ---- 지표 설명 (라벨 옆 ? 에 마우스를 올리거나 누르면 표시)
+const GLOSS = {
+  c_ratio: '최근 30일 동안 내년 EPS 전망을 올린 애널리스트 수에서 내린 수를 빼고, 전체 수로 나눈 값. 플러스면 전망이 좋아지는 중',
+  c_up: '최근 30일 동안 내년 EPS 전망을 올린 애널리스트 수', c_dn: '최근 30일 동안 내년 EPS 전망을 내린 애널리스트 수',
+  c_chg90: '90일 전과 비교한 내년 EPS 전망치의 변화율',
+  c_upside: '애널리스트 평균 목표가가 지금 주가보다 얼마나 높은지',
+  c_buy: '매수·적극 매수 의견을 낸 애널리스트의 비중',
+  c_fpe: '지금 주가 ÷ 내년 EPS 전망. 미래 이익 기준으로 몇 년 치 이익만큼의 가격인지',
+  c_surp: '직전 분기 실제 EPS가 전망치보다 얼마나 높았는지(+) 낮았는지(−)',
+  c_beats: '최근 4개 분기 중 실제 EPS가 전망치를 넘은 횟수',
+  c_next: '회사가 발표했거나 예상되는 다음 실적 발표일 (미국 동부 기준)',
+  er_avg: '최근 8번의 실적 발표 때 주가가 위아래로 평균 얼마나 움직였는지 (발표 전날 종가 → 다음 날 종가, 방향 무시)',
+  er_imp: '발표 직후 끝나는 옵션 가격이 예상하는 발표 전후 주가 변동폭(±1 표준편차, 약 68% 확률 범위). 만기까지 섞인 평소 거래일의 변동은 빼고 계산. 발표 주간에만 표시',
+  rev: '최근 4개 분기 매출 합계 (SEC 제출 재무제표 기준)', rev_g: '최근 4개 분기 매출 합계를 1년 전 같은 기간과 비교',
+  rev_qg: '가장 최근 분기 매출을 1년 전 같은 분기와 비교',
+  gm: '매출에서 원가를 뺀 매출총이익이 매출의 몇 %인지. 높을수록 가격 결정력이 강한 편',
+  om: '본업에서 남긴 영업이익이 매출의 몇 % 인지 (최근 4개 분기 합계 기준)',
+  om_chg: '영업이익률이 1년 전보다 몇 %p 바뀌었는지', nm: '최종 순이익이 매출의 몇 %인지',
+  ni_g: '최근 4개 분기 순이익 합계를 1년 전과 비교', eps: '주당 순이익. 최근 4개 분기 합계',
+  fcf: '영업으로 번 현금에서 설비투자를 뺀 돈. 배당·자사주 매입·부채 상환에 쓸 수 있는 현금',
+  roe: '순이익 ÷ 자기자본. 주주 돈으로 1년에 얼마를 벌었는지', roa: '순이익 ÷ 총자산',
+  de: '장기부채 ÷ 자기자본. 높을수록 빚에 많이 기댐', cr: '유동자산 ÷ 유동부채. 1보다 크면 1년 안에 갚을 빚보다 1년 안에 현금화할 자산이 많음',
+  rnd: '연구개발비가 매출의 몇 %인지',
+  pe: '시가총액 ÷ 최근 4개 분기 순이익. 지금 이익 기준으로 몇 년 치 이익만큼의 가격인지',
+  ps: '시가총액 ÷ 최근 4개 분기 매출', pb: '시가총액 ÷ 자기자본',
+  fcfy: '잉여현금흐름 ÷ 시가총액. 주식을 산다면 받는 현금 수익률에 가까움', dy: '최근 12개월 배당금 ÷ 지금 주가',
+  shy: '(최근 4개 분기 배당 + 자사주 매입) ÷ 시가총액',
+  r12_1: '최근 1개월을 뺀 12개월 수익률. 모멘텀 투자에서 많이 쓰는 지표',
+  d50: '지금 주가가 50일 이동평균보다 몇 % 위(+)·아래(−)인지', d200: '지금 주가가 200일 이동평균보다 몇 % 위(+)·아래(−)인지',
+  rsi: '최근 14일 상승폭과 하락폭으로 만든 0~100 지표. 70 이상은 과열, 30 이하는 과매도로 흔히 봄',
+  hi52: '지금 주가가 52주 최고가보다 몇 % 낮은지', lo52: '지금 주가가 52주 최저가보다 몇 % 높은지',
+  vr: '최근 20일 평균 거래량 ÷ 최근 120일 평균 거래량. 1보다 크면 거래가 늘어난 것',
+  vol: '최근 60일 일간 수익률의 표준편차를 연 단위로 바꾼 값',
+  gc: '50일 이동평균이 200일 이동평균을 위로 뚫은 가장 최근 날짜',
+  sv: 'FINRA에 보고된 공매도 거래량 ÷ 전체 거래량 (최근 20거래일 평균). 시장조성 거래가 섞여 있어 보통 40~50%대',
+  si: '빌려서 판 뒤 아직 갚지 않은 주식 수가 유통주식의 몇 %인지 (한 달에 두 번 공개)',
+  iv: '옵션 가격에서 거꾸로 계산한, 앞으로 30일의 연 환산 예상 변동성',
+  pcr: '풋옵션 거래량 ÷ 콜옵션 거래량. 높을수록 하락에 대비하는 거래가 많음',
+  skew: '10% 아래 풋옵션 변동성 − 10% 위 콜옵션 변동성. 클수록 급락을 더 걱정하는 상태',
+  ib: '최근 90일 임원·이사가 장내에서 산 금액 (Form 4)', is: '최근 90일 임원·이사가 장내에서 판 금액 (Form 4)',
+  ibn: '최근 90일 장내 매수한 내부자 수', f144: '최근 30일 내부자 등이 주식을 팔겠다고 미리 낸 신고 건수',
+  rf_new: '올해 10-K 위험요인 문장 중 작년 어떤 문장과도 닮지 않은 문장의 비율. 높으면 새 위험을 많이 적은 것',
+  rf_sim: '올해와 작년 10-K 위험요인의 단어 유사도 (1 = 같음)', md_unc: '경영진 논의에서 불확실성 단어(may, uncertain 등)의 비율',
+  g13: '추적 중인 유명 투자자 중 이 종목을 보유한 곳의 수 (분기 13F 기준)',
+};
+const tip = k => GLOSS[k] ? `<span class="tip" tabindex="0" role="note" aria-label="${esc(GLOSS[k])}" data-tip="${esc(GLOSS[k])}">?</span>` : '';

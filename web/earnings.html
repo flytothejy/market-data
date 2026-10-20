@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>종목 허브 — 실적 달력</title>
+<link rel="stylesheet" href="assets/app.css">
+<script src="assets/data.js"></script>
+<script src="assets/ui.js"></script>
+<style>
+.day{display:flex;flex-direction:column;gap:6px}
+.day h3{display:flex;align-items:baseline;gap:8px}
+.day h3 .mut{font-weight:400;font-size:12.5px}
+.ratio{font-size:11px;padding:1px 6px;border-radius:99px;white-space:nowrap}
+.ratio.hi{background:color-mix(in srgb,var(--up) 14%,transparent);color:var(--up)}
+.ratio.lo{background:color-mix(in srgb,var(--dn) 14%,transparent);color:var(--dn)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">불러오는 중…</div></div>
+<script>
+header('실적 달력');
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+// 미국 동부 기준 오늘
+const nyToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const addDays = (s, n) => { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const dow = s => new Date(s + 'T12:00:00Z').getUTCDay();
+const state = { scope: qs('scope') || 'all', range: qs('range') || 'w0' };
+
+function ratioTag(r) {
+  if (!r.er_imp || !r.er_avg) return '';
+  const x = r.er_imp / r.er_avg;
+  if (x > 1.5) return `<span class="ratio hi" title="옵션 예상 변동폭이 과거 평균의 ${x.toFixed(1)}배">평소보다 큼</span>`;
+  if (x < 0.8) return `<span class="ratio lo" title="옵션 예상 변동폭이 과거 평균의 ${x.toFixed(1)}배">평소보다 작음</span>`;
+  return '';
+}
+
+function render(U) {
+  const today = nyToday();
+  const w0 = addDays(today, -((dow(today) + 6) % 7));            // 이번 주 월요일
+  const ranges = { w0: ['이번 주', w0, addDays(w0, 6)], w1: ['다음 주', addDays(w0, 7), addDays(w0, 13)], m1: ['4주', today, addDays(today, 27)] };
+  const [rl, from, to] = ranges[state.range] || ranges.w0;
+  const watch = new Set(Watch.list()), hold = new Set(portfolioTickers());
+  const scopes = { all: ['전체', () => true], big: ['시가총액 100억 달러 이상', r => (r.mcap || 0) >= 1e10], watch: [`관심 종목 ${watch.size}`, r => watch.has(r.t)], hold: [`포트폴리오 ${hold.size}`, r => hold.has(r.t)] };
+  const inScope = (scopes[state.scope] || scopes.all)[1];
+  const S = U.rows.filter(r => r.k === 'stock' && r.c_next && r.c_next >= from && r.c_next <= to && inScope(r));
+  const byDay = {};
+  S.forEach(r => (byDay[r.c_next] = byDay[r.c_next] || []).push(r));
+  const days = Object.keys(byDay).sort();
+
+  let h = `<div class="hero"><h1>실적 발표 달력</h1><p>미국 동부 기준 날짜 · 다음 발표일은 회사 발표나 예상치(매주 갱신) · 옵션 예상 변동폭과 과거 발표 때 실제 변동을 함께 봅니다</p></div>`;
+  h += `<div class="card" style="gap:8px"><div class="seg">${Object.entries(ranges).map(([k, [l, a, b]]) => `<button class="btn ${k === state.range ? 'on' : ''}" data-range="${k}">${l} <span class="faint small">${a.slice(5).replace('-', '/')}~${b.slice(5).replace('-', '/')}</span></button>`).join('')}</div>
+    <div class="seg">${Object.entries(scopes).map(([k, [l]]) => `<button class="btn ${k === state.scope ? 'on' : ''}" data-scope="${k}">${esc(l)}</button>`).join('')}</div></div>`;
+
+  // 주목: 옵션 시장이 평소보다 큰 움직임을 예상하는 종목
+  const hot = S.filter(r => r.er_imp && r.er_avg && r.c_next >= today).map(r => ({ ...r, x: r.er_imp / r.er_avg })).sort((a, b) => b.x - a.x).slice(0, 6);
+  if (hot.length >= 2) {
+    h += `<div class="card"><h3>옵션 시장이 평소보다 크게 움직일 거라 보는 종목</h3><div class="sub">옵션 예상 변동폭 ÷ 최근 8회 발표 때 평균 변동${tip('er_imp')}</div>
+      <div class="rank">${hot.map((r, i) => `<a class="r" href="stock.html?t=${encodeURIComponent(r.t)}"><span class="i num">${i + 1}</span><span class="nm"><b>${esc(r.t)}</b><small>${esc(r.c_next.slice(5))} ${r.c_when || ''} · 예상 ±${fmt(r.er_imp, 'pct')} / 평소 ±${fmt(r.er_avg, 'pct')}</small></span><span class="v num">${r.x.toFixed(1)}배</span></a>`).join('')}</div></div>`;
+  }
+
+  if (!days.length) {
+    h += `<div class="card"><div class="mut s13">${esc(rl)}에 ${state.scope === 'all' ? '' : esc(scopes[state.scope][0].replace(/ \d+$/, '')) + ' 중 '}실적을 발표하는 종목이 없습니다.${state.scope === 'watch' && !watch.size ? ' 종목 화면에서 ☆ 관심 종목에 추가를 눌러 보세요.' : ''}</div></div>`;
+  }
+  for (const d of days) {
+    const rows = byDay[d].sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
+    const past = d < today;
+    h += `<div class="card day"><h3>${d.slice(5).replace('-', '월 ')}일 (${DOW[dow(d)]})${d === today ? ' <span class="tag">오늘</span>' : ''}<span class="mut">${rows.length}개${past ? ' · 발표 지남 (결과는 다음 갱신 때 반영)' : ''}</span></h3>
+      <div class="tbl-wrap"><table class="t"><thead><tr><th></th><th class="l">종목</th><th>시점</th><th>시가총액</th><th>옵션 예상 변동${tip('er_imp')}</th><th>과거 평균 변동${tip('er_avg')}</th><th></th><th>직전 서프라이즈${tip('c_surp')}</th><th>4분기 상회${tip('c_beats')}</th><th>전망 순상향률${tip('c_ratio')}</th><th>1개월</th></tr></thead><tbody>
+      ${rows.map(r => `<tr><td style="width:30px">${starBtn(r.t)}</td><td class="l nm"><a href="stock.html?t=${encodeURIComponent(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 22))}</span>${hold.has(r.t) ? ' <span class="tag">보유</span>' : ''}</td>
+        <td>${r.c_when || (r.c_est ? '<span class="faint">예상일</span>' : '-')}</td><td class="num">${fmtUsd(r.mcap)}</td>
+        <td class="num">${r.er_imp != null ? '±' + fmt(r.er_imp, 'pct') : '-'}</td><td class="num">${r.er_avg != null ? '±' + fmt(r.er_avg, 'pct') : '-'}</td><td>${ratioTag(r)}</td>
+        <td>${pctS(r.c_surp)}</td><td class="num">${r.c_beats != null ? r.c_beats + '/4' : '-'}</td><td>${pctS(r.c_ratio)}</td><td>${pctS(r.r1m)}</td></tr>`).join('')}
+      </tbody></table></div></div>`;
+  }
+  h += `<div class="small faint">옵션 예상 변동폭은 옵션을 수집하는 시가총액 상위 종목만, 발표 후 7일 안에 끝나는 옵션 만기가 있을 때(보통 발표 주간) 계산합니다 · 과거 평균 변동은 실적 발표 공시(8-K 2.02) 제출일 전날 종가 → 다음 날 종가 기준</div>`;
+  $('#app').innerHTML = h;
+  document.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { state.range = b.dataset.range; sync(); render(U); });
+  document.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { state.scope = b.dataset.scope; sync(); render(U); });
+  footer();
+}
+function sync() { const u = new URL(location.href); u.searchParams.set('range', state.range); u.searchParams.set('scope', state.scope); history.replaceState(null, '', u); }
+
+(async () => {
+  try { const U = await Data.universe(); render(U); document.addEventListener('watch-change', () => { if (state.scope === 'watch') render(U); }); }
+  catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; }
+})();
+</script>
+</body>
+</html>
