@@ -370,6 +370,52 @@ def trails(t, g, ET, sv, gh, fq, now):
     return out
 
 
+# 신호를 평균낼 때 한 종목이 튀어 전체를 끌고 가지 않게 지도 눈금 끝에서 자름 (화면 matrix.js의 max와 같음)
+TRAIL_CLIP = {"eps": 0.3, "rev": 0.3, "guru": 5, "short": 0.12}
+
+
+def group_trails(items, min_n=3):
+    """업종·세부 업종 경로: 같은 순서의 점끼리 시가총액 가중 평균 (점 개수가 다르면 뒤에서부터 맞춤)"""
+    def agg(members):
+        out = {}
+        for lens, clip in TRAIL_CLIP.items():
+            ms = [(w, tr[lens]) for w, tr in members if tr.get(lens)]
+            if len(ms) < min_n:
+                continue
+            n = int(np.median([len(p) for _, p in ms]))
+            pts = []
+            for k in range(n, 0, -1):                       # 뒤에서 k번째
+                rows = [(w, p[-k]) for w, p in ms if len(p) >= k]
+                if len(rows) < min_n:
+                    continue
+                d = max(set(r[0] for _, r in rows), key=[r[0] for _, r in rows].count)
+                vals = []
+                for j in range(1, 6):
+                    xs = [(w, r[j]) for w, r in rows if r[j] is not None]
+                    sw = sum(w for w, _ in xs)
+                    v = sum(w * x for w, x in xs) / sw if sw else None
+                    if v is not None and j == 5:
+                        v = sum(w * max(-clip, min(clip, x)) for w, x in xs) / sw
+                    vals.append(round(v, 4) if v is not None else None)
+                pts.append([d] + vals)
+            if len(pts) >= 2:
+                out[lens] = pts
+        return out
+    res = {"sec": {}, "ind": {}}
+    for key, i in (("sec", 0), ("ind", 1)):
+        groups = {}
+        for it in items:
+            k = it[i]
+            if isinstance(k, str) and k:                    # 업종 정보가 비어 있으면(NA) 건너뜀
+                groups.setdefault(k, []).append((float(it[2]), it[3]))
+        for name, members in groups.items():
+            if len(members) >= min_n:
+                tr = agg(members)
+                if tr:
+                    res[key][name] = tr
+    return res
+
+
 # ---------------------------------------------------------------- 가격·기술 지표
 def tech(g):
     c = g.close.values.astype(float)
@@ -717,6 +763,7 @@ def run(limit=0, **_):
             ET = et.pivot_table(index="ticker", columns="field", values="value", aggfunc="last")
     log("종목별 지표 계산·저장 중")
     rows, n_files = [], 0
+    ALL_TR = []                                         # 업종 경로용 (업종, 세부 업종, 시가총액, 종목 경로)
     for r in S.itertuples():
         t = r.ticker
         p = P.loc[t] if t in P.index else pd.Series(dtype=object)
@@ -889,6 +936,8 @@ def run(limit=0, **_):
             detail["news"] = [{"d": x.published, "t": x.title, "s": x.source, "u": x.url, "k": x.kind} for x in nw.sort_values("published", ascending=False).head(25).itertuples()]
         detail["etf_in"] = etf_in.get(t, [])
         detail["trail"] = trails(t, g, ET, SVg.get(t), g13_hist.get(t), ftab.get(cik, (None, None))[1], now)
+        if detail["trail"] and row.get("mcap"):
+            ALL_TR.append((row.get("sec"), row.get("ind"), row["mcap"], detail["trail"]))
         detail["er"] = {"next": row.get("c_next"), "when": row.get("c_when"), "est": row.get("c_est"), "imp": row.get("er_imp"),
                         "exp": er_exp, "avg": row.get("er_avg"), "hist": er_hist}
         if t in g13:
@@ -1008,6 +1057,7 @@ def run(limit=0, **_):
         f = f[f.Date >= str((pd.Timestamp.now() - pd.Timedelta(days=740)).date())]
         mk["krw"] = {"d": f.Date.tolist(), "c": f.Close.round(2).tolist()}
     dump(OUT / "free" / "market.json", mk)
+    dump(OUT / "free" / "sector_trails.json", group_trails(ALL_TR))
     if f13_page:
         dump(OUT / "free" / "f13.json", f13_page)
     # 예전 S&P 500 컨센서스 페이지 데이터 (Pages 배포 때 /consensus_data.json 으로 복사)

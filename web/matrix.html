@@ -23,10 +23,30 @@
 .mx-side{display:flex;flex-direction:column;gap:12px}
 .mx-list a{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:5px 0;border-top:1px solid var(--line2);color:var(--ink);font-size:13.5px;cursor:pointer}
 .mx-list a:first-of-type{border-top:0}
+.mx-list a.g{grid-template-columns:minmax(0,1fr) auto}
+.mx-list a.g small{display:none}
 .mx-list a:hover{background:var(--soft);text-decoration:none}
 .mx-list small{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mx-list .v{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .dot{cursor:pointer}
+#mx-svg{touch-action:pan-y;cursor:grab}
+.mx-more summary{cursor:pointer;font-size:13.5px;color:var(--muted);padding:4px 0;list-style:none}
+.mx-more summary::before{content:'▸ '}
+.mx-more[open] summary::before{content:'▾ '}
+.mx-more[open] summary{margin-bottom:8px}
+@media (min-width:700px){.mx-more summary{display:none}}
+#mx-svg:active{cursor:grabbing}
+.mx-find{position:relative}
+.mx-find input{width:260px}
+@media (max-width:600px){.mx-find,.mx-find input{width:100%}}
+.mx-sugg{position:absolute;left:0;top:42px;width:300px;max-width:calc(100vw - 48px);background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;display:none;z-index:30}
+.mx-sugg a{display:flex;gap:10px;padding:8px 12px;color:var(--ink);align-items:baseline;cursor:pointer}
+.mx-sugg a:hover,.mx-sugg a.sel{background:var(--soft);text-decoration:none}
+.mx-sugg b{min-width:56px}
+.mx-sugg span{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mx-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 4px 4px 10px;border:1px solid var(--line);border-radius:99px;font-size:13px;background:var(--card)}
+.mx-chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.mx-chip button{border:0;background:none;color:var(--faint);cursor:pointer;font-size:15px;min-width:26px;min-height:26px}
 .qbg{cursor:zoom-in}
 </style>
 </head>
