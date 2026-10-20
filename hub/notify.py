@@ -34,9 +34,15 @@ def run(names, title="수집 점검", always=False):
                 print(f"::error title={n}::{'이번 실행 기록 없음 (중간에 멈춤)' if (not r or stale) else w}")
             elif r.get("n_warnings"):
                 print(f"::warning title={n}::{w}")
+        # 결과는 한 개의 주석에 모아서 (한 단계당 주석 10개 제한 때문에 잘리지 않게)
+        summ = []
+        for n in names:
+            r = recs.get(n) or {}
             if r and not (dt.datetime.fromisoformat(r["finished_utc"]) < cutoff):
-                keys = [k for k in r if k not in ("source", "ok", "finished_utc", "warnings", "n_warnings", "history")][:9]
-                print(f"::notice title={n} 결과::" + " · ".join(f"{k}={r[k]}" for k in keys)[:900])
+                keys = [k for k in r if k not in ("source", "ok", "finished_utc", "warnings", "n_warnings", "history")][:10]
+                summ.append(f"[{n}] " + " · ".join(f"{k}={r[k]}" for k in keys)[:600])
+        if summ:
+            print("::notice title=수집 결과::" + "%0A".join(x.replace("%", "%25").replace("\n", " ") for x in summ))
         p = os.environ.get("GITHUB_STEP_SUMMARY")
         if p:
             with open(p, "a", encoding="utf-8") as f:

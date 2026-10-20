@@ -39,26 +39,32 @@ jobs:
       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
-      - name: skip if today's daily already done
-        id: g
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "40 23 * * 1-5" ] && [ "${{ github.event.schedule }}" != "0 2 * * 6" ]; then
-            since=$(date -u -d '-10 hours' +%FT%TZ)
-            n=$(gh run list -R ${{ github.repository }} --workflow hub.yml --status success --created ">=$since" --json displayTitle --jq '[.[]|select(.displayTitle=="hub daily")]|length')
-            if [ "$n" -gt 0 ]; then echo "skip=1" >> $GITHUB_OUTPUT; echo "::notice::오늘 daily가 이미 성공해서 예비 실행은 건너뜀"; fi
-          fi
       - uses: actions/checkout@v5
-        if: steps.g.outputs.skip != '1'
       - uses: actions/setup-python@v6
-        if: steps.g.outputs.skip != '1'
         with:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: requirements-hub.txt
       - run: pip install -q -r requirements-hub.txt
-        if: steps.g.outputs.skip != '1'
+      - name: skip if today's daily already done
+        id: g
+        run: |
+          # 예비 실행(01:30·03:30 UTC)만: 오늘 가격·화면 데이터가 이미 제대로 만들어졌으면 건너뜀
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "40 23 * * 1-5" ] && [ "${{ github.event.schedule }}" != "0 2 * * 6" ]; then
+            python -m hub sync pull --only _status/
+            python - <<'PY' >> $GITHUB_OUTPUT
+          import json, datetime as dt, pathlib
+          p = pathlib.Path("data/hub/_status")
+          now = dt.datetime.now(dt.timezone.utc)
+          def fresh(n):
+              try:
+                  r = json.loads((p / f"{n}.json").read_text(encoding="utf-8"))
+                  return r.get("ok") and now - dt.datetime.fromisoformat(r["finished_utc"]) < dt.timedelta(hours=10)
+              except Exception:
+                  return False
+          print("skip=1" if all(fresh(n) for n in ("prices", "consensus", "build")) else "skip=0")
+          PY
+          fi
       - name: which set
         if: steps.g.outputs.skip != '1'
         id: s

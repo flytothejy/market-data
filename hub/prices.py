@@ -87,6 +87,51 @@ def run(limit=0, full=False, **_):
                 upsert(done_p, pd.DataFrame({"ticker": sorted(got)}), ["ticker"])
     L = pd.concat(Ls, ignore_index=True) if Ls else pd.DataFrame()
     A = pd.concat(As, ignore_index=True) if As else pd.DataFrame()
+    # 최근 거래일이 빠진 종목 다시 받기 — 일괄 다운로드가 마지막 날을 일부 종목에만 주는 경우가 있음 (2026-10-20 실제 발생: 2/1194)
+    cov = 1.0
+    if not L.empty and old_t:
+        last = L.date.max()
+        have_last = set(L[L.date == last].ticker)
+        lagging = [t for t in old_t if t not in have_last]
+        for rnd in range(2):
+            if not lagging or len(lagging) < 0.02 * len(old_t):
+                break
+            log(f"  최근 거래일({last:%Y-%m-%d}) 빠진 {len(lagging)}종목 다시 받기 ({rnd + 1}차)")
+            time.sleep(20 * (rnd + 1))
+            for i in range(0, len(lagging), CHUNK):
+                part = lagging[i:i + CHUNK]
+                try:
+                    raw = yf.download(part, auto_adjust=False, actions=True, group_by="ticker", threads=False, progress=False, period="5d")
+                    L2, A2 = to_long(raw, part)
+                    if not L2.empty:
+                        L = pd.concat([L, L2], ignore_index=True)
+                        if not A2.empty:
+                            A = pd.concat([A, A2], ignore_index=True)
+                except Exception as e:
+                    log(f"  재시도 실패: {str(e)[:80]}")
+            have_last = set(L[L.date == last].ticker)
+            lagging = [t for t in old_t if t not in have_last]
+        if lagging and len(lagging) <= 300:                 # 그래도 빠지면 종목별로 (느리지만 확실)
+            for t in lagging:
+                try:
+                    h = yf.Ticker(t).history(period="5d", auto_adjust=False, actions=True)
+                    if not h.empty:
+                        L2, A2 = to_long(h, [t])
+                        if not L2.empty:
+                            L = pd.concat([L, L2], ignore_index=True)
+                            if not A2.empty:
+                                A = pd.concat([A, A2], ignore_index=True)
+                except Exception:
+                    pass
+            have_last = set(L[L.date == last].ticker)
+            lagging = [t for t in old_t if t not in have_last]
+        if not A.empty:
+            A = A.drop_duplicates(["date", "ticker"], keep="last")
+        L = L.drop_duplicates(["date", "ticker"], keep="last")
+        cov = 1 - len(lagging) / len(old_t)
+        R.set(latest_day_coverage=f"{cov*100:.1f}%")
+        if lagging:
+            R.warning(f"{'치명: ' if cov < 0.9 else ''}최근 거래일({last:%Y-%m-%d}) 가격이 없는 종목 {len(lagging)}개: {', '.join(lagging[:15])}")
     if L.empty:
         R.warning("치명: 받은 가격이 없음")
         return R.done(ok=False)
@@ -123,4 +168,4 @@ def run(limit=0, full=False, **_):
     R.set(tickers_ok=int(L.ticker.nunique()), missing=len(miss), latest_date=str(maxd.date()),
           first_date=str(L.date.min().date()), rows_new=len(L), dividends=int((A.dividend != 0).sum()) if not A.empty else 0,
           splits=int((A.split != 0).sum()) if not A.empty else 0)
-    return R.done()
+    return R.done(ok=cov >= 0.9)

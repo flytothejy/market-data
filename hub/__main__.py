@@ -61,7 +61,7 @@ def main():
     ap = argparse.ArgumentParser(prog="python -m hub", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
-    r.add_argument("source", choices=ORDER + ORDER2 + ORDER3 + ["tenk", "build", "phase1", "phase2", "phase3", "daily", "weekly"])
+    r.add_argument("source", help="수집기 이름, 묶음(daily·weekly·phase1~3), 또는 쉼표로 여러 개 (예: prices,build)")
     r.add_argument("--limit", type=int, default=0)
     r.add_argument("--full", action="store_true")
     r.add_argument("--days", type=int, default=None)
@@ -81,13 +81,18 @@ def main():
         return
     if a.cmd == "notify":
         from . import notify
-        names = {"daily": DAILY, "weekly": WEEKLY}.get(a.set, [a.set])
+        names = {"daily": DAILY, "weekly": WEEKLY}.get(a.set, [x.strip() for x in a.set.split(",")])
         title = {"daily": "매일", "weekly": "주간"}.get(a.set, a.set)
         sys.exit(1 if notify.run(names, f"종목 허브 {title} 수집", a.always) else 0)
     if a.cmd == "status":
         core.print_report(core.load_status())
         return
-    names = {"phase1": ORDER, "phase2": ORDER2, "phase3": ORDER3, "daily": DAILY, "weekly": WEEKLY}.get(a.source, [a.source])
+    groups = {"phase1": ORDER, "phase2": ORDER2, "phase3": ORDER3, "daily": DAILY, "weekly": WEEKLY}
+    names = [n for part in a.source.split(",") for n in groups.get(part.strip(), [part.strip()])]
+    valid = set(ORDER + ORDER2 + ORDER3 + ["tenk", "build"])
+    bad = [n for n in names if n not in valid]
+    if bad:
+        sys.exit(f"모르는 수집기: {', '.join(bad)} (가능: {', '.join(sorted(valid))})")
     failed = []
     for n in names:
         core.log(f"▶ {n} 시작")
