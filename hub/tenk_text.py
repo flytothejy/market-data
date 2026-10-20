@@ -34,15 +34,22 @@ def section(text, start_pat, end_pat, min_len=2000):
     return best if len(best) >= min_len else ""
 
 
-RF_S = r"(?im)^\s*item\s*1a\s*[\.\:\-–—]?\s*risk\s+factors"
-RF_E = r"(?im)^\s*item\s*(1b|2)\s*[\.\:\-–—]?\s*(unresolved|properties)"
-MD_S = r"(?im)^\s*item\s*7\s*[\.\:\-–—]?\s*management.{0,5}s?\s+discussion"
-MD_E = r"(?im)^\s*item\s*(7a|8)\s*[\.\:\-–—]?\s*(quantitative|financial\s+statements)"
+def _sp(w):
+    """글자 사이 공백 허용 — HTML이 'Ris k Factors', 'RI S K'처럼 글자를 쪼개 놓는 경우가 있음"""
+    return r"\s*".join(w)
+
+
+RF_S = r"(?im)^\s*item\s*1\s*a\s*[\.\:\-–—]?\s*" + _sp("risk") + r"\s+" + _sp("factors")
+RF_S_BARE = r"(?im)^\s*" + _sp("risk") + r"\s+" + _sp("factors") + r"\.?\s*$"     # 'Item 1A' 없이 제목만 있는 문서
+RF_E = r"(?im)^\s*item\s*(1\s*b|1\s*c|2)\s*[\.\:\-–—]?\s*(" + _sp("unresolved") + "|" + _sp("cybersecurity") + "|" + _sp("properties") + ")"
+MD_S = r"(?im)^\s*item\s*7\s*[\.\:\-–—]?\s*" + _sp("management") + r".{0,5}s?\s+" + _sp("discussion")
+MD_E = r"(?im)^\s*item\s*(7\s*a|8)\s*[\.\:\-–—]?\s*(" + _sp("quantitative") + "|" + _sp("financial") + r"\s+" + _sp("statements") + ")"
 
 
 def parse(raw):
     text = to_text(raw) if ("<html" in raw[:5000].lower() or "<div" in raw[:20000].lower()) else raw
-    return dict(full=text, rf=section(text, RF_S, RF_E), mdna=section(text, MD_S, MD_E))
+    rf = section(text, RF_S, RF_E) or section(text, RF_S_BARE, RF_E)
+    return dict(full=text, rf=rf, mdna=section(text, MD_S, MD_E))
 
 
 # ---- 특성

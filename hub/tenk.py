@@ -86,6 +86,18 @@ def run(limit=0, full=False, days=None, **_):
     latest = K.sort_values("filed").groupby("ticker").tail(1)
     missing = latest[~latest.accession.isin(have) & (latest.filed >= pd.Timestamp.today() - pd.Timedelta(days=400))]
     todo = pd.concat([todo, missing]).drop_duplicates("accession").sort_values("filed")
+    # 위험요인 구간을 못 찾았던 최신 10-K는 (제목 인식 규칙이 나아졌으니) 한 번 다시 — 시도한 건 기록해 반복하지 않음
+    retry_p = S_DIR / "tenk_retry.json"
+    tried = set(json.loads(retry_p.read_text())) if retry_p.exists() else set()
+    if FEAT.exists():
+        T0 = read(FEAT)
+        lt0 = T0[T0.ticker.isin(tickers)].sort_values("filed").groupby("ticker").tail(1)
+        redo_acc = set(lt0[(lt0.n_rf.fillna(0) == 0)].acc) - tried
+        redo = K[K.accession.isin(redo_acc)]
+        if len(redo):
+            log(f"위험요인 구간을 못 찾았던 최신 10-K {len(redo)}건 다시 처리")
+            todo = pd.concat([todo, redo]).drop_duplicates("accession").sort_values("filed")
+            retry_p.write_text(json.dumps(sorted(tried | redo_acc)))
     if limit:
         todo = todo.tail(limit)
     log(f"10-K 처리 대상 {len(todo)}건 (최근 {look}일 신규 + 결과 없는 최신분)")

@@ -90,15 +90,40 @@ BAL = {"assets": ["Assets"], "liab": ["Liabilities"], "equity": ["StockholdersEq
        "ca": ["AssetsCurrent"], "cl": ["LiabilitiesCurrent"], "shares": ["EntityCommonStockSharesOutstanding"]}
 
 
+ANNUAL_FORMS = ("10-K", "20-F", "40-F")
+
+
 def _latest(df):
-    return df.sort_values("filed").drop_duplicates(["start", "end"], keep="last")
+    """같은 기간 값이 여러 번 보고되면: 1년짜리 기간은 연간 보고서 값을 우선, 그다음 최근 제출분
+    (회사가 10-Q에 1년 기간을 잘못 붙여 낸 사례가 있었음: FIX 2025년 매출이 1분기 값으로 덮임)"""
+    d = df.assign(_days=(df.end_dt - df.start_dt).dt.days)
+    d["_pref"] = ((d._days >= 350) & d.form.astype(str).str.startswith(ANNUAL_FORMS)).astype(int)
+    return d.sort_values(["_pref", "filed"]).drop_duplicates(["start", "end"], keep="last").drop(columns=["_days", "_pref"])
 
 
-def flow_series(df):
-    """흐름 항목 → (분기별 dict end→값, 연간 dict end→값). 누적(3·6·9·12개월) 값에서 분기를 역산"""
+def flow_series(df, outlier=False, deduped=False):
+    """흐름 항목 → (분기별 dict end→값, 연간 dict end→값). 누적(3·6·9·12개월) 값에서 분기를 역산
+    직접 보고된 3개월 값이 역산값과 크게 다르면 역산값을 씀 (LHX: 3개월 기간에 연간 값이 붙어 있던 사례)"""
     if df is None or df.empty:
         return {}, {}
-    d = _latest(df.dropna(subset=["start_dt"]))
+    d = df.dropna(subset=["start_dt"])
+    if len(d):
+        # 연간 보고서에서 3개월 기간에 1년 값이 붙은 경우 (LHX) → 같은 해 9개월 누적의 시작일로 고쳐 1년 기간으로
+        # (fp는 '문서'의 기간이라 10-K 안의 4분기 3개월 값도 FY로 표시됨 → fp가 아니라 값의 크기로 판단)
+        dd0 = (d.end_dt - d.start_dt).dt.days
+        q3m = d[(dd0 >= 80) & (dd0 <= 100)]
+        med = float(q3m.val.abs().median()) if len(q3m) >= 4 else 0
+        bad = d.form.astype(str).str.startswith(ANNUAL_FORMS) & (dd0 >= 80) & (dd0 <= 100) & (med > 0) & (d.val.abs() > 2.5 * med)
+        if bad.any():
+            deduped = False
+            d = d.copy()
+            dd = (d.end_dt - d.start_dt).dt.days
+            for i in d.index[bad]:
+                e = d.at[i, "end_dt"]
+                nine = d[(dd >= 255) & (dd <= 290) & ((e - d.end_dt).dt.days.between(80, 100))]   # 같은 회계연도의 9개월 누적
+                d.at[i, "start_dt"] = nine.start_dt.iloc[0] if len(nine) else e - pd.Timedelta(days=364)
+            d.loc[bad, "start"] = d.loc[bad, "start_dt"].dt.strftime("%Y-%m-%d")
+    d = d if deduped else _latest(d)
     if d.empty:
         return {}, {}
     st = d.start_dt.values.astype("datetime64[D]")
@@ -109,21 +134,37 @@ def flow_series(df):
     annual = {E[i]: vals[i] for i in np.where((days >= 350) & (days <= 380))[0]}
     k_arr = np.rint(days / 91.3).astype(int)
     okq = (k_arr >= 1) & (k_arr <= 4) & (np.abs(days - k_arr * 91.3) <= 12)
-    q = {}
+    derived, direct = {}, {}
     by_start = {}
     for i in np.where(okq)[0]:
         by_start.setdefault(st[i], {})[k_arr[i]] = i
     for cum in by_start.values():
-        for k in range(1, 5):
-            if k in cum and (k == 1 or (k - 1) in cum):
-                q[E[cum[k]]] = vals[cum[k]] - (vals[cum[k - 1]] if k > 1 else 0)
-    for i in np.where((days >= 80) & (days <= 100))[0]:        # 3개월 값이 직접 있으면 우선
-        q[E[i]] = vals[i]
+        for k in range(2, 5):
+            if k in cum and (k - 1) in cum:
+                derived[E[cum[k]]] = vals[cum[k]] - vals[cum[k - 1]]
+    for i in np.where((days >= 80) & (days <= 100))[0]:
+        direct[E[i]] = vals[i]
+    q = dict(derived)
+    for e, v in direct.items():
+        dv = derived.get(e)
+        if dv is None or dv == 0 or 0.67 <= abs(v / dv) <= 1.5:
+            q[e] = v
     out = {}
     for e in sorted(q):
         if out and (e - max(out)).days < 10:
             out.pop(max(out))
         out[e] = q[e]
+    # 앞뒤 분기보다 2.5배 넘게 튀는 분기는 잘못 붙은 값으로 보고 뺌 (연간 값이 분기 기간에 붙은 경우)
+    ks = sorted(out)
+    if outlier and len(ks) >= 5:
+        bad = []
+        for i, e in enumerate(ks):
+            nb = [abs(out[ks[j]]) for j in (i - 2, i - 1, i + 1, i + 2) if 0 <= j < len(ks)]
+            med = float(np.median(nb)) if nb else 0
+            if med > 0 and abs(out[e]) > 2.5 * med and all(abs(out[e]) > 2.5 * x for x in nb[:2] + nb[2:] if x):
+                bad.append(e)
+        for e in bad:
+            out.pop(e)
     return out, annual
 
 
@@ -137,7 +178,7 @@ def ttm(qs, back=0):
 
 
 def pick(G, tags, unit_pref=("USD", "USD/shares", "shares")):
-    """후보 태그 중 가장 최근 값이 있는 태그·단위 (G: 태그→DataFrame dict)"""
+    """후보 태그 중 가장 최근 값이 있는 태그·단위 (G: 태그→DataFrame dict) — 잔액 항목용"""
     best, best_end = None, None
     for t in tags:
         g = G.get(t)
@@ -152,28 +193,68 @@ def pick(G, tags, unit_pref=("USD", "USD/shares", "shares")):
     return best if best is not None else EMPTY
 
 
-EMPTY = pd.DataFrame(columns=["tag", "unit", "start", "end", "val", "filed", "accn", "end_dt", "start_dt"])
+def combine(G, tags, unit_pref=("USD", "USD/shares", "shares"), component_ratio=1.5):
+    """흐름 항목: 기간마다 우선순위 높은 태그 값을 쓰되, 여러 태그를 이어 붙임
+    (회사가 해마다·분기마다 태그를 바꿔 쓰는 경우가 많음: ADP는 연간만 Revenues, 분기는 계약매출 태그)
+    0은 무시, 더 낮은 순위 태그가 1.5배 이상 크면 앞의 값을 부분 항목으로 보고 큰 값을 씀 (FLS·CPT)"""
+    parts = [G[t].assign(_rank=r) for r, t in enumerate(tags) if t in G and len(G[t])]
+    if not parts:
+        return EMPTY
+    d = pd.concat(parts, ignore_index=True)
+    d = d[d.start_dt.notna() & (d.val != 0)]
+    if d.empty:
+        return EMPTY
+    units = d.unit.value_counts().index.tolist()
+    u = next((x for x in unit_pref if x in units), units[0])
+    d = d[d.unit == u]
+    days = (d.end_dt - d.start_dt).dt.days
+    d = d.assign(_pref=((days >= 350) & d.form.astype(str).str.startswith(ANNUAL_FORMS)).astype(int))
+    d = d.sort_values(["_pref", "filed"]).drop_duplicates(["_rank", "start", "end"], keep="last")   # 태그별 최신 값
+    d = d.sort_values(["start", "end", "_rank"])
+    first = d.drop_duplicates(["start", "end"], keep="first")
+    if component_ratio < 1e6:
+        mx = d.sort_values(["start", "end", "val"]).drop_duplicates(["start", "end"], keep="last")
+        m = first.merge(mx[["start", "end", "val"]].rename(columns={"val": "_mx"}), on=["start", "end"])
+        swap = m._mx > m.val.abs() * component_ratio
+        if swap.any():
+            keys = set(zip(m.start[swap], m.end[swap]))
+            first = pd.concat([first[~pd.Series(list(zip(first.start, first.end)), index=first.index).isin(keys)],
+                               mx[pd.Series(list(zip(mx.start, mx.end)), index=mx.index).isin(keys)]])
+    return first.drop(columns=["_rank", "_pref"])
+
+
+EMPTY = pd.DataFrame(columns=["tag", "unit", "start", "end", "val", "filed", "form", "accn", "end_dt", "start_dt"])
+REV_FALLBACK = ["RevenueFromContractWithCustomerIncludingAssessedTax"]
 
 
 def fin_company(G0):
     G = dict(tuple(G0.groupby("tag")))
     gmax = G0.end_dt.max()
     res = {"q": {}, "a": {}}
-    rv = pick(G, REV)
+    main = [t for t in REV if t not in REV_FALLBACK] + ["OperatingLeaseLeaseIncome", "RealEstateRevenueNet", "LeaseIncome"] + REV_FALLBACK
+    rv = combine(G, main)            # 세금 포함 매출은 맨 뒤 순위 (TJX처럼 그 태그만 쓰는 회사 대비)
     cur = (rv.unit.iloc[0] if len(rv) else "USD")
-    qs, an = flow_series(rv)
-    # 은행: 순이자이익 + 비이자이익
-    if len(rv) == 0 or (rv.end_dt.max() < gmax - pd.Timedelta(days=200)):
-        q1, a1 = flow_series(pick(G, CONCEPTS["nii"]))
-        q2, a2 = flow_series(pick(G, CONCEPTS["nonii"]))
-        if q1 and q2:
-            qs = {k: q1[k] + q2[k] for k in q1 if k in q2}
-            an = {k: a1[k] + a2[k] for k in a1 if k in a2}
+    qs, an = flow_series(rv, outlier=True)
+    # 은행: 이자 순수익 + 비이자 수익 (또는 '이자비용 차감 후 매출')이 최근 값으로 있으면 그것을 매출로
+    nii, nonii, rnet = combine(G, CONCEPTS["nii"]), combine(G, CONCEPTS["nonii"]), combine(G, ["RevenuesNetOfInterestExpense"])
+    recent = lambda x: len(x) and x.end_dt.max() >= gmax - pd.Timedelta(days=200)
+    if recent(rnet):
+        qs, an = flow_series(rnet)
+    elif recent(nii) and recent(nonii):
+        q1, a1 = flow_series(nii)
+        q2, a2 = flow_series(nonii)
+        qs = {k: q1[k] + q2[k] for k in q1 if k in q2}
+        an = {k: a1[k] + a2[k] for k in a1 if k in a2}
+    qs = {k: v for k, v in qs.items() if v > 0}           # 음수·0 매출 분기는 잘못된 역산으로 보고 버림
+    if qs and max(qs) < gmax - pd.Timedelta(days=200):     # 매출 태그가 몇 년째 끊긴 회사 → 옛 값을 지금 값처럼 보이지 않게
+        qs = {}
     res["q"]["rev"], res["a"]["rev"] = qs, an
     for c, tags in CONCEPTS.items():
         if c in ("nii", "nonii"):
             continue
-        res["q"][c], res["a"][c] = flow_series(pick(G, tags))
+        res["q"][c], res["a"][c] = flow_series(combine(G, tags, component_ratio=1e9))   # 우선순위만 (큰 값 규칙 없음)
+        if res["q"][c] and max(res["q"][c]) < gmax - pd.Timedelta(days=200):   # 몇 년 전에 끊긴 태그(예: 2013년 매출총이익) → 버림
+            res["q"][c], res["a"][c] = {}, {}
     if not res["q"]["gp"] and res["q"]["cogs"]:
         res["q"]["gp"] = {k: res["q"]["rev"][k] - v for k, v in res["q"]["cogs"].items() if k in res["q"]["rev"]}
         res["a"]["gp"] = {k: res["a"]["rev"][k] - v for k, v in res["a"]["cogs"].items() if k in res["a"]["rev"]}
@@ -196,6 +277,11 @@ def fin_metrics(fc):
     P = {c: ttm(Q[c], back=4) for c in Q}
     rq = Q["rev"]
     ks = sorted(rq)
+    k4 = ks[-4:] if len(ks) >= 4 else []
+
+    def A(c):   # 이익률은 매출과 같은 4개 분기로 맞춰 계산 (분기가 어긋난 값끼리 나누지 않게)
+        q = Q.get(c) or {}
+        return sum(q[k] for k in k4) if k4 and all(k in q for k in k4) else None
     rev_qg = None
     if len(ks) >= 5:
         last = ks[-1]
@@ -203,7 +289,7 @@ def fin_metrics(fc):
         if prev:
             rev_qg = div(rq[last], rq[prev[-1]]) - 1 if div(rq[last], rq[prev[-1]]) else None
     m = {"rev": T["rev"], "rev_g": (div(T["rev"], P["rev"]) - 1) if div(T["rev"], P["rev"]) else None, "rev_qg": rev_qg,
-         "gm": div(T["gp"], T["rev"]), "om": div(T["opi"], T["rev"]), "nm": div(T["ni"], T["rev"]), "ni": T["ni"],
+         "gm": div(A("gp"), A("rev")), "om": div(A("opi"), A("rev")), "nm": div(A("ni"), A("rev")), "ni": T["ni"],
          "ni_g": (div(T["ni"], P["ni"]) - 1) if (P["ni"] or 0) > 0 and div(T["ni"], P["ni"]) else None, "eps": T["eps"],
          "fcf": (T["cfo"] - T["capex"]) if T["cfo"] is not None and T["capex"] is not None else T["cfo"],
          "roe": div(T["ni"], B.get("equity")) if (B.get("equity") or 0) > 0 else None, "roa": div(T["ni"], B.get("assets")),
@@ -412,7 +498,11 @@ def run(limit=0, **_):
     # 재무
     log("재무 표준화 중")
     FA = read(DATA / "sec" / "facts.parquet")
+    SUPP = read(DATA / "sec" / "facts_supp.parquet")           # companyfacts에 아직 없는 보고서 (공시 원본에서 보충)
+    if not SUPP.empty:
+        FA = pd.concat([FA, SUPP[[c for c in FA.columns if c in SUPP.columns]]], ignore_index=True)
     FA = FA[FA.cik.isin(set(S.cik.dropna().astype(int)))]
+    FA = FA[["cik", "tag", "unit", "start", "end", "val", "filed", "form", "accn"]]
     FA = FA.assign(end_dt=pd.to_datetime(FA.end, errors="coerce"), start_dt=pd.to_datetime(FA.start, errors="coerce"))
     fin, ftab = {}, {}
     for cik, G in FA.groupby("cik"):

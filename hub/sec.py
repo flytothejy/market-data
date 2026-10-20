@@ -189,6 +189,7 @@ TAGS = {
                 "RevenuesNetOfInterestExpense", "InterestAndDividendIncomeOperating", "NoninterestIncome", "InterestIncomeExpenseNet",
                 "InterestIncomeOperating", "RegulatedAndUnregulatedOperatingRevenue", "ElectricUtilityRevenue",
                 "OperatingLeasesIncomeStatementLeaseRevenue", "RevenueFromContractWithCustomerProductAndServiceExcludingAssessedTax",
+                "OperatingLeaseLeaseIncome", "RealEstateRevenueNet", "LeaseIncome", "RevenuesExcludingInterestAndDividends",
                 "CostOfRevenue", "CostOfGoodsAndServicesSold", "GrossProfit", "OperatingIncomeLoss", "NetIncomeLoss", "ProfitLoss",
                 "NetIncomeLossAvailableToCommonStockholdersBasic", "IncomeLossFromContinuingOperations",
                 "EarningsPerShareDiluted", "EarningsPerShareBasic", "WeightedAverageNumberOfDilutedSharesOutstanding",
@@ -234,12 +235,23 @@ def run_financials(limit=0, full=False, **_):
     facts_p = S_DIR / "facts.parquet"
     stamp = read(S_DIR / "facts_fetched.parquet")        # cik, fetched
     F = read(S_DIR / "filings.parquet")
+    import hashlib, json as _json
+    tag_sig = hashlib.md5(_json.dumps(TAGS, sort_keys=True).encode()).hexdigest()[:12]
+    sig_p = S_DIR / "facts_tags.txt"
+    if (sig_p.exists() and sig_p.read_text().strip() != tag_sig) or (not sig_p.exists() and facts_p.exists()):
+        full = True                                    # 받을 태그 목록이 바뀌면 한 번 전체 다시
+        log("재무 태그 목록이 바뀌어 전체 다시 받음")
     if full or stamp.empty:
         todo = U
     else:
         last = stamp.set_index("cik").fetched
         rep = F[F.form.isin(REPORT_FORMS)].groupby("cik").filed.max() if not F.empty else pd.Series(dtype="datetime64[ns]")
-        need = [c for c in U.cik.astype(int) if c not in last.index or (c in rep.index and rep[c] > last[c])]
+        # 우리 facts의 최신 제출일이 실제 최신 보고서보다 10일 넘게 뒤처지면 (3일에 한 번) 다시 받음
+        have = read(facts_p, columns=["cik", "filed"])
+        lastf = pd.to_datetime(have.groupby("cik").filed.max()) if not have.empty else pd.Series(dtype="datetime64[ns]")
+        stale = {c for c in U.cik.astype(int) if c in rep.index and c in lastf.index and (rep[c] - lastf[c]).days > 10
+                 and c in last.index and (pd.Timestamp.now().normalize() - last[c]).days >= 3}
+        need = [c for c in U.cik.astype(int) if c not in last.index or (c in rep.index and rep[c] > last[c]) or c in stale]
         todo = U[U.cik.astype(int).isin(need)]
     log(f"재무 수집 {len(todo)}개 회사 ({'전체' if full or stamp.empty else '새 보고서가 나온 회사만'})")
     rows, fetched, fail = [], [], []
@@ -256,6 +268,8 @@ def run_financials(limit=0, full=False, **_):
             log(f"  재무 {i+1}/{len(todo)}")
             _save_facts(rows, fetched, facts_p); rows, fetched = [], []
     _save_facts(rows, fetched, facts_p)
+    sig_p.write_text(tag_sig)
+    supp_n, supp_fail = supplement(http, U, F, facts_p, R, limit_n=0 if limit else 400)
     A = read(facts_p)
     if fail:
         R.warning(f"실패 {len(fail)}개: {', '.join(fail[:15])}")
@@ -280,8 +294,44 @@ def run_financials(limit=0, full=False, **_):
             R.set(no_recent_net_income=", ".join(U[U.cik.astype(int).isin(missing_ni)].ticker.tolist()[:20]))
         if has_rev / max(nU, 1) < 0.9:
             R.warning("최근 매출 값이 있는 회사가 90% 미만 — 매출 태그 보강 필요 (은행·보험은 매출 태그가 다름)")
-    R.set(fetched=len(todo) - len(fail), rows_new=len(todo) - len(fail), http=http.stats())
+    R.set(fetched=len(todo) - len(fail), supplemented_reports=supp_n, rows_new=len(todo) - len(fail), http=http.stats())
+    if supp_fail:
+        R.warning(f"보고서 원본 보충 실패 {len(supp_fail)}건: {', '.join(supp_fail[:10])}")
     return R.done()
+
+
+def supplement(http, U, F, facts_p, R, limit_n=400):
+    """companyfacts에 아직 없는 최근 10-K·10-Q를 공시 원본 XBRL에서 읽어 sec/facts_supp.parquet에 보관"""
+    from . import xbrl_fallback as XF
+    supp_p = S_DIR / "facts_supp.parquet"
+    main = read(facts_p, columns=["cik", "accn"])
+    have = set(main.accn) if not main.empty else set()
+    supp = read(supp_p)
+    if not supp.empty:
+        supp = supp[~supp.accn.isin(have)]              # SEC가 따라잡은 보고서는 보충분에서 뺌
+    done = set(supp.accn) if not supp.empty else set()
+    rep = F[F.form.isin({"10-K", "10-Q", "10-K/A", "10-Q/A"}) & F.cik.isin(set(U.cik.astype(int)))].copy()
+    rep["filed"] = pd.to_datetime(rep.filed)
+    rep = rep[rep.filed >= pd.Timestamp.today() - pd.Timedelta(days=400)]
+    miss = rep[~rep.accession.isin(have) & ~rep.accession.isin(done)].sort_values("filed", ascending=False)
+    if limit_n:
+        miss = miss.head(limit_n)
+    rows, fails = [], []
+    for r in miss.itertuples():
+        try:
+            url = XF.find_instance(http, r.cik, r.accession)
+            if url:
+                rows += XF.parse_instance(http.get(url).content, r.cik, r.form, str(r.filed.date()), r.accession)
+        except Exception as e:
+            fails.append(f"{r.ticker} {r.accession}: {str(e)[:40]}")
+    if rows:
+        df = pd.DataFrame(rows, columns=FACT_COLS)
+        df["fy"] = pd.to_numeric(df["fy"], errors="coerce").astype("Int64")
+        supp = pd.concat([supp, df], ignore_index=True) if not supp.empty else df
+    if not supp.empty or supp_p.exists():
+        write(supp_p, supp)
+    R.set(supp_missing_reports=len(miss), supp_rows=len(rows))
+    return int(miss.accession.nunique()) - len(fails), fails
 
 
 def _save_facts(rows, fetched, facts_p):
