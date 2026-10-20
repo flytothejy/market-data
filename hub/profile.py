@@ -65,6 +65,17 @@ def run(limit=0, **_):
     if si:
         S = pd.DataFrame(si)
         S["date"] = pd.to_datetime(S["dateShortInterest"], unit="s", errors="coerce").dt.date.astype("string")
+        # 직전 달 잔고도 한 줄로 (이미 있는 날짜는 건드리지 않음) → 첫 수집부터 두 시점
+        prev = S[S.sharesShortPriorMonth.notna() & S.sharesShortPreviousMonthDate.notna()].copy()
+        if len(prev):
+            prev["date"] = pd.to_datetime(prev["sharesShortPreviousMonthDate"], unit="s", errors="coerce").dt.date.astype("string")
+            prev["sharesShort"] = prev["sharesShortPriorMonth"]
+            prev["shortPercentOfFloat"] = None
+            prev["shortRatio"] = None
+            old = read(D / "short_interest.parquet")
+            if not old.empty:
+                prev = prev[~(prev.ticker + "|" + prev.date).isin(set(old.ticker + "|" + old.date.astype(str)))]
+            S = pd.concat([prev, S], ignore_index=True)
         upsert(D / "short_interest.parquet", S, ["ticker", "date"])
     if fail:
         R.warning(f"실패 {len(fail)}개: {', '.join(fail[:15])}")
