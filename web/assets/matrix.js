@@ -95,7 +95,7 @@ function controls() {
   </div>`;
 }
 
-function draw(P) {
+function draw(P, trail) {
   const L = LENS[st.lens], xm = XW[st.xw][1];
   const [x0, x1, y0, y1] = st.zoom ? ZOOM[st.zoom] : [-1, 1, -1, 1];
   const pl = 54, pr = 18, pt = 44, pb = 40, iw = W - pl - pr, ih = H - pt - pb;
@@ -138,49 +138,66 @@ function draw(P) {
   for (const p of vis) {
     const rad = (2.5 + Math.sqrt((p.r.mcap || 0) / maxM) * k) * zoomK, cx = sx(p.xN), cy = sy(p.yN);
     const col = p.quad === 'tl' ? up : p.quad === 'br' ? dn : 'var(--faint)';
-    const op = p.quad === 'tl' || p.quad === 'br' ? 0.72 : 0.32;
-    const ring = p.r.t === st.sel ? `stroke="var(--ink)" stroke-width="2.5"` : p.mine ? `stroke="var(--ink)" stroke-width="1.5"` : `stroke="${col}" stroke-opacity="0.9" stroke-width="1"`;
+    const fade = trail && p.r.t !== st.sel;   // 경로를 볼 때는 다른 점을 흐리게
+    const op = trail && p.r.t === st.sel ? 0.35 : (p.quad === 'tl' || p.quad === 'br' ? 0.72 : 0.32) * (fade ? 0.22 : 1);   // 선택한 점은 비쳐 보이게 (안쪽 경로가 가리지 않도록)
+    const ring = p.r.t === st.sel ? `stroke="var(--ink)" stroke-width="2.5"` : p.mine ? `stroke="var(--ink)" stroke-width="1.5"` : `stroke="${col}" stroke-opacity="${fade ? 0.18 : 0.9}" stroke-width="1"`;
     dots += `<circle class="dot" data-t="${esc(p.r.t)}" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${rad.toFixed(1)}" fill="${col}" fill-opacity="${op}" ${ring}/>`;
     p._cx = cx; p._cy = cy; p._r = rad;
   }
-  const labN = st.zoom ? 26 : W < 600 ? 10 : 22;
-  const lab = vis.filter((p, i) => i < labN || hot.has(p.r.t) || p.mine || p.r.t === st.sel);
+  const labN = trail ? 0 : st.zoom ? 26 : W < 600 ? 10 : 22;
+  const lab = vis.filter((p, i) => i < labN || (!trail && (hot.has(p.r.t) || p.mine)) || p.r.t === st.sel);
+  const tl = trail ? trailLayer(trail, L, P, sx, sy, [x0, x1, y0, y1]) : '';
   for (const p of lab) {
     const strong = hot.has(p.r.t) || p.r.t === st.sel;
     labs += `<text x="${(p._cx + p._r + 3).toFixed(1)}" y="${(p._cy + 4).toFixed(1)}" font-size="${strong ? 12.5 : 11}" font-weight="${strong ? 800 : 600}" fill="var(--ink)" paint-order="stroke" stroke="var(--card)" stroke-width="3" stroke-linejoin="round" pointer-events="none">${esc(p.r.ko && st.zoom && p._r >= 16 && p.r.ko.length <= 6 ? p.r.ko : p.r.t)}</text>`;
   }
-  return { svg: g + dots + labs, n: vis.length };
+  return { svg: g + dots + tl + labs, n: vis.length };
 }
 
-// 경로: 시작점 대비 주가(가로)와 신호(세로)가 어떻게 움직였나
-function drawTrail(pts, L, r) {
-  const pl = 64, pr = 30, pt = 48, pb = 44, iw = W - pl - pr, ih = H - pt - pb;
-  const xs = pts.map(p => p[1] ?? 0).concat([0]), ys = pts.map(p => p[2]).concat([0]);
-  const pad = (a, b) => { const m = Math.max(Math.abs(a), Math.abs(b)) * 1.25 || 0.05; return [-m, m]; };
-  const [x0, x1] = pad(Math.min(...xs), Math.max(...xs)), [y0, y1] = pad(Math.min(...ys), Math.max(...ys));
-  const sx = v => pl + (v - x0) / (x1 - x0) * iw, sy = v => pt + (1 - (v - y0) / (y1 - y0)) * ih;
-  const up = cssv('--up'), dn = cssv('--dn');
-  let g = `<rect x="${pl}" y="${pt}" width="${sx(0) - pl}" height="${sy(0) - pt}" fill="color-mix(in srgb, var(--up) 9%, var(--card))"/>
-    <rect x="${sx(0)}" y="${sy(0)}" width="${pl + iw - sx(0)}" height="${pt + ih - sy(0)}" fill="color-mix(in srgb, var(--dn) 9%, var(--card))"/>
-    <line x1="${sx(0)}" x2="${sx(0)}" y1="${pt}" y2="${pt + ih}" stroke="var(--line)" stroke-width="1.2"/><line x1="${pl}" x2="${pl + iw}" y1="${sy(0)}" y2="${sy(0)}" stroke="var(--line)" stroke-width="1.2"/>`;
-  for (let i = 0; i <= 4; i++) {
-    const v = x0 + (x1 - x0) * i / 4, w = y0 + (y1 - y0) * i / 4;
-    g += `<text x="${sx(v)}" y="${pt + ih + 16}" font-size="11" text-anchor="middle" fill="var(--faint)">${sgn(v)}</text>`;
-    g += `<text x="${pl - 8}" y="${sy(w) + 4}" font-size="11" text-anchor="end" fill="var(--faint)">${L.tfmt(st.lens === 'guru' ? Math.round(w) : w)}</text>`;
+// 경로: 지도와 같은 기준(선택한 기간의 주가 × 그 시점의 신호)으로 과거 위치를 계산해 이어 그림. 끝점 = 지금 점
+const XI = { r1w: 1, r1m: 2, r3m: 3, r6m: 4 };
+function trailCoords(pts, L, P) {
+  const xm = XW[st.xw][1], xi = XI[st.xw], cur = P.find(p => p.r.t === st.sel);
+  const jit = L.jitter ? hash(st.sel) * 0.14 : 0;
+  let C = pts.filter(q => q[xi] != null).map(q => ({
+    d: q[0], xN: Math.max(-1, Math.min(1, q[xi] / xm)), yN: Math.max(-1, Math.min(1, (L.raw ? q[5] : q[5] / L.max) + jit)),
+  }));
+  if (cur) {                                   // 마지막 날짜가 오늘(최근 거래일)이면 지금 점으로 바꾸고, 분기 자료면 지금 점을 덧붙임
+    const now = { d: U.asof, xN: cur.xN, yN: cur.yN, now: true };
+    if (C.length && C[C.length - 1].d >= U.asof) C[C.length - 1] = now; else C.push(now);
   }
-  g += `<text x="${pl + iw / 2}" y="${H - 6}" font-size="11.5" text-anchor="middle" fill="var(--muted)">${esc(L.tx)} →</text>`;
-  g += `<text x="${pl}" y="${pt - 14}" font-size="11.5" fill="var(--muted)">↑ ${esc(L.ty)}</text>`;
-  g += `<text x="${pl + 12}" y="${pt + 22}" font-size="13" font-weight="800" fill="${up}">${esc(L.tl)}</text>`;
-  g += `<text x="${pl + iw - 12}" y="${pt + ih - 12}" font-size="13" font-weight="800" text-anchor="end" fill="${dn}">${esc(L.br)}</text>`;
-  const P = pts.map(p => [sx(p[1] ?? 0), sy(p[2])]);
-  g += `<defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"/></marker></defs>`;
-  for (let i = 1; i < P.length; i++) g += `<line x1="${P[i - 1][0]}" y1="${P[i - 1][1]}" x2="${P[i][0]}" y2="${P[i][1]}" stroke="var(--ink)" stroke-width="2.2" stroke-opacity="${0.35 + 0.65 * i / (P.length - 1)}" marker-end="url(#arr)"/>`;
-  P.forEach(([x, y], i) => {
-    const last = i === P.length - 1;
-    g += `<circle cx="${x}" cy="${y}" r="${last ? 8 : 5}" fill="${last ? 'var(--ink)' : 'var(--card)'}" stroke="var(--ink)" stroke-width="2"/>`;
-    g += `<text x="${x + 10}" y="${y - 8}" font-size="11.5" font-weight="${last ? 800 : 500}" fill="var(--ink)" paint-order="stroke" stroke="var(--card)" stroke-width="3">${esc(pts[i][0].slice(5).replace('-', '/'))}${last ? ' ' + esc(r.t) : ''}</text>`;
+  return C;
+}
+function trailLayer(pts, L, P, sx, sy, dom) {
+  const C = trailCoords(pts, L, P);
+  if (C.length < 2) return '';
+  const cur = P.find(p => p.r.t === st.sel);
+  const [x0, x1, y0, y1] = dom, cl = (v, a, b) => Math.max(a, Math.min(b, v));
+  const XY = C.map(c => [sx(cl(c.xN, x0, x1)), sy(cl(c.yN, y0, y1))]);
+  const n = XY.length, ink = 'var(--ink)';
+  const op = i => 0.16 + 0.84 * (i / (n - 1)) ** 1.2;          // 과거는 연하게, 지금에 가까울수록 진하게
+  let g = '<g pointer-events="none">';
+  for (let i = 1; i < n; i++) {
+    const [ax, ay] = XY[i - 1], [bx, by] = XY[i];
+    const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy);
+    if (len < 2) continue;
+    const r0 = 5, r1 = i === n - 1 ? (cur ? cur._r || 8 : 8) + 5 : 6;     // 점에 붙지 않게 양 끝을 띄움
+    if (len <= r0 + r1 + 4) continue;
+    const ux = dx / len, uy = dy / len;
+    const sxp = ax + ux * r0, syp = ay + uy * r0, ex = bx - ux * r1, ey = by - uy * r1;
+    const o = op(i), w = (1.1 + 1.1 * i / (n - 1)).toFixed(2);
+    // 화살촉: 얇고 작은 V자 (선과 같은 투명도)
+    const ah = 6, aw = 3.2, hx = ex - ux * ah, hy = ey - uy * ah;
+    g += `<line x1="${sxp.toFixed(1)}" y1="${syp.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${ink}" stroke-opacity="${o.toFixed(2)}" stroke-width="${w}" stroke-linecap="round"/>`;
+    g += `<polyline points="${(hx - uy * aw).toFixed(1)},${(hy + ux * aw).toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)} ${(hx + uy * aw).toFixed(1)},${(hy - ux * aw).toFixed(1)}" fill="none" stroke="${ink}" stroke-opacity="${o.toFixed(2)}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  XY.forEach(([x, y], i) => {
+    if (i === n - 1) return;                  // 끝점은 지도 위 실제 점이 그 자리
+    const o = op(i);
+    g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" fill="${ink}" fill-opacity="${(o * 0.9).toFixed(2)}"/>`;
+    g += `<text x="${(x + 7).toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="10.5" fill="${ink}" fill-opacity="${Math.max(0.45, o).toFixed(2)}" paint-order="stroke" stroke="var(--card)" stroke-width="3">${esc(C[i].d.slice(5).replace('-', '/'))}</text>`;
   });
-  return g;
+  return g + '</g>';
 }
 
 function pick(P, q, n = 8) {
@@ -200,7 +217,7 @@ function side(P) {
         <div class="kv"><div><span>최근 ${XW[st.xw][0]} 주가</span><b>${pctS(r[st.xw])}</b></div><div><span>${esc(L.name)}</span><b>${L.y(r) == null ? '-' : esc(L.v(r))}</b></div>
         <div><span>시가총액</span><b>${fmtUsd(r.mcap)}</b></div><div><span>다음 실적</span><b>${esc(r.c_next || '-')}</b></div></div>
         ${r.s1 ? `<p class="s13" style="margin:0">${esc(r.s1)}</p>` : ''}
-        <div class="small mut">${!L.trail ? '내부자 렌즈는 경로 대신 종목 화면의 거래 목록을 보세요.' : tr ? `지도에 ${tr.length}개 시점의 경로를 그렸어요 (${esc(tr[0][0])} → ${esc(tr[tr.length - 1][0])}).` : st.trail ? '이 종목은 이 렌즈의 경로 자료가 없어요.' : '경로 불러오는 중…'}</div>
+        <div class="small mut">${!L.trail ? '내부자 렌즈는 경로 대신 종목 화면의 거래 목록을 보세요.' : tr ? `${esc(tr[0][0])}부터 지금까지 지도 위에서 지나온 길을 그렸어요. 연한 점이 과거, 진한 쪽이 최근이에요.` : st.trail ? '이 종목은 이 렌즈의 경로 자료가 없어요.' : '경로 불러오는 중…'}</div>
         <a class="btn dark" href="${stockUrl(r.t)}" style="text-align:center;text-decoration:none">${esc(r.t)} 종목 화면 →</a> ${starBtn(r.t)}</div>`;
     }
   }
@@ -219,13 +236,13 @@ function render() {
   H = W < 600 ? Math.round(W * 1.05) : Math.min(680, Math.round(W * 0.72));
   const sel = st.sel ? S.find(x => x.t === st.sel) : null;
   const trailPts = sel && L.trail && st.trail ? st.trail[L.trail] : null;
-  const showTrail = trailPts && trailPts.length >= 2;
-  const d = showTrail ? { svg: drawTrail(trailPts, L, sel), n: 1 } : draw(P);
+  const showTrail = !!(trailPts && trailPts.length >= 1);
+  const d = draw(P, showTrail ? trailPts : null);
   $('#mx-ctl').innerHTML = controls();
-  $('#mx-chart').innerHTML = `<div class="mx-bar">${st.zoom ? '<button class="btn" id="unzoom">← 전체 보기</button>' : ''}${showTrail ? `<button class="btn" id="untrail">← 지도로</button><span class="tag" style="background:var(--card)">${esc(sel.t)} 경로</span>` : ''}</div>
+  $('#mx-chart').innerHTML = `<div class="mx-bar">${st.zoom ? '<button class="btn" id="unzoom">← 전체 보기</button>' : ''}${showTrail ? `<span class="tag" style="background:var(--card)">${esc(sel.t)} 경로</span><button class="btn" id="untrail">경로 닫기</button>` : ''}</div>
     <svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="어긋남 지도: 가로 최근 ${XW[st.xw][0]} 주가, 세로 ${esc(L.name)}">${d.svg}</svg><div class="mx-tip" id="mx-tip"></div>`;
   $('#mx-side').innerHTML = side(P);
-  $('#mx-count').textContent = showTrail ? `${sel.t}: 시작점 대비 이동 경로` : `${d.n.toLocaleString()}개 종목${st.zoom ? ' (확대)' : ''} · ${U.asof} 기준`;
+  $('#mx-count').textContent = `${d.n.toLocaleString()}개 종목${st.zoom ? ' (확대)' : ''} · ${U.asof} 기준`;
   bind(P);
   sync();
 }

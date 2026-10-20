@@ -312,66 +312,61 @@ def fin_tables(fc, n_a=15, n_q=12):
 
 # ---------------------------------------------------------------- 어긋남 지도 경로
 def trails(t, g, ET, sv, gh, fq, now):
-    """종목을 눌렀을 때 지도 위에 그릴 경로. 점마다 [날짜, 시작일 대비 주가 변화, 신호 값]
-    eps   : 90일 — 시작일 대비 내년 EPS 전망 변화 (야후 EPS 추이의 90·60·30·7일 전·현재)
-    short : 90일 — 시작일 대비 공매도 비중(20일 평균) 변화, 줄면 +
-    guru  : 최근 분기들 — 시작 분기 대비 이 종목을 가진 유명 투자자 수 변화
-    rev   : 최근 4개 분기 — 분기 매출 성장률 − 최근 4개 분기 합계 성장률 (매출 성장 가속)"""
+    """종목을 눌렀을 때 지도 위에 그릴 경로 — 점마다 지도와 같은 기준으로 계산
+    점: [날짜, 1주·1개월·3개월·6개월 수익률(그 날짜 기준), 신호 값]
+    eps   : 90일 — 90일 전 대비 내년 EPS 전망 변화 (마지막 점 = 지도의 'EPS 전망' 값과 같음)
+    short : 90일 — 그 날짜의 공매도 비중(20일 평균) − 그 전 20거래일 평균, 줄면 + (지도와 같은 정의)
+    guru  : 분기 — 그 분기에 이 종목을 가진 유명 투자자 수의 직전 분기 대비 변화
+    rev   : 분기 — 그 분기 매출 성장률 − 그때까지 4개 분기 합계 성장률
+    화면은 마지막에 '현재 점'을 이어 붙여 경로의 끝이 지도 위 점과 정확히 겹치게 그림"""
     if g is None or not len(g):
         return {}
-    px = g.set_index("date").adj_close.dropna()
-    if px.empty:
+    gg = g[["date", "adj_close"]].dropna()
+    if gg.empty:
         return {}
-    last = px.index[-1]
-    def at(d):
-        s = px[px.index <= pd.Timestamp(d)]
-        return float(s.iloc[-1]) if len(s) else None
-    def ret(d0, d):
-        a, b = at(d0), at(d)
-        return round(b / a - 1, 4) if a and b else None
+    dts, a = gg.date.values, gg.adj_close.values.astype(float)
+    last = pd.Timestamp(dts[-1])
+    def rets(d):
+        i = int(np.searchsorted(dts, np.datetime64(pd.Timestamp(d)), side="right")) - 1
+        if i < 0:
+            return [None] * 4
+        return [round(float(a[i] / a[i - n] - 1), 4) if i - n >= 0 and a[i - n] > 0 else None for n in (5, 21, 63, 126)]
+    def pt(d, y):
+        return [str(pd.Timestamp(d).date())] + rets(d) + [round(float(y), 4)]
     out = {}
     if not ET.empty and t in ET.index:
         e = ET.loc[t]
-        offs = [(90, "90daysAgo"), (60, "60daysAgo"), (30, "30daysAgo"), (7, "7daysAgo"), (0, "current")]
         base = e.get("90daysAgo")
         if base and base == base and base > 0:
-            d0 = last - pd.Timedelta(days=90)
-            pts = []
-            for off, f in offs:
-                v = e.get(f)
-                d = last - pd.Timedelta(days=off)
-                if v == v and v is not None:
-                    pts.append([str(d.date()), ret(d0, d), round(float(v) / base - 1, 4)])
+            pts = [pt(last - pd.Timedelta(days=off), float(e.get(f)) / base - 1)
+                   for off, f in ((90, "90daysAgo"), (60, "60daysAgo"), (30, "30daysAgo"), (7, "7daysAgo"), (0, "current"))
+                   if e.get(f) is not None and e.get(f) == e.get(f)]
             if len(pts) >= 3:
                 out["eps"] = pts
-    if sv is not None and len(sv) >= 40:
+    if sv is not None and len(sv) >= 60:
         s = sv.sort_values("date")
-        r = (s.short_vol / s.total_vol).rolling(20).mean()
-        r.index = s.date.values
-        r = r.dropna()
-        if len(r):
-            grid = [last - pd.Timedelta(days=k) for k in (90, 75, 60, 45, 30, 15, 0)]
-            vals = [(d, r[r.index <= d].iloc[-1] if (r.index <= d).any() else None) for d in grid]
-            vals = [(d, v) for d, v in vals if v is not None and v == v]
-            if len(vals) >= 3:
-                d0, v0 = vals[0]
-                out["short"] = [[str(pd.Timestamp(d).date()), ret(d0, d), round(-(v - v0), 4)] for d, v in vals]
-    if gh and len(gh) >= 2:
-        d0, n0 = gh[0]
-        out["guru"] = [[str(pd.Timestamp(p).date()), ret(d0, p), n - n0] for p, n in gh]
+        m20 = (s.short_vol / s.total_vol).rolling(20).mean()
+        chg = (m20 - m20.shift(20)).values
+        sd = s.date.values
+        pts = []
+        for k in (90, 75, 60, 45, 30, 15, 0):
+            d = last - pd.Timedelta(days=k)
+            i = int(np.searchsorted(sd, np.datetime64(d), side="right")) - 1
+            if i >= 0 and chg[i] == chg[i]:
+                pts.append(pt(sd[i], -chg[i]))
+        if len(pts) >= 3:
+            out["short"] = pts
+    if gh and len(gh) >= 3:
+        out["guru"] = [pt(gh[i][0], gh[i][1] - gh[i - 1][1]) for i in range(1, len(gh))]
     if fq:
         rq = [(r["end"], r.get("rev")) for r in fq if r.get("rev")]
         pts = []
         for i in range(7, len(rq)):
             q = [v for _, v in rq[i - 7:i + 1]]
             if all(v and v > 0 for v in q):
-                yoy = q[7] / q[3] - 1
-                ttm = sum(q[4:8]) / sum(q[0:4]) - 1
-                pts.append((rq[i][0], yoy - ttm))
-        pts = pts[-4:]
+                pts.append(pt(rq[i][0], (q[7] / q[3] - 1) - (sum(q[4:8]) / sum(q[0:4]) - 1)))
         if len(pts) >= 2:
-            d0 = pts[0][0]
-            out["rev"] = [[str(pd.Timestamp(d).date()), ret(d0, d), round(v, 4)] for d, v in pts]
+            out["rev"] = pts[-4:]
     return out
 
 
