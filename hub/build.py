@@ -547,28 +547,95 @@ def run(limit=0, **_):
         eh["holding"] = eh.holding.astype(str).str.replace(".", "-", regex=False).str.replace(" ", "-", regex=False)
         for t, g in eh.groupby("holding"):
             etf_in[t] = g.sort_values("weight", ascending=False)[["etf", "weight"]].head(15).values.tolist()
-    # 13F
-    g13 = {}
+    # 13F — 기관마다 가장 최근 분기와 그 직전 분기를 비교 (기관마다 제출 시점이 달라 분기를 하나로 맞추지 않음)
+    g13, f13_page = {}, None
     if not F13.empty:
-        F13 = F13[F13.put_call.isna() & F13.ticker.notna()]
-        periods = sorted(F13.period.unique())
-        last_p = periods[-1]
-        prev_p = periods[-2] if len(periods) > 1 else None
-        ko = dict(zip(MG.manager_cik, MG.manager_ko)) if not MG.empty else {}
-        cur13 = F13[F13.period == last_p].groupby(["ticker", "manager_cik"]).agg(v=("value_usd", "sum"), sh=("shares", "sum")).reset_index()
-        prv13 = F13[F13.period == prev_p].groupby(["ticker", "manager_cik"]).shares.sum() if prev_p is not None else pd.Series(dtype=float)
-        for t, g in cur13.groupby("ticker"):
-            rows = []
-            for r in g.sort_values("v", ascending=False).itertuples():
-                ps = prv13.get((t, r.manager_cik)) if len(prv13) else None
-                rows.append({"m": ko.get(r.manager_cik, str(r.manager_cik)), "v": r.v, "sh": r.sh,
-                             "chg": None if ps is None else (r.sh / ps - 1 if ps else None), "new": ps is None and prev_p is not None})
-            new_n = sum(1 for x in rows if x["new"]) + sum(1 for x in rows if (x["chg"] or 0) > 0.05)
-            sold = 0
-            if prev_p is not None:
-                prev_m = set(F13[(F13.period == prev_p) & (F13.ticker == t)].manager_cik)
-                sold = len(prev_m - set(g.manager_cik))
-            g13[t] = {"period": last_p, "holders": rows, "net": new_n - sold - sum(1 for x in rows if (x["chg"] or 0) < -0.05)}
+        from .f13 import MANAGERS as F13M
+        kind = {c: k for c, _, _, k in F13M}
+        ko = {c: n for c, _, n, _ in F13M}
+        if not MG.empty:
+            ko.update({c: n for c, n in zip(MG.manager_cik, MG.manager_ko) if c not in ko})
+        F13 = F13[F13.put_call.isna()].copy()
+        F13["period"] = pd.to_datetime(F13.period)
+        gmax = F13.period.max()
+        tot = F13.groupby(["manager_cik", "period"]).value_usd.sum()           # 티커 매핑 안 된 것까지 포함한 총액 (비중 계산용)
+        nm13 = F13.dropna(subset=["ticker"]).groupby("ticker").issuer.first()
+        cur_l, prv_l, mlist = [], [], []
+        for m, g in F13.groupby("manager_cik"):
+            ps = sorted(g.period.unique())
+            lp = ps[-1]
+            if lp < gmax - pd.Timedelta(days=200):                              # 1년 가까이 13F를 안 낸 곳은 제외
+                continue
+            pp = ps[-2] if len(ps) > 1 else None
+            c = g[g.period == lp].groupby(["ticker"], dropna=False).agg(v=("value_usd", "sum"), sh=("shares", "sum"), issuer=("issuer", "first")).reset_index()
+            c["m"] = m; cur_l.append(c)
+            if pp is not None:
+                q = g[g.period == pp].groupby(["ticker"], dropna=False).agg(v=("value_usd", "sum"), sh=("shares", "sum"), issuer=("issuer", "first")).reset_index()
+                q["m"] = m; prv_l.append(q)
+            mlist.append((m, lp, pp, g[g.period == lp].filed.max()))
+        CUR = pd.concat(cur_l, ignore_index=True) if cur_l else pd.DataFrame()
+        PRV = pd.concat(prv_l, ignore_index=True) if prv_l else pd.DataFrame(columns=["ticker", "v", "sh", "issuer", "m"])
+        has_prev = {m for m, _, pp, _ in mlist if pp is not None}
+        lpd = {m: lp for m, lp, _, _ in mlist}
+        prv_sh = PRV.dropna(subset=["ticker"]).set_index(["m", "ticker"]).sh.to_dict()
+        prv_v = PRV.dropna(subset=["ticker"]).set_index(["m", "ticker"]).v.to_dict()
+        CUR["w"] = [v / tot.get((m, lpd[m]), np.nan) for m, v in zip(CUR.m, CUR.v)]
+        CUR["chg"] = [(sh / prv_sh[(m, t)] - 1) if (m, t) in prv_sh and prv_sh[(m, t)] else None for m, t, sh in zip(CUR.m, CUR.ticker, CUR.sh)]
+        CUR["new"] = [m in has_prev and (m, t) not in prv_sh for m, t in zip(CUR.m, CUR.ticker)]
+        # 종목별
+        C1 = CUR.dropna(subset=["ticker"])
+        for t, g in C1.groupby("ticker"):
+            g = g.assign(k=g.m.map(kind).fillna("guru"), rk=g.m.map(kind).map({"guru": 0, "fund": 1, "inst": 2}).fillna(0))
+            rows_ = [{"m": ko.get(r.m, str(r.m)), "k": r.k, "v": r.v, "sh": r.sh, "w": r.w, "chg": r.chg, "new": bool(r.new),
+                      "p": str(lpd[r.m].date())} for r in g.sort_values(["rk", "v"], ascending=[True, False]).itertuples()]
+            gu = g[g.k == "guru"]
+            sold = sum(1 for m in has_prev if kind.get(m, "guru") == "guru" and (m, t) in prv_sh and m not in set(gu.m))
+            up = int(gu.new.sum()) + int((gu.chg.fillna(0) > 0.05).sum())
+            dn = int((gu.chg.fillna(0) < -0.05).sum()) + sold
+            g13[t] = {"period": str(max(lpd[m] for m in g.m).date()), "holders": rows_[:40], "n_guru": len(gu), "net": up - dn, "sold": sold}
+        # 투자자 화면용
+        mrows = []
+        for m, lp, pp, filed in mlist:
+            c = CUR[CUR.m == m].sort_values("v", ascending=False)
+            label = lambda r: r.ticker if isinstance(r.ticker, str) else None
+            top = [{"t": label(r), "n": r.issuer, "w": r.w, "v": r.v, "chg": r.chg, "new": bool(r.new)} for r in c.head(25).itertuples()]
+            buys, sells = [], []
+            if pp is not None:
+                cc = c.dropna(subset=["ticker"]).copy()
+                # 가격 변동은 빼고 주식 수 변화분만 금액으로 (이번 분기 말 가격 기준)
+                cc["dv"] = [(sh - prv_sh.get((m, t), 0)) * (v / sh if sh else 0) for t, v, sh in zip(cc.ticker, cc.v, cc.sh)]
+                buys = [{"t": r.ticker, "n": r.issuer, "dv": r.dv, "new": bool(r.new), "chg": r.chg, "w": r.w}
+                        for r in cc[cc.dv > 0].nlargest(10, "dv").itertuples()]
+                pv = PRV[(PRV.m == m)].dropna(subset=["ticker"])
+                cur_sh = dict(zip(cc.ticker, cc.sh))
+                pv = pv.assign(dv=[-(psh - cur_sh.get(t, 0)) * (pvv / psh if psh else 0) for t, psh, pvv in zip(pv.ticker, pv.sh, pv.v)],
+                               out=[t not in cur_sh for t in pv.ticker])
+                sells = [{"t": r.ticker, "n": r.issuer, "dv": r.dv, "out": bool(r.out)} for r in pv[pv.dv < 0].nsmallest(10, "dv").itertuples()]
+            mrows.append({"cik": int(m), "m": ko.get(m, str(m)), "k": kind.get(m, "guru"), "p": str(lp.date()), "filed": str(pd.Timestamp(filed).date()),
+                          "prev": str(pd.Timestamp(pp).date()) if pp is not None else None, "total": float(tot.get((m, lp), 0)),
+                          "n": int(len(c)), "top10w": float(c.head(10).w.sum()), "top": top, "buys": buys, "sells": sells})
+        # 유명 투자자(guru) 합산: 많이 보유·새로 산·판 종목
+        G = CUR[CUR.m.map(kind).fillna("guru").eq("guru")].dropna(subset=["ticker"])
+        agg = G.groupby("ticker").agg(n=("m", "nunique"), v=("v", "sum"), new=("new", "sum"),
+                                      up=("chg", lambda x: int((x.fillna(0) > 0.05).sum()))).reset_index()
+        agg["sold"] = agg.ticker.map(lambda t: g13.get(t, {}).get("sold", 0))
+        agg["name"] = agg.ticker.map(nm13)
+        agg["net"] = agg.ticker.map(lambda t: g13.get(t, {}).get("net", 0))
+        f13_page = {"asof": str(gmax.date()), "managers": sorted(mrows, key=lambda r: ({"guru": 0, "fund": 1, "inst": 2}[r["k"]], -r["total"])),
+                    "popular": agg.nlargest(25, ["n", "v"]).to_dict("records"),
+                    "bought": agg[(agg.new + agg.up) > 0].assign(b=lambda x: x.new + x.up).nlargest(20, ["b", "v"]).to_dict("records"),
+                    "sold": agg.assign(s=agg.sold).query("s > 0").nlargest(20, ["s", "v"]).to_dict("records")}
+        # 다 판 종목은 현재 보유(agg)에 없으므로 직전 분기에서 따로 셈
+        out_cnt = {}
+        for m in has_prev:
+            if kind.get(m, "guru") != "guru":
+                continue
+            cur_t = set(CUR[CUR.m == m].ticker.dropna())
+            for t in set(PRV[PRV.m == m].ticker.dropna()) - cur_t:
+                out_cnt[t] = out_cnt.get(t, 0) + 1
+        if out_cnt:
+            so = pd.DataFrame([{"ticker": t, "s": n, "name": nm13.get(t)} for t, n in out_cnt.items()]).nlargest(20, "s")
+            f13_page["sold"] = so.to_dict("records")
 
     log("종목별 지표 계산·저장 중")
     rows, n_files = [], 0
@@ -707,7 +774,7 @@ def run(limit=0, **_):
             row["nw_last"] = nw.title.iloc[-1][:90]
         row["etfn"] = len(etf_in.get(t, []))
         if t in g13:
-            row["g13"], row["g13_chg"] = len(g13[t]["holders"]), g13[t]["net"]
+            row["g13"], row["g13_chg"] = g13[t]["n_guru"], g13[t]["net"]
         row["s1"] = summary_line(row, now.date())
         rows.append(row)
 
@@ -860,6 +927,19 @@ def run(limit=0, **_):
         f = f[f.Date >= str((pd.Timestamp.now() - pd.Timedelta(days=740)).date())]
         mk["krw"] = {"d": f.Date.tolist(), "c": f.Close.round(2).tolist()}
     dump(OUT / "free" / "market.json", mk)
+    if f13_page:
+        dump(OUT / "free" / "f13.json", f13_page)
+    # 예전 S&P 500 컨센서스 페이지 데이터 (Pages 배포 때 /consensus_data.json 으로 복사)
+    try:
+        from . import consensus_page
+        sp = U2[(U2.k == "stock") & U2.idx.fillna("").str.contains("S&P500", regex=False)] if "idx" in U2 else U2.iloc[0:0]
+        cp = consensus_page.build(c_H, dict(zip(U2.t, U2.n)), set(sp.t)) if not c_H.empty and len(sp) else None
+        if cp:
+            with open(OUT / "free" / "consensus_page.json", "w", encoding="utf-8") as f:
+                json.dump(cp, f, ensure_ascii=False, separators=(",", ":"))
+            R.set(consensus_page=f"{cp['date']} {cp['n_tickers']}종목 {len(cp['hist'])}일")
+    except Exception as e:
+        R.warning(f"컨센서스 페이지 데이터 실패: {str(e)[:80]}")
     stat = {s["source"]: {k: s.get(k) for k in ("ok", "finished_utc", "seconds", "rows_new", "n_warnings")} for s in load_status()}
     dump(OUT / "meta.json", {"built": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "price_asof": PX.date.max(),
                                            "stocks": len(S), "etfs": len(E), "kr_etfs": len(krows) if not KD.empty else 0,

@@ -35,5 +35,6 @@ const Data = {
   stockPro: t => Plan.isPro() ? getJSON(`pro/stock/${encodeURIComponent(t)}.json`) : Promise.resolve(null),
   etf: t => getJSON(`free/etf/${encodeURIComponent(t)}.json`),
   krEtfs: () => getJSON('free/kr_etf.json'),
+  f13: () => getJSON('free/f13.json'),
   krEtf: code => getJSON(`free/kr_etf/${encodeURIComponent(code)}.json`),
 };

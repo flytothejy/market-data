@@ -45,7 +45,7 @@ const pctS = v => `<span class="${cls(v)} num">${fmt(v, 'pct', { sign: true })}<
 
 // ---- 상단
 function header(active) {
-  const items = [['index.html', '둘러보기'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['portfolio.html', '포트폴리오']];
+  const items = [['index.html', '둘러보기'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오']];
   const el = document.createElement('header');
   el.className = 'top';
   el.innerHTML = `<div class="in"><a class="brand" href="index.html">종목 허브</a>
@@ -181,6 +181,7 @@ const GLOSS = {
   ibn: '최근 90일 장내 매수한 내부자 수', f144: '최근 30일 내부자 등이 주식을 팔겠다고 미리 낸 신고 건수',
   rf_new: '올해 10-K 위험요인 문장 중 작년 어떤 문장과도 닮지 않은 문장의 비율. 높으면 새 위험을 많이 적은 것',
   rf_sim: '올해와 작년 10-K 위험요인의 단어 유사도 (1 = 같음)', md_unc: '경영진 논의에서 불확실성 단어(may, uncertain 등)의 비율',
-  g13: '추적 중인 유명 투자자 중 이 종목을 보유한 곳의 수 (분기 13F 기준)',
+  g13: '추적 중인 유명 투자자(집중 투자형·행동주의 약 36곳) 중 이 종목을 보유한 곳의 수. 분기 13F 기준이며 대형 운용사·퀀트 펀드는 세지 않음',
+  g13_chg: '이번 분기 새로 사거나 5% 넘게 늘린 유명 투자자 수 − 다 팔거나 5% 넘게 줄인 수',
 };
 const tip = k => GLOSS[k] ? `<span class="tip" tabindex="0" role="note" aria-label="${esc(GLOSS[k])}" data-tip="${esc(GLOSS[k])}">?</span>` : '';

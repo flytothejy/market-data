@@ -4,7 +4,7 @@ name: pages
 # 저장소 Settings → Pages → Source 를 "GitHub Actions"로 바꿔야 동작
 on:
   workflow_run:
-    workflows: ["hub", "update-market-data", "consensus"]
+    workflows: ["hub", "update-market-data"]
     types: [completed]
   push:
     branches: [main]
@@ -45,6 +45,8 @@ jobs:
           cp -r docs/. _site/
           cp -r web/. _site/hub/ 2>/dev/null || true
           if [ -d data/hub/site/api ]; then cp -r data/hub/site/api _site/api; fi
+          # 예전 컨센서스 페이지: 허브 데이터로 만든 것을 우선 사용
+          if [ -f _site/api/v1/free/consensus_page.json ]; then cp _site/api/v1/free/consensus_page.json _site/consensus_data.json; fi
           touch _site/.nojekyll
           du -sh _site; find _site -type f | wc -l
       - uses: actions/upload-pages-artifact@v4

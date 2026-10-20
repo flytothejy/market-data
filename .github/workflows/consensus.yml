@@ -1,9 +1,8 @@
 name: consensus
 
 on:
-  schedule:
-    - cron: "30 2 * * 2-6"    # 화~토 02:30 UTC (한국 11:30) — 허브 수집(23:40 UTC~)과 야후 요청이 겹치지 않게
-    # 허브가 전체 종목 컨센서스를 매일 쌓기 시작함(hub/consensus.py). 이 작업은 예전 S&P 500 페이지용으로만 유지
+  # 2026-10-20 예약 실행 중단: 허브가 전체 종목 컨센서스를 매일 쌓고(hub/consensus.py),
+  # 예전 S&P 500 페이지 데이터도 허브 빌드가 만들어 Pages 배포 때 넣음(hub/consensus_page.py). 수동 실행만 남김
   workflow_dispatch:
     inputs:
       limit:
