@@ -45,10 +45,10 @@ const pctS = v => `<span class="${cls(v)} num">${fmt(v, 'pct', { sign: true })}<
 
 // ---- 상단
 function header(active) {
-  const items = [['index.html', '둘러보기'], ['matrix.html', '지도'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오']];
+  const items = [['index.html', '둘러보기'], ['matrix.html', '티커맵'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오']];
   const el = document.createElement('header');
   el.className = 'top';
-  el.innerHTML = `<div class="in"><a class="brand" href="index.html">종목 허브</a>
+  el.innerHTML = `<div class="in"><a class="brand" href="index.html" aria-label="티커맵 홈"><svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true" style="flex-shrink:0"><line x1="13" y1="2" x2="13" y2="24" stroke="currentColor" stroke-opacity=".28" stroke-width="1.6"/><line x1="2" y1="13" x2="24" y2="13" stroke="currentColor" stroke-opacity=".28" stroke-width="1.6"/><circle cx="7" cy="7" r="4.6" fill="#d65014"/><circle cx="19" cy="19" r="3.6" fill="#2463c4"/><circle cx="19.5" cy="7.5" r="2.5" fill="#a8a59c"/><circle cx="7" cy="19" r="2" fill="#a8a59c"/></svg><span>티커맵</span></a>
   <nav class="main">${items.map(([h, l]) => `<a href="${h}" class="${l === active ? 'on' : ''}">${l}</a>`).join('')}</nav>
   <div class="search"><input type="search" placeholder="티커·회사명 (한글 가능)" aria-label="종목 검색" autocomplete="off"><div class="sugg"></div></div></div>`;
   document.body.prepend(el);

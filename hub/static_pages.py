@@ -46,7 +46,7 @@ def inject(tpl, *, title, desc, path, var, body, image=None):
     """템플릿 HTML에 base·메타·변수·미리 그린 본문을 넣음"""
     url = f"{SITE_URL}/{path}"
     head = (f'<base href="../../">\n<link rel="canonical" href="{e(url)}">\n<meta name="description" content="{e(desc)}">\n'
-            f'<meta property="og:type" content="website"><meta property="og:site_name" content="종목 허브"><meta property="og:locale" content="ko_KR">\n'
+            f'<meta property="og:type" content="website"><meta property="og:site_name" content="티커맵"><meta property="og:locale" content="ko_KR">\n'
             f'<meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(desc)}"><meta property="og:url" content="{e(url)}">\n'
             f'<meta name="twitter:card" content="summary">\n<script>{var}</script>\n')
     s = re.sub(r'<meta name="description"[^>]*>\n?', "", tpl)              # 템플릿의 설명 메타는 빼고 새로
@@ -64,14 +64,14 @@ def stock_page(tpl, r, d, ko, aliases, peers, is_etf):
     t, n = r["t"], r.get("n") or r["t"]
     name = f"{ko}({t})" if ko else f"{n} ({t})"
     if is_etf:
-        title = f"{t} ETF — {n} 구성 종목·배당·수익률 | 종목 허브"
+        title = f"{t} ETF — {n} 구성 종목·배당·수익률 | 티커맵"
         desc = (f"{t} {n}: 종가 ${r.get('px') or 0:,.2f}, 순자산 {usd(r.get('aum'))}, 총보수 {pct(r.get('exp'), False) if r.get('exp') else '-'}, "
                 f"1년 {pct(r.get('r1y'))}. 구성 종목·업종 비중·배당 이력·국내 상장 대응 ETF를 한국어로.")
         items = [("종가", f"${r.get('px') or 0:,.2f}"), ("순자산", usd(r.get("aum"))), ("총보수", pct(r.get("exp"), False) if r.get("exp") else None),
                  ("배당수익률", pct(r.get("dy"), False) if r.get("dy") else None), ("1개월", pct(r.get("r1m"))), ("1년", pct(r.get("r1y")))]
     else:
         nxt = f" 다음 실적 발표 {mmdd(r['c_next'])}." if r.get("c_next") else ""
-        title = f"{name} 주가·실적 발표일·컨센서스 | 종목 허브"
+        title = f"{name} 주가·실적 발표일·컨센서스 | 티커맵"
         desc = (f"{name} 주가 ${r.get('px') or 0:,.2f}({pct(r.get('r1d'))}), 시가총액 {usd(r.get('mcap'))}.{nxt} "
                 f"{r.get('s1') or ''} 애널리스트 전망·재무·공매도·내부자 거래·유명 투자자 보유를 한국어로 한눈에.")
         items = [("종가", f"${r.get('px') or 0:,.2f}"), ("시가총액", usd(r.get("mcap"))), ("업종", SECTOR_KO.get(r.get("sec"), r.get("sec"))),
@@ -100,7 +100,7 @@ def investor_page(tpl, m):
     kind = {"guru": "유명 투자자", "fund": "헤지펀드·퀀트", "inst": "대형 운용사"}[m["k"]]
     q = f"{m['p'][:4]}년 {(int(m['p'][5:7]) + 2) // 3}분기"
     top = [x for x in m["top"] if x.get("t")][:5]
-    title = f"{m['m']} 13F 포트폴리오 ({q}) — 보유 종목·매수·매도 | 종목 허브"
+    title = f"{m['m']} 13F 포트폴리오 ({q}) — 보유 종목·매수·매도 | 티커맵"
     desc = (f"{m['m']}의 {q} 말 13F 보유 종목: " + ", ".join(f"{x['t']} {x['w'] * 100:.1f}%" for x in top if x.get("w") is not None) +
             f". 총 {usd(m['total'])}, {m['n']}종목. 이번 분기 새로 산 종목과 판 종목을 한국어로.")
     def trow(x):

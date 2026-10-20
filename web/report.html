@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>종목 허브 — 포트폴리오 리포트</title>
+<title>티커맵 — 포트폴리오 리포트</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/app.css">
 <script src="assets/data.js"></script>
 <script src="assets/ui.js"></script>
@@ -228,7 +229,7 @@ function perfChart(dates, a, b) {
   let h = `<div class="tools">${demo ? '<span class="mut s13" style="margin-right:auto">예시 포트폴리오로 만든 리포트예요. <a href="portfolio.html">내 종목 넣기 →</a></span>' : ''}<a class="btn" href="portfolio.html">포트폴리오로</a><button class="btn dark" onclick="print()">PDF로 저장 · 인쇄</button></div>
   <article class="sheet">
     <div class="r-head"><div><div class="small mut">주간 포트폴리오 리포트</div><h1>내 포트폴리오 · ${rows.length}종목</h1></div>
-      <div class="meta">${esc(asof)} 종가 기준<br>종목 허브</div></div>
+      <div class="meta">${esc(asof)} 종가 기준<br>티커맵</div></div>
     <p class="lede">${esc(lede)}</p>
     <div class="tiles">
       <div class="tile"><span>평가액</span><b>$${Math.round(val).toLocaleString()}</b><small>보유 수량 × 종가</small></div>

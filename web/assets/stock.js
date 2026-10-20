@@ -206,7 +206,7 @@ async function renderStock(U, d, P) {
   h += sec('news', 'news', '뉴스', '최근 기사·보도자료 (영문 원문)', card('', '', nws.length ? nws.map(x => `<div class="news-i"><a href="${esc(x.u)}" target="_blank" rel="noopener">${esc(x.t)}</a><span class="m">${fmt(x.d, 'date')} · ${esc(x.s || '')}${x.k === 'pr' ? ' · 보도자료' : ''}</span></div>`).join('') : '<div class="mut s13">최근 뉴스가 없습니다</div>'));
 
   $('#app').innerHTML = h;
-  document.title = `${m.ko ? `${m.ko}(${m.t})` : `${m.n} (${m.t})`} 주가·실적 발표일·컨센서스 | 종목 허브`;
+  document.title = `${m.ko ? `${m.ko}(${m.t})` : `${m.n} (${m.t})`} 주가·실적 발표일·컨센서스 | 티커맵`;
   mountChart('pc', d, false);
   if (d.short) miniLine($('#sv-c'), d.short.d, d.short.r, css('--dn'), v => (v * 100).toFixed(0) + '%');
   if (d.opt && d.opt.d.length > 1) miniLine($('#iv-c'), d.opt.d, d.opt.iv, css('--up'), v => (v * 100).toFixed(0) + '%');
@@ -266,7 +266,7 @@ async function renderEtf(U, d) {
   if (d.div && d.div.length) h += card('배당 이력', '최근 지급분 (주당, 달러)', `<div class="tbl-wrap"><table class="t"><thead><tr>${d.div.slice(-12).reverse().map(x => `<th>${fmt(x[0], 'date')}</th>`).join('')}</tr></thead><tbody><tr>${d.div.slice(-12).reverse().map(x => `<td class="num">$${(+x[1]).toFixed(4)}</td>`).join('')}</tr></tbody></table></div>`);
   if (d.summary) h += card('소개', '', `<p style="margin:0;font-size:14px;color:var(--muted)">${esc(d.summary)}</p>`);
   $('#app').innerHTML = h;
-  document.title = `${m.t} ETF — ${m.n} 구성 종목·배당·수익률 | 종목 허브`;
+  document.title = `${m.t} ETF — ${m.n} 구성 종목·배당·수익률 | 티커맵`;
   mountChart('pc', d, true);
   footer();
 }

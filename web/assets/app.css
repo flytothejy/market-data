@@ -25,7 +25,7 @@ a:hover{text-decoration:underline}
 /* 상단 */
 header.top{border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:20}
 header.top .in{max-width:1160px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
-.brand{color:var(--ink);font-weight:800;font-size:17px;letter-spacing:-.02em;padding:14px 0}
+.brand{color:var(--ink);font-weight:800;font-size:17px;letter-spacing:-.02em;padding:14px 0;display:inline-flex;align-items:center;gap:8px}
 .brand:hover{text-decoration:none}
 nav.main{display:flex;gap:22px}
 nav.main a{white-space:nowrap}

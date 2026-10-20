@@ -1,9 +1,9 @@
-// 어긋남 지도 — 가로 = 주가(기간 선택), 세로 = 신호(렌즈), 점 크기 = 시가총액
-// 신호와 주가가 반대로 간 왼쪽 위·오른쪽 아래가 핵심. 휠·드래그로 확대·이동, 점을 누르면 궤적(지나온 길)
-header('지도');
+// 티커맵 — 가로 = 주가(기간 선택), 세로 = 신호(렌즈), 점 크기 = 시가총액
+// 신호와 주가가 반대로 간 왼쪽 위·오른쪽 아래가 핵심. 휠·드래그로 확대·이동, 점을 누르면 티커 트레일(지나온 길)
+header('티커맵');
 const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const XW = { r1w: ['1주', 0.12], r1m: ['1개월', 0.3], r3m: ['3개월', 0.5], r6m: ['6개월', 0.7] };
-const XI = { r1w: 1, r1m: 2, r3m: 3, r6m: 4 };          // 궤적 점 [날짜, 1주, 1개월, 3개월, 6개월, 신호]
+const XI = { r1w: 1, r1m: 2, r3m: 3, r6m: 4 };          // 트레일 점 [날짜, 1주, 1개월, 3개월, 6개월, 신호]
 const money = v => { const a = Math.abs(v); return a >= 1e8 ? '$' + (a / 1e8).toFixed(a >= 1e9 ? 0 : 1) + '억' : a >= 1e4 ? '$' + Math.round(a / 1e4) + '만' : '$' + Math.round(a); };
 const sgn = (v, d = 0) => (v > 0 ? '+' : '') + (v * 100).toFixed(d) + '%';
 const LENS = {
@@ -77,7 +77,7 @@ function stockPoints(ignoreFocus) {
   for (const r of S) {
     const x = r[st.xw], y = L.y(r);
     if (x == null || y == null) continue;
-    const pinned = tr.has(r.t);                  // 궤적을 보고 있는 종목은 필터와 상관없이 항상 표시
+    const pinned = tr.has(r.t);                  // 트레일을 보고 있는 종목은 필터와 상관없이 항상 표시
     if (!pinned) {
       if (!ignoreFocus && st.onlyTrack && st.track.length) continue;
       if (st.sec && r.sec !== st.sec) continue;
@@ -210,7 +210,7 @@ function drawChart() {
 }
 const queueDraw = () => { if (!drawQueued) { drawQueued = true; requestAnimationFrame(drawChart); } };
 
-// ---- 궤적: 지도와 같은 기준(선택한 기간의 주가 × 그 시점의 신호)으로 과거 위치를 이어 그림. 끝점 = 지금 점
+// ---- 티커 트레일: 지도와 같은 기준(선택한 기간의 주가 × 그 시점의 신호)으로 과거 위치를 이어 그림. 끝점 = 지금 점
 function trailPts(id) {
   const L = LENS[st.lens];
   if (!L.trail) return null;
@@ -264,12 +264,12 @@ function controls() {
     <div class="mx-seg" role="tablist" aria-label="보기 단위">${Object.entries(VIEWS).map(([k, l]) => `<button role="tab" aria-selected="${k === st.view}" class="${k === st.view ? 'on' : ''}" data-view="${k}">${l}</button>`).join('')}</div>
   </div>
   <details class="mx-more" ${window.innerWidth >= 700 || st.track.length ? 'open' : ''}><summary>찾기 · 필터</summary><div class="mx-ctl">
-    <div class="mx-find"><input type="search" class="f" id="mx-q" placeholder="${st.view === 'stock' ? '종목 찾아 궤적 보기 (최대 5개)' : '업종 찾기'}" autocomplete="off" aria-label="지도에서 찾기"><div class="mx-sugg" id="mx-sugg"></div></div>
+    <div class="mx-find"><input type="search" class="f" id="mx-q" placeholder="${st.view === 'stock' ? '종목 찾아 트레일 보기 (최대 5개)' : '업종 찾기'}" autocomplete="off" aria-label="지도에서 찾기"><div class="mx-sugg" id="mx-sugg"></div></div>
     <label class="s13 mut">업종 <select class="f" id="f-sec"><option value="">전체</option>${secs.map(s => `<option value="${esc(s)}" ${s === st.sec ? 'selected' : ''}>${esc(secKo(s))}</option>`).join('')}</select></label>
     <label class="s13 mut">시가총액 <select class="f" id="f-cap">${[[0, '전체'], [1e10, '100억 달러 이상'], [1e11, '1,000억 달러 이상']].map(([v, l]) => `<option value="${v}" ${v === st.cap ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     <div class="mx-seg" aria-label="보기 범위">${[['', '전체'], ['watch', `관심 ${Watch.list().length}`], ['hold', `보유 ${portfolioTickers().length}`], ['earn', '이번 주 실적']].map(([k, l]) => `<button class="${k === st.only ? 'on' : ''}" data-only="${k}">${l}</button>`).join('')}</div>
   </div></details>
-  ${st.track.length ? `<div class="mx-ctl"><span class="s13 mut">궤적</span>${st.track.map((id, i) => `<span class="mx-chip"><i style="background:${TRACK_COL[i % TRACK_COL.length]}"></i><b>${esc(labelOf(id))}</b><button data-untrack="${esc(id)}" aria-label="${esc(labelOf(id))} 빼기">×</button></span>`).join('')}
+  ${st.track.length ? `<div class="mx-ctl"><span class="s13 mut">티커 트레일</span>${st.track.map((id, i) => `<span class="mx-chip"><i style="background:${TRACK_COL[i % TRACK_COL.length]}"></i><b>${esc(labelOf(id))}</b><button data-untrack="${esc(id)}" aria-label="${esc(labelOf(id))} 빼기">×</button></span>`).join('')}
     <label class="s13" style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="mx-focus" ${st.onlyTrack ? 'checked' : ''}> 이것만 보기</label>
     <button class="btn" id="mx-clear" style="min-height:30px;padding:2px 10px">모두 지우기</button></div>` : ''}`;
 }
@@ -281,9 +281,9 @@ function side() {
     return st.track.map((id, i) => {
       const p = P.find(q => q.id === id), color = TRACK_COL[i % TRACK_COL.length], pts = trailPts(id);
       const r = isGroup(id) ? null : S.find(x => x.t === id);
-      const note = !L.trail ? '내부자 렌즈는 궤적이 없어요. 종목 화면의 거래 목록을 보세요.'
+      const note = !L.trail ? '내부자 렌즈는 트레일이 없어요. 종목 화면의 거래 목록을 보세요.'
         : pts && pts.length ? `${esc(pts[0][0])}부터 지금까지 지나온 길 · 연한 점이 과거, 진한 쪽이 최근`
-        : isGroup(id) ? (GT ? '이 묶음은 이 렌즈의 궤적 자료가 없어요.' : '궤적 불러오는 중…') : st.trail[id] ? '이 종목은 이 렌즈의 궤적 자료가 없어요.' : '궤적 불러오는 중…';
+        : isGroup(id) ? (GT ? '이 묶음은 이 렌즈의 트레일 자료가 없어요.' : '트레일 불러오는 중…') : st.trail[id] ? '이 종목은 이 렌즈의 트레일 자료가 없어요.' : '트레일 불러오는 중…';
       return `<div class="card" style="box-shadow:inset 3px 0 0 ${color}"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><h3 style="font-size:17px">${esc(labelOf(id))}</h3><span class="mut s13">${esc(r ? (r.ko || r.n) : p ? p.sub : '')}</span></div>
         ${p ? `<div class="kv"><div><span>최근 ${XW[st.xw][0]} 주가</span><b>${pctS(p.x)}</b></div><div><span>${esc(L.name)}</span><b>${esc(L.fy(p.y, p.r))}</b></div><div><span>시가총액</span><b>${fmtUsd(p.mcap)}</b></div>${r ? `<div><span>다음 실적</span><b>${esc(r.c_next || '-')}</b></div>` : ''}</div>` : `<div class="mut s13">지금 렌즈·기간에 값이 없어요</div>`}
         ${r && r.s1 ? `<p class="s13" style="margin:0">${esc(r.s1)}</p>` : ''}
@@ -293,13 +293,13 @@ function side() {
   }
   const row = p => `<a data-pick="${esc(p.id)}" class="${st.view === 'stock' ? '' : 'g'}"><b>${esc(st.view === 'stock' ? p.id : p.label)}</b><small>${esc(st.view === 'stock' ? p.sub : '')}</small><span class="v">${sgn(p.x)} · ${esc(L.fy(p.y, p.r))}</span></a>`;
   const tl = pick(visible, 'tl'), br = pick(visible, 'br'), where = zoomed() ? '확대한 영역 · ' : '';
-  return `<div class="card"><h3>어떻게 읽나요</h3><p class="s13 mut" style="margin:0">${esc(L.desc)}</p><p class="small faint" style="margin:0">휠·두 손가락으로 확대, 끌어서 이동, 두 번 누르면 전체 보기. 점을 누르면 궤적(지나온 길)을, Shift를 누른 채 누르면 여러 개를 함께 그려요.</p></div>
+  return `<div class="card"><h3>어떻게 읽나요</h3><p class="s13 mut" style="margin:0">${esc(L.desc)}</p><p class="small faint" style="margin:0">휠·두 손가락으로 확대, 끌어서 이동, 두 번 누르면 전체 보기. 점을 누르면 티커 트레일(지나온 길)을, Shift를 누른 채 누르면 여러 개를 함께 그려요.</p></div>
     <div class="card"><h3 style="color:var(--up)">${esc(where + L.tl)}</h3><div class="mx-list">${tl.map(row).join('') || '<span class="mut s13">해당하는 곳이 없어요</span>'}</div></div>
     <div class="card"><h3 style="color:var(--dn)">${esc(where + L.br)}</h3><div class="mx-list">${br.map(row).join('') || '<span class="mut s13">해당하는 곳이 없어요</span>'}</div></div>`;
 }
 const queueSide = () => { clearTimeout(sideTimer); sideTimer = setTimeout(() => { $('#mx-side').innerHTML = side(); bindSide(); }, 220); };
 
-// ---- 전체 다시 그리기 (렌즈·필터·궤적 목록이 바뀔 때)
+// ---- 전체 다시 그리기 (렌즈·필터·트레일 목록이 바뀔 때)
 function render(keepDom) {
   P = points();
   const prevHome = HOME;
@@ -312,7 +312,7 @@ function render(keepDom) {
   H = W < 600 ? Math.round(W * 1.05) : Math.min(680, Math.round(W * 0.72));
   const L = LENS[st.lens];
   box.innerHTML = `<div class="mx-bar"><button class="btn" id="mx-zin" aria-label="확대">＋</button><button class="btn" id="mx-zout" aria-label="축소">－</button><button class="btn" id="mx-reset">전체 보기</button></div>
-    <svg id="mx-svg" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="어긋남 지도: 가로 최근 ${XW[st.xw][0]} 주가, 세로 ${esc(L.name)}"></svg><div class="mx-tip" id="mx-tip"></div>`;
+    <svg id="mx-svg" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="티커맵: 가로 최근 ${XW[st.xw][0]} 주가, 세로 ${esc(L.name)}"></svg><div class="mx-tip" id="mx-tip"></div>`;
   drawChart();
   $('#mx-side').innerHTML = side();
   bindCtl(); bindChart(); bindSide();
@@ -342,7 +342,7 @@ function bindCtl() {
   $('#f-cap').onchange = e => { st.cap = +e.target.value; render(); };
   const fc = $('#mx-focus'); if (fc) fc.onchange = e => { st.onlyTrack = e.target.checked; render(); };
   const cl = $('#mx-clear'); if (cl) cl.onclick = () => { st.track = []; st.onlyTrack = false; render(); };
-  // 지도 안 검색: 종목(또는 업종)을 찾아 궤적 목록에 추가
+  // 지도 안 검색: 종목(또는 업종)을 찾아 트레일 목록에 추가
   const q = $('#mx-q'), box = $('#mx-sugg');
   let list = [], sel = -1;
   const show = () => {
@@ -461,7 +461,7 @@ function bindSide() {
   try { U = await Data.universe(); }
   catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   S = U.rows.filter(r => r.k === 'stock');
-  $('#app').innerHTML = `<div class="hero"><h1>어긋남 지도</h1><p>주가와 신호가 반대로 간 종목을 찾는 지도 · 가로 = 주가, 세로 = 고른 신호, 점 크기 = 시가총액 · <span id="mx-count"></span></p></div>
+  $('#app').innerHTML = `<div class="hero"><h1>티커맵</h1><p>주가와 신호가 어긋난 종목을 찾는 지도 · 가로 = 주가, 세로 = 고른 신호, 점 크기 = 시가총액 · <span id="mx-count"></span></p></div>
     <div class="card" id="mx-ctl" style="gap:10px"></div>
     <div class="mx-wrap"><div class="mx-chart" id="mx-chart"></div><div class="mx-side" id="mx-side"></div></div>
     <div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 가로축 범위 밖의 종목은 가장자리에 붙여 그립니다 · 업종 원은 시가총액 가중 평균 · 출처: SEC EDGAR(재무·내부자·13F), FINRA(공매도), yfinance(가격·컨센서스)</div>`;
