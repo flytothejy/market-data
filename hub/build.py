@@ -310,6 +310,71 @@ def fin_tables(fc, n_a=15, n_q=12):
     return table(fc["a"], keys, n_a), table(fc["q"], keys, n_q)
 
 
+# ---------------------------------------------------------------- 어긋남 지도 경로
+def trails(t, g, ET, sv, gh, fq, now):
+    """종목을 눌렀을 때 지도 위에 그릴 경로. 점마다 [날짜, 시작일 대비 주가 변화, 신호 값]
+    eps   : 90일 — 시작일 대비 내년 EPS 전망 변화 (야후 EPS 추이의 90·60·30·7일 전·현재)
+    short : 90일 — 시작일 대비 공매도 비중(20일 평균) 변화, 줄면 +
+    guru  : 최근 분기들 — 시작 분기 대비 이 종목을 가진 유명 투자자 수 변화
+    rev   : 최근 4개 분기 — 분기 매출 성장률 − 최근 4개 분기 합계 성장률 (매출 성장 가속)"""
+    if g is None or not len(g):
+        return {}
+    px = g.set_index("date").adj_close.dropna()
+    if px.empty:
+        return {}
+    last = px.index[-1]
+    def at(d):
+        s = px[px.index <= pd.Timestamp(d)]
+        return float(s.iloc[-1]) if len(s) else None
+    def ret(d0, d):
+        a, b = at(d0), at(d)
+        return round(b / a - 1, 4) if a and b else None
+    out = {}
+    if not ET.empty and t in ET.index:
+        e = ET.loc[t]
+        offs = [(90, "90daysAgo"), (60, "60daysAgo"), (30, "30daysAgo"), (7, "7daysAgo"), (0, "current")]
+        base = e.get("90daysAgo")
+        if base and base == base and base > 0:
+            d0 = last - pd.Timedelta(days=90)
+            pts = []
+            for off, f in offs:
+                v = e.get(f)
+                d = last - pd.Timedelta(days=off)
+                if v == v and v is not None:
+                    pts.append([str(d.date()), ret(d0, d), round(float(v) / base - 1, 4)])
+            if len(pts) >= 3:
+                out["eps"] = pts
+    if sv is not None and len(sv) >= 40:
+        s = sv.sort_values("date")
+        r = (s.short_vol / s.total_vol).rolling(20).mean()
+        r.index = s.date.values
+        r = r.dropna()
+        if len(r):
+            grid = [last - pd.Timedelta(days=k) for k in (90, 75, 60, 45, 30, 15, 0)]
+            vals = [(d, r[r.index <= d].iloc[-1] if (r.index <= d).any() else None) for d in grid]
+            vals = [(d, v) for d, v in vals if v is not None and v == v]
+            if len(vals) >= 3:
+                d0, v0 = vals[0]
+                out["short"] = [[str(pd.Timestamp(d).date()), ret(d0, d), round(-(v - v0), 4)] for d, v in vals]
+    if gh and len(gh) >= 2:
+        d0, n0 = gh[0]
+        out["guru"] = [[str(pd.Timestamp(p).date()), ret(d0, p), n - n0] for p, n in gh]
+    if fq:
+        rq = [(r["end"], r.get("rev")) for r in fq if r.get("rev")]
+        pts = []
+        for i in range(7, len(rq)):
+            q = [v for _, v in rq[i - 7:i + 1]]
+            if all(v and v > 0 for v in q):
+                yoy = q[7] / q[3] - 1
+                ttm = sum(q[4:8]) / sum(q[0:4]) - 1
+                pts.append((rq[i][0], yoy - ttm))
+        pts = pts[-4:]
+        if len(pts) >= 2:
+            d0 = pts[0][0]
+            out["rev"] = [[str(pd.Timestamp(d).date()), ret(d0, d), round(v, 4)] for d, v in pts]
+    return out
+
+
 # ---------------------------------------------------------------- 가격·기술 지표
 def tech(g):
     c = g.close.values.astype(float)
@@ -548,7 +613,7 @@ def run(limit=0, **_):
         for t, g in eh.groupby("holding"):
             etf_in[t] = g.sort_values("weight", ascending=False)[["etf", "weight"]].head(15).values.tolist()
     # 13F — 기관마다 가장 최근 분기와 그 직전 분기를 비교 (기관마다 제출 시점이 달라 분기를 하나로 맞추지 않음)
-    g13, f13_page = {}, None
+    g13, f13_page, g13_hist = {}, None, {}
     if not F13.empty:
         from .f13 import MANAGERS as F13M
         kind = {c: k for c, _, _, k in F13M}
@@ -621,6 +686,13 @@ def run(limit=0, **_):
         agg["sold"] = agg.ticker.map(lambda t: g13.get(t, {}).get("sold", 0))
         agg["name"] = agg.ticker.map(nm13)
         agg["net"] = agg.ticker.map(lambda t: g13.get(t, {}).get("net", 0))
+        # 경로용: 분기마다 이 종목을 가진 유명 투자자 수 (대부분이 제출한 분기만 — 제출 중인 최신 분기는 숫자가 덜 차 있어 제외)
+        gk = F13[F13.manager_cik.map(kind).fillna("guru").eq("guru")].dropna(subset=["ticker"])
+        mper = gk.groupby("period").manager_cik.nunique()
+        gper = sorted(mper[mper >= 0.6 * mper.max()].index)[-5:]
+        gcnt = gk[gk.period.isin(gper)].groupby(["ticker", "period"]).manager_cik.nunique()
+        for t in gcnt.index.get_level_values(0).unique():
+            g13_hist[t] = [(p, int(gcnt.get((t, p), 0))) for p in gper]
         f13_page = {"asof": str(gmax.date()), "managers": sorted(mrows, key=lambda r: ({"guru": 0, "fund": 1, "inst": 2}[r["k"]], -r["total"])),
                     "popular": agg.nlargest(25, ["n", "v"]).to_dict("records"),
                     "bought": agg[(agg.new + agg.up) > 0].assign(b=lambda x: x.new + x.up).nlargest(20, ["b", "v"]).to_dict("records"),
@@ -642,6 +714,12 @@ def run(limit=0, **_):
     kp = ROOT / "hub" / "ko_names.csv"                  # 한글 회사명 (Wikidata의 SEC CIK 대조 + 직접 보정)
     if kp.exists():
         KO = {r["ticker"]: r["ko"] for r in _csv.DictReader(open(kp, encoding="utf-8"))}
+    # 어긋남 지도 경로용: 내년 EPS 전망 추이(현재·7·30·60·90일 전)
+    ET = pd.DataFrame()
+    if c_snap is not None and not c_snap.empty:
+        et = c_snap[(c_snap.block == "eps_trend") & (c_snap.period == "+1y")]
+        if len(et):
+            ET = et.pivot_table(index="ticker", columns="field", values="value", aggfunc="last")
     log("종목별 지표 계산·저장 중")
     rows, n_files = [], 0
     for r in S.itertuples():
@@ -815,6 +893,7 @@ def run(limit=0, **_):
         if len(nw):
             detail["news"] = [{"d": x.published, "t": x.title, "s": x.source, "u": x.url, "k": x.kind} for x in nw.sort_values("published", ascending=False).head(25).itertuples()]
         detail["etf_in"] = etf_in.get(t, [])
+        detail["trail"] = trails(t, g, ET, SVg.get(t), g13_hist.get(t), ftab.get(cik, (None, None))[1], now)
         detail["er"] = {"next": row.get("c_next"), "when": row.get("c_when"), "est": row.get("c_est"), "imp": row.get("er_imp"),
                         "exp": er_exp, "avg": row.get("er_avg"), "hist": er_hist}
         if t in g13:

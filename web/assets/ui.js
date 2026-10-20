@@ -45,7 +45,7 @@ const pctS = v => `<span class="${cls(v)} num">${fmt(v, 'pct', { sign: true })}<
 
 // ---- 상단
 function header(active) {
-  const items = [['index.html', '둘러보기'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오']];
+  const items = [['index.html', '둘러보기'], ['matrix.html', '지도'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오']];
   const el = document.createElement('header');
   el.className = 'top';
   el.innerHTML = `<div class="in"><a class="brand" href="index.html">종목 허브</a>

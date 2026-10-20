@@ -28,6 +28,7 @@ header.top .in{max-width:1160px;margin:0 auto;padding:0 16px;display:flex;align-
 .brand{color:var(--ink);font-weight:800;font-size:17px;letter-spacing:-.02em;padding:14px 0}
 .brand:hover{text-decoration:none}
 nav.main{display:flex;gap:22px}
+nav.main a{white-space:nowrap}
 nav.main a{color:var(--muted);padding:16px 0 14px;border-bottom:2px solid transparent}
 nav.main a.on{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
 nav.main a:hover{text-decoration:none;color:var(--ink)}
@@ -41,7 +42,7 @@ nav.main a:hover{text-decoration:none;color:var(--ink)}
 @media (max-width:760px){
   header.top .in{gap:10px}
   nav.main{order:3;width:100%;gap:18px;overflow-x:auto}
-  nav.main a{padding:8px 0 10px}
+  nav.main a{padding:8px 0 10px;white-space:nowrap;flex-shrink:0}
   .search{margin-left:auto}
   .search input{width:150px}
   .sugg{width:min(320px,calc(100vw - 32px))}
