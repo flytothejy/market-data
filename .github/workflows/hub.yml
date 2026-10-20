@@ -1,9 +1,15 @@
 name: hub
 
 # 종목 허브 데이터 수집 — R2에서 받고 → 수집 → R2로 올림 (저장소에는 커밋하지 않음)
+run-name: "hub ${{ github.event_name == 'workflow_dispatch' && inputs.set || (github.event.schedule == '0 2 * * 6' && 'weekly' || 'daily') }}"
+
 on:
   schedule:
     - cron: "40 23 * * 1-5"   # 평일(미국 기준) 마감 후: 한국 08:40 화~토
+    # 예비: 깃허브 예약 실행은 몇 시간 늦거나 빠지기도 함 → 앞선 daily가 성공했으면 바로 끝냄
+    # (미국 동부 23:30 전이라 컨센서스 날짜는 같은 거래일로 저장됨)
+    - cron: "30 1 * * 2-6"
+    - cron: "30 3 * * 2-6"
     - cron: "0 2 * * 6"       # 주 1회(토 11:00 한국): 개요·공매도 잔고·13F
   workflow_dispatch:
     inputs:
@@ -13,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: hub
@@ -32,27 +39,43 @@ jobs:
       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
+      - name: skip if today's daily already done
+        id: g
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "40 23 * * 1-5" ] && [ "${{ github.event.schedule }}" != "0 2 * * 6" ]; then
+            since=$(date -u -d '-10 hours' +%FT%TZ)
+            n=$(gh run list -R ${{ github.repository }} --workflow hub.yml --status success --created ">=$since" --json displayTitle --jq '[.[]|select(.displayTitle=="hub daily")]|length')
+            if [ "$n" -gt 0 ]; then echo "skip=1" >> $GITHUB_OUTPUT; echo "::notice::오늘 daily가 이미 성공해서 예비 실행은 건너뜀"; fi
+          fi
       - uses: actions/checkout@v5
+        if: steps.g.outputs.skip != '1'
       - uses: actions/setup-python@v6
+        if: steps.g.outputs.skip != '1'
         with:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: requirements-hub.txt
       - run: pip install -q -r requirements-hub.txt
+        if: steps.g.outputs.skip != '1'
       - name: which set
+        if: steps.g.outputs.skip != '1'
         id: s
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "set=${{ inputs.set }}" >> $GITHUB_OUTPUT
           elif [ "${{ github.event.schedule }}" = "0 2 * * 6" ]; then echo "set=weekly" >> $GITHUB_OUTPUT
           else echo "set=daily" >> $GITHUB_OUTPUT; fi
       - name: pull from R2
+        if: steps.g.outputs.skip != '1'
         run: python -m hub sync pull
       - name: collect
+        if: steps.g.outputs.skip != '1'
         continue-on-error: true
         run: python -m hub run ${{ steps.s.outputs.set }}
       - name: push to R2
-        if: always()
+        if: always() && steps.g.outputs.skip != '1'
         run: python -m hub sync push
       - name: notify
-        if: always()
+        if: always() && steps.g.outputs.skip != '1'
         run: python -m hub notify ${{ steps.s.outputs.set }}
