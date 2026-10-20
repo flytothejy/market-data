@@ -103,13 +103,17 @@ def investor_page(tpl, m):
     title = f"{m['m']} 13F 포트폴리오 ({q}) — 보유 종목·매수·매도 | 종목 허브"
     desc = (f"{m['m']}의 {q} 말 13F 보유 종목: " + ", ".join(f"{x['t']} {x['w'] * 100:.1f}%" for x in top if x.get("w") is not None) +
             f". 총 {usd(m['total'])}, {m['n']}종목. 이번 분기 새로 산 종목과 판 종목을 한국어로.")
-    rows = "".join(f'<tr><td>{(f"<a href={chr(34)}s/{e(x["t"])}/{chr(34)}><b>{e(x["t"])}</b></a>") if x.get("t") else "-"}</td>'
-                   f'<td class="l nm mut">{e((x.get("n") or "")[:30])}</td><td class="num">{(x.get("w") or 0) * 100:.1f}%</td><td class="num">{usd(x.get("v"))}</td></tr>'
-                   for x in m["top"][:20])
+    def trow(x):
+        t = x.get("t")
+        link = '<a href="s/%s/"><b>%s</b></a>' % (e(t), e(t)) if t else "-"
+        return ('<tr><td>%s</td><td class="l nm mut">%s</td><td class="num">%.1f%%</td><td class="num">%s</td></tr>'
+                % (link, e((x.get("n") or "")[:30]), (x.get("w") or 0) * 100, usd(x.get("v"))))
+    rows = "".join(trow(x) for x in m["top"][:20])
+    n_pos = "{:,}".format(m["n"])
     buys = ", ".join(x["t"] for x in m.get("buys", [])[:8] if x.get("t"))
     sells = ", ".join(x["t"] for x in m.get("sells", [])[:8] if x.get("t"))
     body = (f'<div class="hero"><h1>{e(m["m"])}</h1><p>{e(kind)} · {e(q)} 말 기준 13F · {e(m["filed"])} 제출</p></div>'
-            f'<div class="card">{kv([("보유 총액", usd(m["total"])), ("보유 종목 수", f"{m["n"]:,}"), ("상위 10종목 비중", pct(m.get("top10w"), False))])}'
+            f'<div class="card">{kv([("보유 총액", usd(m["total"])), ("보유 종목 수", n_pos), ("상위 10종목 비중", pct(m.get("top10w"), False))])}'
             f'{"<p class=" + chr(34) + "s13" + chr(34) + ">이번 분기 산 종목: " + e(buys) + "</p>" if buys else ""}'
             f'{"<p class=" + chr(34) + "s13" + chr(34) + ">이번 분기 판 종목: " + e(sells) + "</p>" if sells else ""}</div>'
             f'<div class="card"><h3>보유 상위 종목</h3><div class="tbl-wrap"><table class="t"><thead><tr><th>종목</th><th class="l">발행사</th><th>비중</th><th>평가액</th></tr></thead><tbody>{rows}</tbody></table></div></div>')
