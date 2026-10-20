@@ -35,7 +35,7 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
 
   // ---- 시장 요약
   h += `<div class="hero"><h1>미국 주식, 오늘 한눈에</h1><p>흩어진 미국 주식 데이터를, 한 화면에서, 한국어로 · ${esc(M.asof)} 종가 기준 · 종목 ${S.length.toLocaleString()} · ETF ${E.length}</p></div>`;
-  h += `<div class="grid g4">${Object.entries(M.indices).map(([t, x]) => `<a class="card" href="stock.html?t=${t}" style="color:inherit;text-decoration:none">
+  h += `<div class="grid g4">${Object.entries(M.indices).map(([t, x]) => `<a class="card" href="${stockUrl(t)}" style="color:inherit;text-decoration:none">
       <div class="mut s13">${idxName[t] || t} <span class="faint">${t}</span></div>
       <div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:20px" class="num">${fmt(x.px, 'px')}</b>${pctS(x.r1d)}</div>
       <div class="small mut">1개월 ${pctS(x.r1m)} · 연초 이후 ${pctS(x.rytd)}</div></a>`).join('')}</div>`;
@@ -54,7 +54,7 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
     h += `<div class="sec-head"><h2>내 관심 종목</h2><span class="desc">${W.length}개 · 이 브라우저에 저장됨</span>
       <a class="more" href="compare.html?t=${encodeURIComponent(W.slice(0, 5).map(r => r.t).join(','))}">비교하기 →</a></div>
       <div class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>종목</th><th>종가</th><th>1일</th><th>1개월</th><th>1년</th><th>다음 실적</th><th class="l">한 줄 요약</th><th></th></tr></thead><tbody>
-      ${W.map(r => `<tr><td><a href="stock.html?t=${encodeURIComponent(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 18))}</span></td><td class="num">${fmt(r.px, 'px')}</td><td>${pctS(r.r1d)}</td><td>${pctS(r.r1m)}</td><td>${pctS(r.r1y)}</td>
+      ${W.map(r => `<tr><td><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 18))}</span></td><td class="num">${fmt(r.px, 'px')}</td><td>${pctS(r.r1d)}</td><td>${pctS(r.r1m)}</td><td>${pctS(r.r1y)}</td>
         <td class="num">${r.c_next ? esc(r.c_next.slice(5)) : '-'}</td><td class="l nm mut" style="max-width:360px">${esc(r.s1 || '')}</td><td>${starBtn(r.t)}</td></tr>`).join('')}
       </tbody></table></div></div>`;
   } else {
@@ -119,7 +119,7 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
     <div class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>종목</th><th>기초지수</th><th>순자산</th><th>1개월</th><th>1년</th><th>괴리율</th><th>미국 대응</th></tr></thead><tbody>
     ${top.map(k => `<tr><td class="nm">${esc(k.n)} <span class="faint small">${esc(k.code)}</span></td><td class="l nm mut">${esc(k.idx)}</td><td class="num">${fmtKrw(k.aum)}</td>
       <td>${pctS(k.r1m)}</td><td>${pctS(k.r1y)}</td><td class="num ${Math.abs(k.dev || 0) > 0.5 ? 'up' : ''}">${k.dev != null ? k.dev.toFixed(2) + '%' : '-'}</td>
-      <td>${k.us ? `<a href="stock.html?t=${k.us}">${k.us}</a>` : '-'}</td></tr>`).join('')}
+      <td>${k.us ? `<a href="${stockUrl(k.us)}">${k.us}</a>` : '-'}</td></tr>`).join('')}
     </tbody></table></div></div>`;
   }
   $('#app').innerHTML = h;

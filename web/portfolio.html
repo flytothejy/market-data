@@ -52,7 +52,7 @@ function render() {
   } else {
     rows.sort((a, b) => b.v - a.v);
     h += `<div class="card"><h3>보유 종목</h3><div class="tbl-wrap"><table class="t"><thead><tr><th>티커</th><th class="l">이름</th><th>종가</th><th>1일</th><th>주식 수</th><th>평가액</th><th>비중</th><th>매입가</th><th>손익</th><th></th></tr></thead><tbody>
-      ${rows.map(x => `<tr><td><a href="stock.html?t=${x.t}"><b>${x.t}</b></a></td><td class="l nm" title="${esc(x.r.s1 || '')}">${esc(x.r.n)}${x.r.s1 ? `<div class="small mut" style="white-space:normal;max-width:360px">${esc(x.r.s1)}</div>` : ''}</td><td class="num">${fmt(x.r.px, 'px')}</td><td>${pctS(x.r.r1d)}</td>
+      ${rows.map(x => `<tr><td><a href="${stockUrl(x.t)}"><b>${x.t}</b></a></td><td class="l nm" title="${esc(x.r.s1 || '')}">${esc(x.r.n)}${x.r.s1 ? `<div class="small mut" style="white-space:normal;max-width:360px">${esc(x.r.s1)}</div>` : ''}</td><td class="num">${fmt(x.r.px, 'px')}</td><td>${pctS(x.r.r1d)}</td>
         <td class="num">${x.sh.toLocaleString()}</td><td class="num">${money(x.v)}</td><td class="num">${fmt(val ? x.v / val : null, 'pct')}</td><td class="num">${x.cost ? fmt(x.cost, 'px') : '-'}</td>
         <td>${x.c ? pctS(x.v / x.c - 1) : '-'}</td><td><button class="btn" data-del="${x.t}" style="min-height:28px;padding:2px 8px">삭제</button></td></tr>`).join('')}</tbody></table></div></div>`;
 
@@ -74,13 +74,13 @@ function render() {
       if (r.vr >= 1.5) ev.push(['tech', '', t, `거래량 증가 (${fmt(r.vr, 'x')})`]);
       if (r.nw7 >= 5) ev.push(['news', '', t, `뉴스 ${r.nw7}건 (7일)`]);
     });
-    h += `<div class="card"><h3>내 종목에 생긴 일</h3><div class="sub">다섯 카테고리에서 눈에 띄는 변화</div>${ev.length ? `<div class="rank">${ev.sort((a, b) => (b[1] || '').localeCompare(a[1] || '')).map(([c, d, t, s]) => `<a class="r" href="stock.html?t=${t}" style="grid-template-columns:14px 56px minmax(0,1fr) auto"><span class="cat-dot c-${c}"></span><b>${t}</b><span class="nm mut s13">${esc(s)}</span><span class="faint small">${esc((d || '').slice(5))}</span></a>`).join('')}</div>` : '<div class="mut s13">특별한 변화가 없어요</div>'}</div></div>`;
+    h += `<div class="card"><h3>내 종목에 생긴 일</h3><div class="sub">다섯 카테고리에서 눈에 띄는 변화</div>${ev.length ? `<div class="rank">${ev.sort((a, b) => (b[1] || '').localeCompare(a[1] || '')).map(([c, d, t, s]) => `<a class="r" href="${stockUrl(t)}" style="grid-template-columns:14px 56px minmax(0,1fr) auto"><span class="cat-dot c-${c}"></span><b>${t}</b><span class="nm mut s13">${esc(s)}</span><span class="faint small">${esc((d || '').slice(5))}</span></a>`).join('')}</div>` : '<div class="mut s13">특별한 변화가 없어요</div>'}</div></div>`;
 
     // 카테고리 점검표
     h += `<div class="card"><h3>카테고리 점검표</h3><div class="sub">보유 종목을 다섯 카테고리 지표로 나란히</div><div class="tbl-wrap"><table class="t"><thead><tr><th>티커</th>
       <th><span class="cat-dot c-cons"></span>순상향률</th><th>목표가 여력</th><th><span class="cat-dot c-fin"></span>매출 성장</th><th>영업이익률</th><th>PER</th>
       <th><span class="cat-dot c-tech"></span>1개월</th><th>200일선</th><th>공매도 비중</th><th><span class="cat-dot c-doc"></span>내부자 순매수(90일)</th><th>8-K(30일)</th><th><span class="cat-dot c-news"></span>뉴스(7일)</th></tr></thead><tbody>
-      ${rows.map(({ t, r }) => `<tr><td><a href="stock.html?t=${t}"><b>${t}</b></a></td><td>${pctS(r.c_ratio)}</td><td>${pctS(r.c_upside)}</td><td>${pctS(r.rev_g)}</td><td class="num">${fmt(r.om, 'pct')}</td><td class="num">${fmt(r.pe, 'x')}</td>
+      ${rows.map(({ t, r }) => `<tr><td><a href="${stockUrl(t)}"><b>${t}</b></a></td><td>${pctS(r.c_ratio)}</td><td>${pctS(r.c_upside)}</td><td>${pctS(r.rev_g)}</td><td class="num">${fmt(r.om, 'pct')}</td><td class="num">${fmt(r.pe, 'x')}</td>
         <td>${pctS(r.r1m)}</td><td>${pctS(r.d200)}</td><td class="num">${fmt(r.sv, 'pct')}</td><td class="num ${cls((r.ib || 0) - (r.is || 0))}">${r.ib != null || r.is != null ? fmtUsd((r.ib || 0) - (r.is || 0)) : '-'}</td><td class="num">${r.k8 ?? '-'}</td><td class="num">${r.nw7 ?? '-'}</td></tr>`).join('')}</tbody></table></div></div>`;
     h += `<div class="card"><h3>성과 분석 <span class="pro">PRO</span></h3><div class="sub">기간별 수익률, 지수 대비 성과, 위험 지표</div>${lockBox('<div style="height:120px;background:linear-gradient(90deg,var(--soft),transparent)"></div>', '지수 대비 성과와 위험 지표를 볼 수 있어요')}</div>`;
   }

@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="미국 주식 실적 발표 달력 — 이번 주·다음 주 발표 종목, 옵션이 예상하는 변동폭과 과거 발표 때 실제 주가 변동을 한국어로.">
 <title>종목 허브 — 실적 달력</title>
 <link rel="stylesheet" href="assets/app.css">
 <script src="assets/data.js"></script>
@@ -56,7 +57,7 @@ function render(U) {
   const hot = S.filter(r => r.er_imp && r.er_avg && r.c_next >= today).map(r => ({ ...r, x: r.er_imp / r.er_avg })).sort((a, b) => b.x - a.x).slice(0, 6);
   if (hot.length >= 2) {
     h += `<div class="card"><h3>옵션 시장이 평소보다 크게 움직일 거라 보는 종목</h3><div class="sub">옵션 예상 변동폭 ÷ 최근 8회 발표 때 평균 변동${tip('er_imp')}</div>
-      <div class="rank">${hot.map((r, i) => `<a class="r" href="stock.html?t=${encodeURIComponent(r.t)}"><span class="i num">${i + 1}</span><span class="nm"><b>${esc(r.t)}</b><small>${esc(r.c_next.slice(5))} ${r.c_when || ''} · 예상 ±${fmt(r.er_imp, 'pct')} / 평소 ±${fmt(r.er_avg, 'pct')}</small></span><span class="v num">${r.x.toFixed(1)}배</span></a>`).join('')}</div></div>`;
+      <div class="rank">${hot.map((r, i) => `<a class="r" href="${stockUrl(r.t)}"><span class="i num">${i + 1}</span><span class="nm"><b>${esc(r.t)}</b><small>${esc(r.c_next.slice(5))} ${r.c_when || ''} · 예상 ±${fmt(r.er_imp, 'pct')} / 평소 ±${fmt(r.er_avg, 'pct')}</small></span><span class="v num">${r.x.toFixed(1)}배</span></a>`).join('')}</div></div>`;
   }
 
   if (!days.length) {
@@ -67,7 +68,7 @@ function render(U) {
     const past = d < today;
     h += `<div class="card day"><h3>${d.slice(5).replace('-', '월 ')}일 (${DOW[dow(d)]})${d === today ? ' <span class="tag">오늘</span>' : ''}<span class="mut">${rows.length}개${past ? ' · 발표 지남 (결과는 다음 갱신 때 반영)' : ''}</span></h3>
       <div class="tbl-wrap"><table class="t"><thead><tr><th></th><th class="l">종목</th><th>시점</th><th>시가총액</th><th>옵션 예상 변동${tip('er_imp')}</th><th>과거 평균 변동${tip('er_avg')}</th><th></th><th>직전 서프라이즈${tip('c_surp')}</th><th>4분기 상회${tip('c_beats')}</th><th>전망 순상향률${tip('c_ratio')}</th><th>1개월</th></tr></thead><tbody>
-      ${rows.map(r => `<tr><td style="width:30px">${starBtn(r.t)}</td><td class="l nm"><a href="stock.html?t=${encodeURIComponent(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 22))}</span>${hold.has(r.t) ? ' <span class="tag">보유</span>' : ''}</td>
+      ${rows.map(r => `<tr><td style="width:30px">${starBtn(r.t)}</td><td class="l nm"><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 22))}</span>${hold.has(r.t) ? ' <span class="tag">보유</span>' : ''}</td>
         <td>${r.c_when || (r.c_est ? '<span class="faint">예상일</span>' : '-')}</td><td class="num">${fmtUsd(r.mcap)}</td>
         <td class="num">${r.er_imp != null ? '±' + fmt(r.er_imp, 'pct') : '-'}</td><td class="num">${r.er_avg != null ? '±' + fmt(r.er_avg, 'pct') : '-'}</td><td>${ratioTag(r)}</td>
         <td>${pctS(r.c_surp)}</td><td class="num">${r.c_beats != null ? r.c_beats + '/4' : '-'}</td><td>${pctS(r.c_ratio)}</td><td>${pctS(r.r1m)}</td></tr>`).join('')}

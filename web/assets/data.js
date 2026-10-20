@@ -1,6 +1,6 @@
 // 데이터 모듈 — 화면은 이 파일을 통해서만 데이터를 읽음.
 // 나중에 Cloudflare/Supabase로 옮길 때 API 주소(또는 아래 함수 내부)만 바꾸면 됨.
-const API = new URL('../api/v1/', location.href).href;
+const API = new URL('../api/v1/', document.baseURI).href;   // 정적 페이지(/hub/s/NVDA/)는 <base href="../../">로 /hub/ 기준
 
 const _cache = new Map();
 function getJSON(path) {

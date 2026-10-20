@@ -637,6 +637,11 @@ def run(limit=0, **_):
             so = pd.DataFrame([{"ticker": t, "s": n, "name": nm13.get(t)} for t, n in out_cnt.items()]).nlargest(20, "s")
             f13_page["sold"] = so.to_dict("records")
 
+    import csv as _csv
+    KO = {}
+    kp = ROOT / "hub" / "ko_names.csv"                  # 한글 회사명 (Wikidata의 SEC CIK 대조 + 직접 보정)
+    if kp.exists():
+        KO = {r["ticker"]: r["ko"] for r in _csv.DictReader(open(kp, encoding="utf-8"))}
     log("종목별 지표 계산·저장 중")
     rows, n_files = [], 0
     for r in S.itertuples():
@@ -776,6 +781,8 @@ def run(limit=0, **_):
         if t in g13:
             row["g13"], row["g13_chg"] = g13[t]["n_guru"], g13[t]["net"]
         row["s1"] = summary_line(row, now.date())
+        if t in KO:
+            row["ko"] = KO[t]
         rows.append(row)
 
         # ---- 종목 상세 (free / pro)
@@ -903,7 +910,7 @@ def run(limit=0, **_):
     # ---- universe.json + market.json + meta.json
     U2 = pd.DataFrame(rows)
     fields = {k: {"label": v[0], "cat": v[1], "fmt": v[2], "tier": v[3]} for k, v in FIELDS.items()}
-    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est"]
+    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko"]
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")

@@ -50,7 +50,7 @@ function header(active) {
   el.className = 'top';
   el.innerHTML = `<div class="in"><a class="brand" href="index.html">종목 허브</a>
   <nav class="main">${items.map(([h, l]) => `<a href="${h}" class="${l === active ? 'on' : ''}">${l}</a>`).join('')}</nav>
-  <div class="search"><input type="search" placeholder="티커 또는 회사명" aria-label="종목 검색" autocomplete="off"><div class="sugg"></div></div></div>`;
+  <div class="search"><input type="search" placeholder="티커·회사명 (한글 가능)" aria-label="종목 검색" autocomplete="off"><div class="sugg"></div></div></div>`;
   document.body.prepend(el);
   if (Plan.isPro()) {                                  // 로그인 전 확인용 프로 미리보기 표시
     const bar = document.createElement('div');
@@ -61,17 +61,17 @@ function header(active) {
   }
   const inp = $('input', el), box = $('.sugg', el);
   let sel = -1, list = [];
-  const go = r => location.href = `stock.html?t=${encodeURIComponent(r.t)}`;
+  const go = r => location.href = `${stockUrl(r.t)}`;
   inp.addEventListener('input', async () => {
     const q = inp.value.trim().toUpperCase();
     if (!q) { box.style.display = 'none'; return; }
     const u = await Data.universe();
     const ql = q.toLowerCase();
     const a = u.rows.filter(r => r.t === q), b = u.rows.filter(r => r.t !== q && r.t.startsWith(q)),
-      c = u.rows.filter(r => !r.t.startsWith(q) && (r.n || '').toLowerCase().includes(ql));
+      c = u.rows.filter(r => !r.t.startsWith(q) && ((r.n || '').toLowerCase().includes(ql) || (r.ko || '').includes(inp.value.trim())));
     list = [...a, ...b.sort((x, y) => (y.mcap || y.aum || 0) - (x.mcap || x.aum || 0)), ...c.sort((x, y) => (y.mcap || y.aum || 0) - (x.mcap || x.aum || 0))].slice(0, 8);
     sel = -1;
-    box.innerHTML = list.map((r, i) => `<a href="stock.html?t=${encodeURIComponent(r.t)}" data-i="${i}"><b>${esc(r.t)}</b><span>${esc(r.n)}${r.k === 'etf' ? ' · ETF' : ''}</span></a>`).join('') || '<a><span>결과 없음</span></a>';
+    box.innerHTML = list.map((r, i) => `<a href="${stockUrl(r.t)}" data-i="${i}"><b>${esc(r.t)}</b><span>${r.ko ? esc(r.ko) + ' · ' : ''}${esc(r.n)}${r.k === 'etf' ? ' · ETF' : ''}</span></a>`).join('') || '<a><span>결과 없음</span></a>';
     box.style.display = 'block';
   });
   inp.addEventListener('keydown', e => {
@@ -101,7 +101,7 @@ async function footer() {
 // ---- 순위 목록: rows, 값 표시 함수, 부가 표시 함수
 function rankList(rows, val, sub, n = 8) {
   if (!rows.length) return '<div class="mut s13">해당 종목이 없습니다</div>';
-  return `<div class="rank">${rows.slice(0, n).map((r, i) => `<a class="r" href="stock.html?t=${encodeURIComponent(r.t)}">
+  return `<div class="rank">${rows.slice(0, n).map((r, i) => `<a class="r" href="${stockUrl(r.t)}">
     <span class="i num">${i + 1}</span><span class="nm"><b>${esc(r.t)}</b><small>${esc(sub ? sub(r) : r.n)}</small></span><span class="v num">${val(r)}</span></a>`).join('')}</div>`;
 }
 
@@ -110,6 +110,8 @@ function lockBox(inner, msg = '프로 멤버십에서 볼 수 있어요') {
 }
 
 const qs = k => new URLSearchParams(location.search).get(k);
+// 종목 주소: 검색엔진용 정적 페이지 (/hub/s/NVDA/) — Pages 배포 때 hub/static_pages.py가 만듦
+const stockUrl = t => `s/${encodeURIComponent(t)}/`;
 
 // ---- 관심 종목 (이 브라우저에 저장 — 로그인이 붙으면 서버 저장으로 바꿈)
 const Watch = {

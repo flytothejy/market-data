@@ -27,6 +27,7 @@ jobs:
       name: github-pages
       url: ${{ steps.d.outputs.page_url }}
     env:
+      SITE_URL: ${{ vars.SITE_URL || 'https://flytothejy.github.io/market-data' }}   # 도메인을 붙이면 저장소 Variables에 SITE_URL 추가
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -47,6 +48,7 @@ jobs:
           if [ -d data/hub/site/api ]; then cp -r data/hub/site/api _site/api; fi
           # 예전 컨센서스 페이지: 허브 데이터로 만든 것을 우선 사용
           if [ -f _site/api/v1/free/consensus_page.json ]; then cp _site/api/v1/free/consensus_page.json _site/consensus_data.json; fi
+          python -m hub.static_pages _site     # 검색엔진용 종목·투자자 정적 페이지, 사이트맵
           touch _site/.nojekyll
           du -sh _site; find _site -type f | wc -l
       - uses: actions/upload-pages-artifact@v4

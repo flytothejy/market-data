@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="미국 주식·ETF 최대 5개를 수익률 차트와 컨센서스·재무·수급 지표로 나란히 비교.">
 <title>종목 허브 — 비교</title>
 <link rel="stylesheet" href="assets/app.css">
 <script src="assets/vendor/lightweight-charts.standalone.production.js"></script>
@@ -52,7 +53,7 @@ async function render() {
   const rows = tickers.map(t => U.rows.find(r => r.t === t)).filter(Boolean);
   const S = U.rows.filter(r => r.k === 'stock' || r.k === 'etf');
   let h = `<div class="hero"><h1>종목 비교</h1><p>최대 ${MAX}개 종목·ETF를 같은 기준으로 나란히 봅니다. ● 표시는 그 줄에서 가장 좋은 값이에요(높을수록·낮을수록 좋은 지표만).</p></div>`;
-  h += `<div class="card"><div class="cmp-add">${rows.map((r, i) => `<span class="cmp-chip"><i style="background:${COLORS[i]}"></i><a href="stock.html?t=${encodeURIComponent(r.t)}"><b>${esc(r.t)}</b></a><span class="mut">${esc((r.n || '').slice(0, 16))}</span><button data-rm="${esc(r.t)}" aria-label="${esc(r.t)} 빼기">×</button></span>`).join('')}
+  h += `<div class="card"><div class="cmp-add">${rows.map((r, i) => `<span class="cmp-chip"><i style="background:${COLORS[i]}"></i><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a><span class="mut">${esc((r.n || '').slice(0, 16))}</span><button data-rm="${esc(r.t)}" aria-label="${esc(r.t)} 빼기">×</button></span>`).join('')}
     ${rows.length < MAX ? `<input class="f" id="add" list="tk" placeholder="티커 추가 (예: MSFT)" autocomplete="off" style="width:180px"><datalist id="tk">${S.map(r => `<option value="${esc(r.t)}">${esc(r.n || '')}</option>`).join('')}</datalist><button class="btn" id="addb">추가</button>` : ''}
     ${Watch.list().length ? `<button class="btn" id="usew">관심 종목으로 채우기</button>` : ''}</div></div>`;
   if (!rows.length) {
