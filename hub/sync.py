@@ -39,17 +39,43 @@ def client():
     return s3, os.environ["R2_BUCKET"]
 
 
-WORKERS = 24
+WORKERS = 16
+
+
+def _retry(fn, job, tries=6):
+    import time as _t
+    for k in range(tries):
+        try:
+            return fn(job)
+        except Exception as e:
+            if k == tries - 1:
+                raise
+            _t.sleep(min(2 ** k, 20))                     # R2가 가끔 InternalError를 줌 → 잠시 뒤 다시
 
 
 def _parallel(fn, jobs):
-    """작은 파일 수천 개(화면용 JSON)도 빨리 오가도록 병렬 처리"""
+    """작은 파일 수천 개(화면용 JSON)도 빨리 오가도록 병렬 처리. 실패한 파일은 끝에 한 번 더, 순서대로"""
     from concurrent.futures import ThreadPoolExecutor
     if not jobs:
         return
+    failed = []
+    def safe(j):
+        try:
+            _retry(fn, j)
+        except Exception as e:
+            failed.append((j, e))
     with ThreadPoolExecutor(WORKERS) as ex:
-        for _ in ex.map(fn, jobs):
-            pass
+        list(ex.map(safe, jobs))
+    still = []
+    for j, _ in failed:
+        try:
+            _retry(fn, j, tries=4)
+        except Exception as e:
+            still.append((j, e))
+    if still:
+        raise RuntimeError(f"R2 전송 실패 {len(still)}건 — 예: {still[0][0]} ({str(still[0][1])[:120]})")
+    if failed:
+        log(f"  일시 오류 {len(failed)}건은 다시 보내서 성공")
 
 
 def _put(s3, b, p, key):
