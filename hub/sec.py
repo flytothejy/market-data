@@ -195,7 +195,7 @@ TAGS = {
                 "EarningsPerShareDiluted", "EarningsPerShareBasic", "WeightedAverageNumberOfDilutedSharesOutstanding",
                 "ResearchAndDevelopmentExpense", "SellingGeneralAndAdministrativeExpense", "IncomeTaxExpenseBenefit", "InterestExpense",
                 "DepreciationDepletionAndAmortization", "Assets", "Liabilities", "StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "AssetsCurrent", "LiabilitiesCurrent",
-                "CashAndCashEquivalentsAtCarryingValue", "LongTermDebt", "LongTermDebtNoncurrent", "InventoryNet", "AccountsReceivableNetCurrent",
+                "CashAndCashEquivalentsAtCarryingValue", "LongTermDebt", "LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations", "LongTermNotesPayable", "InventoryNet", "AccountsReceivableNetCurrent",
                 "NetCashProvidedByUsedInOperatingActivities", "PaymentsToAcquirePropertyPlantAndEquipment",
                 "PaymentsForRepurchaseOfCommonStock", "PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "ShareBasedCompensation"],
     "ifrs-full": ["Revenue", "RevenueFromContractsWithCustomers", "InterestIncome", "GrossProfit", "ProfitLossFromOperatingActivities", "ProfitLoss", "ProfitLossAttributableToOwnersOfParent",

@@ -86,7 +86,7 @@ CONCEPTS = {
     "nii": ["InterestIncomeExpenseNet"], "nonii": ["NoninterestIncome"],
 }
 BAL = {"assets": ["Assets"], "liab": ["Liabilities"], "equity": ["StockholdersEquity", "Equity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
-       "cash": ["CashAndCashEquivalentsAtCarryingValue", "CashAndCashEquivalents"], "ltd": ["LongTermDebtNoncurrent", "LongTermDebt"],
+       "cash": ["CashAndCashEquivalentsAtCarryingValue", "CashAndCashEquivalents"], "ltd": ["LongTermDebtNoncurrent", "LongTermDebt", "LongTermDebtAndCapitalLeaseObligations", "LongTermNotesPayable"],
        "ca": ["AssetsCurrent"], "cl": ["LiabilitiesCurrent"], "shares": ["EntityCommonStockSharesOutstanding"]}
 
 
