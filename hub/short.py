@@ -14,6 +14,9 @@ from . import universe
 
 V_DIR = DATA / "short" / "volume"
 URL = "https://cdn.finra.org/equity/regsho/daily/CNMSshvol{d:%Y%m%d}.txt"
+VENUE_URL = "https://cdn.finra.org/equity/regsho/daily/{v}shvol{d:%Y%m%d}.txt"
+CNMS_START = dt.date(2018, 8, 1)          # 그 전에는 통합 파일이 없어 장외 보고처별 파일을 합산 (2009-08~)
+VENUES = ["FNSQ", "FNYX", "FNRA", "FNQC"]
 
 
 def parse(txt):
@@ -46,14 +49,41 @@ def run(limit=0, days=None, full=False, **_):
     dates = [d for d in dates if d.weekday() < 5]
     if limit:
         dates = dates[-limit:]
+    def one(d, h):
+        urls = [URL.format(d=d)] if d >= CNMS_START else [VENUE_URL.format(v=v, d=d) for v in VENUES]
+        fr = []
+        for u in urls:
+            r = h.get(u, ok404=True)
+            if r is None or not r.text.strip():
+                continue                 # 휴장일 또는 아직 게시 전
+            try:
+                df = parse(r.text)
+            except Exception:
+                continue
+            fr.append(df[df.ticker.isin(keep)])
+        if not fr:
+            return None
+        df = pd.concat(fr, ignore_index=True)
+        return df.groupby(["date", "ticker"], as_index=False)[["short_vol", "short_exempt", "total_vol"]].sum() if len(fr) > 1 else df
+
     got, frames = [], []
-    for d in dates:
-        r = http.get(URL.format(d=d), ok404=True)
-        if r is None or not r.text.strip():
-            continue                     # 휴장일 또는 아직 게시 전
-        df = parse(r.text)
-        df = df[df.ticker.isin(keep)]
-        frames.append(df); got.append(d)
+    if len(dates) > 60:                  # 과거분 한꺼번에 받기 (예: --days 6000 → 2010년부터)
+        from concurrent.futures import ThreadPoolExecutor
+        import threading
+        local = threading.local()
+        def job(d):
+            if not hasattr(local, "h"):
+                local.h = Http(rate=4)
+            return d, one(d, local.h)
+        with ThreadPoolExecutor(6) as ex:
+            for d, df in ex.map(job, dates):
+                if df is not None:
+                    frames.append(df); got.append(d)
+    else:
+        for d in dates:
+            df = one(d, http)
+            if df is not None:
+                frames.append(df); got.append(d)
     if not frames:
         R.warning("치명: 받은 파일이 없음")
         return R.done(ok=False)

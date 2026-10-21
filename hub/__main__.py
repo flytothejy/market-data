@@ -16,6 +16,7 @@
   python -m hub run f13                 13F 유명 투자자·대형 운용사 보유 (3차, 분기)
   python -m hub run phase3              3차 전부 (news, f13)
   python -m hub run tenk [--full]       10-K 변화 (새 10-K만, daily 묶음에 포함)
+  python -m hub run insider_hist        내부자 거래 과거분 (SEC 분기 데이터, 2010~, 주간 묶음)
   python -m hub run cards               주간 홍보 카드 (SNS용 이미지, 주간 묶음에 포함)
   python -m hub run check               이상값 점검 (build 다음에 자동)
   python -m hub run build               화면용 JSON 만들기 (site/api/v1, daily·weekly 끝에 자동 실행)
@@ -40,14 +41,14 @@ ORDER2 = ["etf", "options", "kr_etf"]
 ORDER3 = ["news", "f13", "consensus"]
 # Actions 일정용 묶음
 DAILY = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "etf", "options", "kr_etf", "news", "consensus", "tenk", "build", "check"]
-WEEKLY = ["profile", "f13", "build", "check", "cards"]
+WEEKLY = ["profile", "f13", "insider_hist", "build", "check", "cards"]
 # 미국장 마감 직후(동부 16:20) 빠른 갱신: 종가·옵션만 받고 화면 데이터 재생성 (~10분). 나머지는 저녁 daily가 채움
 CLOSE = ["universe", "prices", "options", "build", "check"]
 
 
 def job(name):
-    from . import universe, prices, sec, short, profile, etf, options, kr_etf, news, f13, tenk, build, consensus, check, cards
-    return {"cards": cards.run, "check": check.run, "consensus": consensus.run, "build": build.run, "news": news.run, "f13": f13.run, "tenk": tenk.run, "etf": etf.run, "options": options.run, "kr_etf": kr_etf.run, "universe": universe.run, "prices": prices.run, "sec_filings": sec.run_filings,
+    from . import universe, prices, sec, short, profile, etf, options, kr_etf, news, f13, tenk, build, consensus, check, cards, insider_hist
+    return {"insider_hist": insider_hist.run, "cards": cards.run, "check": check.run, "consensus": consensus.run, "build": build.run, "news": news.run, "f13": f13.run, "tenk": tenk.run, "etf": etf.run, "options": options.run, "kr_etf": kr_etf.run, "universe": universe.run, "prices": prices.run, "sec_filings": sec.run_filings,
             "sec_insider": sec.run_insider, "sec_financials": sec.run_financials,
             "short_volume": short.run, "profile": profile.run}[name]
 
@@ -94,7 +95,7 @@ def main():
         return
     groups = {"phase1": ORDER, "phase2": ORDER2, "phase3": ORDER3, "daily": DAILY, "weekly": WEEKLY, "close": CLOSE}
     names = [n for part in a.source.split(",") for n in groups.get(part.strip(), [part.strip()])]
-    valid = set(ORDER + ORDER2 + ORDER3 + ["tenk", "build", "check", "cards"])
+    valid = set(ORDER + ORDER2 + ORDER3 + ["tenk", "build", "check", "cards", "insider_hist"])
     bad = [n for n in names if n not in valid]
     if bad:
         sys.exit(f"모르는 수집기: {', '.join(bad)} (가능: {', '.join(sorted(valid))})")

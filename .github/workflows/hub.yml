@@ -20,6 +20,9 @@ on:
       set:
         description: "close · daily · weekly · 또는 수집기 이름(예: consensus)"
         default: "daily"
+      args:
+        description: "추가 옵션 (예: --days 6000 → 공매도 2010년부터)"
+        default: ""
 
 permissions:
   contents: read
@@ -88,7 +91,10 @@ jobs:
       - name: collect
         if: steps.g.outputs.skip != '1'
         continue-on-error: true
-        run: python -m hub run ${{ steps.s.outputs.set }}
+        env:
+          RUN_SET: ${{ steps.s.outputs.set }}
+          RUN_ARGS: ${{ github.event_name == 'workflow_dispatch' && inputs.args || '' }}
+        run: python -m hub run "$RUN_SET" $RUN_ARGS
       - name: push to R2
         if: always() && steps.g.outputs.skip != '1'
         run: python -m hub sync push
