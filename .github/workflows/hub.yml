@@ -35,6 +35,7 @@ jobs:
     timeout-minutes: 120
     env:
       SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
+      SITE_URL: ${{ vars.SITE_URL || 'https://flytothejy.github.io/market-data' }}   # 홍보 카드에 찍히는 주소
       OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}   # 선택: 있으면 13F 종목 매핑이 10배 빠름 (openfigi.com 무료 키)
       DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -78,6 +79,9 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "set=${{ inputs.set }}" >> $GITHUB_OUTPUT
           elif [ "${{ github.event.schedule }}" = "0 2 * * 6" ]; then echo "set=weekly" >> $GITHUB_OUTPUT
           else echo "set=daily" >> $GITHUB_OUTPUT; fi
+      - name: browser for weekly cards
+        if: steps.g.outputs.skip != '1' && (contains(steps.s.outputs.set, 'weekly') || contains(steps.s.outputs.set, 'cards'))
+        run: pip install -q playwright && python -m playwright install --with-deps chromium
       - name: pull from R2
         if: steps.g.outputs.skip != '1'
         run: python -m hub sync pull
