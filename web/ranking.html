@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>티커맵 — 티커랭킹: 오늘의 미국 주식 순위</title>
+<meta name="description" content="티커랭킹 — 애널리스트 전망 상향, 목표가 상승여력, 매출 성장, 52주 신고가, 내부자 매수 등 미국 주식 순위를 매일 한국어로.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/app.css">
+<script src="assets/data.js"></script>
+<script src="assets/ui.js"></script>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">불러오는 중…</div></div>
+<script>
+header('티커랭킹');
+
+const idxName = { SPY: 'S&P 500', QQQ: '나스닥 100', DIA: '다우 30', IWM: '러셀 2000' };
+
+function section(key, title, desc, cards, more) {
+  return `<div class="sec-head"><h2><span class="cat-dot c-${key}"></span>${title}</h2><span class="desc">${desc}</span>
+    ${more ? `<a class="more" href="${more}">검색에서 더 보기 →</a>` : ''}</div>
+    <div class="grid g3">${cards.join('')}</div>`;
+}
+const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `<div class="sub">${sub}</div>` : ''}${body}</div>`;
+
+(async () => {
+  let U, M, K;
+  try { [U, M, K] = await Promise.all([Data.universe(), Data.market(), Data.krEtfs().catch(() => null)]); }
+  catch (e) { $('#app').innerHTML = `<div class="loading">데이터를 불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
+  const S = U.rows.filter(r => r.k === 'stock'), E = U.rows.filter(r => r.k === 'etf');
+  const big = S.filter(r => (r.mcap || 0) >= 1e10);
+  const by = (arr, k, desc = true) => arr.filter(r => r[k] != null).sort((a, b) => desc ? b[k] - a[k] : a[k] - b[k]);
+  const sub = r => `${secKo(r.sec)} · ${fmtUsd(r.mcap)}`;
+  let h = '';
+
+  // ---- 시장 요약
+  h += `<div class="hero"><h1>티커랭킹</h1><p>컨센서스·재무·차트·공시·뉴스로 본 오늘의 순위 · ${esc(M.asof)} 종가 기준 · 종목 ${S.length.toLocaleString()} · ETF ${E.length}</p></div>`;
+  h += `<div class="grid g4">${Object.entries(M.indices).map(([t, x]) => `<a class="card" href="${stockUrl(t)}" style="color:inherit;text-decoration:none">
+      <div class="mut s13">${idxName[t] || t} <span class="faint">${t}</span></div>
+      <div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:20px" class="num">${fmt(x.px, 'px')}</b>${pctS(x.r1d)}</div>
+      <div class="small mut">1개월 ${pctS(x.r1m)} · 연초 이후 ${pctS(x.rytd)}</div></a>`).join('')}</div>`;
+  const adv = M.adv, dec = M.dec;
+  h += `<div class="card"><div class="kv">
+    <div><span>상승 / 하락 종목</span><b><span class="up">${adv}</span> / <span class="dn">${dec}</span></b></div>
+    <div><span>200일선 위 종목 비율</span><b>${fmt(M.breadth_200, 'pct')}</b></div>
+    <div><span>50일선 위 종목 비율</span><b>${fmt(M.breadth_50, 'pct')}</b></div>
+    <div><span>52주 신고가 / 신저가</span><b>${M.new_hi} / ${M.new_lo}</b></div>
+    ${M.vix != null ? `<div><span>VIX (변동성 지수)</span><b>${M.vix.toFixed(1)}</b></div>` : ''}
+  </div></div>`;
+
+  // 내 관심 종목 (이 브라우저에 저장된 것)
+  const W = Watch.list().map(t => U.rows.find(r => r.t === t)).filter(Boolean);
+  if (W.length) {
+    h += `<div class="sec-head"><h2>내 관심 종목</h2><span class="desc">${W.length}개 · 이 브라우저에 저장됨</span>
+      <a class="more" href="compare.html?t=${encodeURIComponent(W.slice(0, 5).map(r => r.t).join(','))}">비교하기 →</a></div>
+      <div class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>종목</th><th>종가</th><th>1일</th><th>1개월</th><th>1년</th><th>다음 실적</th><th class="l">한 줄 요약</th><th></th></tr></thead><tbody>
+      ${W.map(r => `<tr><td><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 18))}</span></td><td class="num">${fmt(r.px, 'px')}</td><td>${pctS(r.r1d)}</td><td>${pctS(r.r1m)}</td><td>${pctS(r.r1y)}</td>
+        <td class="num">${r.c_next ? esc(r.c_next.slice(5)) : '-'}</td><td class="l nm mut" style="max-width:360px">${esc(r.s1 || '')}</td><td>${starBtn(r.t)}</td></tr>`).join('')}
+      </tbody></table></div></div>`;
+  } else {
+    h += `<div class="card" style="flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap"><span class="s13 mut">종목 화면에서 <b style="color:var(--ink)">☆ 관심 종목에 추가</b>를 누르면 여기에 모아 보여요. 실적 달력·비교에서도 바로 쓸 수 있어요.</span></div>`;
+  }
+
+  // 업종 표
+  const secs = M.sectors.filter(s => s.sec).sort((a, b) => (b.r1m ?? -9) - (a.r1m ?? -9));
+  h += `<div class="sec-head"><h2>업종 한눈에</h2><span class="desc">업종별 중앙값 · 1개월 수익률 순</span></div>
+  <div class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>업종</th><th>종목 수</th><th>1일</th><th>1개월</th><th>1년</th><th>PER</th><th>매출 성장</th><th>200일선 위</th><th>전망 순상향률</th></tr></thead><tbody>
+  ${secs.map(s => `<tr><td><a href="screen.html?sec=${encodeURIComponent(s.sec)}">${secKo(s.sec)}</a></td><td class="num">${s.n}</td><td>${pctS(s.r1d)}</td><td>${pctS(s.r1m)}</td><td>${pctS(s.r1y)}</td>
+    <td class="num">${fmt(s.pe, 'x')}</td><td>${pctS(s.rev_g)}</td><td class="num">${fmt(s.a200, 'pct')}</td><td>${pctS(s.c_ratio)}</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+
+  // ---- 컨센서스
+  const consN = S.filter(r => (r.c_n || 0) >= 5);
+  const today = new Date().toISOString().slice(0, 10);
+  const wk = new Date(Date.now() + 8 * 864e5).toISOString().slice(0, 10);
+  const earn = S.filter(r => r.c_next && r.c_next >= today && r.c_next <= wk).sort((a, b) => a.c_next < b.c_next ? -1 : a.c_next > b.c_next ? 1 : (b.mcap || 0) - (a.mcap || 0));
+  h += section('cons', '컨센서스', `애널리스트 전망 변화 · ${esc(U.consensus_asof || '')} 기준 (S&P 500부터, 확대 예정)`, [
+    card('전망 상향이 많은 종목', '최근 30일 내년 EPS 상향−하향 / 애널리스트 수 (5명 이상)', rankList(consN.filter(r => r.c_ratio != null).sort((a, b) => b.c_ratio - a.c_ratio || (b.c_up || 0) - (a.c_up || 0)), r => pctS(r.c_ratio), r => `상향 ${r.c_up ?? 0} · 하향 ${r.c_dn ?? 0}`)),
+    card('목표가 상승여력', '평균 목표가 / 현재가 − 1 (5명 이상)', rankList(by(consN, 'c_upside'), r => pctS(r.c_upside), sub)),
+    card('다가오는 실적 발표 <a class="small" href="earnings.html" style="font-weight:400">달력 →</a>', '앞으로 일주일', rankList(earn, r => `<span class="mut">${esc(r.c_next.slice(5))}</span>`, sub, 10)),
+  ], 'screen.html?cat=cons');
+
+  // ---- 재무
+  h += section('fin', '재무', 'SEC 제출 재무제표 기준 최근 4개 분기 합계 · 시가총액 100억 달러 이상', [
+    card('매출 성장이 빠른 종목', '최근 4개 분기 매출, 1년 전 대비', rankList(by(big.filter(r => (r.rev || 0) >= 1e9), 'rev_g'), r => pctS(r.rev_g), r => `매출 ${fmtUsd(r.rev)}`)),
+    card('영업이익률 개선', '최근 4개 분기 영업이익률, 1년 전 대비 변화(%p)', rankList(by(big.filter(r => r.om != null && r.om > 0), 'om_chg'), r => `<span class="${cls(r.om_chg)}">${r.om_chg > 0 ? '+' : ''}${(r.om_chg * 100).toFixed(1)}%p</span>`, r => `영업이익률 ${fmt(r.om, 'pct')}`)),
+    card('잉여현금흐름 수익률', '최근 4개 분기 FCF / 시가총액', rankList(by(big, 'fcfy'), r => fmt(r.fcfy, 'pct'), r => `PER ${fmt(r.pe, 'x')}`)),
+  ], 'screen.html?cat=fin');
+
+  // ---- 차트·수급
+  h += section('tech', '차트·수급', '가격·거래량·공매도·옵션', [
+    card('52주 신고가 부근', '고가 대비 −2% 이내, 3개월 수익률 순', rankList(by(S.filter(r => r.hi52 != null && r.hi52 >= -0.02), 'r3m'), r => pctS(r.r3m), r => `${secKo(r.sec)} · 1일 ${fmt(r.r1d, 'pct', { sign: true })}`)),
+    card('거래량이 늘어난 종목', '최근 20일 평균 / 120일 평균', rankList(by(S.filter(r => (r.mcap || 0) >= 5e9), 'vr'), r => fmt(r.vr, 'x'), r => `1개월 ${fmt(r.r1m, 'pct', { sign: true })}`)),
+    card('공매도 거래 비중 상승', '최근 20일 공매도 거래 비중, 직전 20일 대비', rankList(by(S.filter(r => (r.mcap || 0) >= 5e9), 'sv_chg'), r => `<span class="up">+${(r.sv_chg * 100).toFixed(1)}%p</span>`, r => `비중 ${fmt(r.sv, 'pct')}`)),
+  ], 'screen.html?cat=tech');
+
+  // ---- 공시·내부자
+  h += section('doc', '공시·내부자', 'SEC EDGAR 제출 기준', [
+    card('내부자 매수', '최근 90일 장내 매수 금액 (Form 4, 코드 P)', rankList(by(S.filter(r => r.ib > 0), 'ib'), r => fmtUsd(r.ib), r => `${r.ibn}명 · 최근 ${fmt(r.ib_last, 'date')}`)),
+    card('8-K 공시가 많은 종목', '최근 30일 수시 공시 건수', rankList(by(S.filter(r => r.k8 > 0), 'k8'), r => `${r.k8}건`, r => r.k8_last || '')),
+    card('매도 예정 신고 (Form 144)', '최근 30일 내부자·대주주 매도 예정 신고 건수', rankList(by(S.filter(r => r.f144 > 0), 'f144'), r => `${r.f144}건`, r => `내부자 매도 90일 ${fmtUsd(r.is)}`)),
+  ], 'screen.html?cat=doc');
+
+  // ---- 뉴스
+  const nw = by(S.filter(r => r.nw7 > 0), 'nw7');
+  h += `<div class="sec-head"><h2><span class="cat-dot c-news"></span>뉴스</h2><span class="desc">최근 7일 기사·보도자료가 많은 종목</span></div>
+    <div class="card">${nw.length ? rankList(nw, r => `${r.nw7}건`, r => r.nw_last || '', 10) : '<div class="mut s13">뉴스 수집 중입니다</div>'}</div>`;
+
+  // ---- ETF
+  const grp = {};
+  E.forEach(r => (grp[r.grp || '기타'] ||= []).push(r));
+  h += `<div class="sec-head"><h2>ETF</h2><span class="desc">추적 ETF ${E.length}개 · 1개월 수익률</span><a class="more" href="screen.html?kind=etf">ETF 전체 →</a></div>
+    <div class="grid g3">${Object.entries(grp).slice(0, 6).map(([g, rs]) => card(esc(g), '', rankList(by(rs, 'r1m'), r => pctS(r.r1m), r => `${fmtUsd(r.aum)} · 보수 ${fmt(r.exp, 'pct2')}`, 5))).join('')}</div>`;
+
+  // ---- 국내 상장 미국 ETF
+  if (K && K.rows.length) {
+    const top = [...K.rows].sort((a, b) => (b.aum || 0) - (a.aum || 0)).slice(0, 12);
+    h += `<div class="sec-head"><h2>국내 상장 미국 ETF</h2><span class="desc">${K.rows.length}개 · 순자산 상위 · ${esc(K.asof)} 기준 · 괴리율 = (시장가−NAV)/NAV</span></div>
+    <div class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>종목</th><th>기초지수</th><th>순자산</th><th>1개월</th><th>1년</th><th>괴리율</th><th>미국 대응</th></tr></thead><tbody>
+    ${top.map(k => `<tr><td class="nm">${esc(k.n)} <span class="faint small">${esc(k.code)}</span></td><td class="l nm mut">${esc(k.idx)}</td><td class="num">${fmtKrw(k.aum)}</td>
+      <td>${pctS(k.r1m)}</td><td>${pctS(k.r1y)}</td><td class="num ${Math.abs(k.dev || 0) > 0.5 ? 'up' : ''}">${k.dev != null ? k.dev.toFixed(2) + '%' : '-'}</td>
+      <td>${k.us ? `<a href="${stockUrl(k.us)}">${k.us}</a>` : '-'}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+  }
+  $('#app').innerHTML = h;
+  footer();
+})();
+</script>
+</body>
+</html>

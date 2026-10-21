@@ -45,7 +45,7 @@ const pctS = v => `<span class="${cls(v)} num">${fmt(v, 'pct', { sign: true })}<
 
 // ---- 상단
 function header(active) {
-  const items = [['index.html', '둘러보기'], ['matrix.html', '티커맵'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오']];
+  const items = [['matrix.html', '티커맵'], ['ranking.html', '티커랭킹'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오']];
   const el = document.createElement('header');
   el.className = 'top';
   el.innerHTML = `<div class="in"><a class="brand" href="index.html" aria-label="티커맵 홈"><svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true" style="flex-shrink:0"><circle cx="7.8" cy="7.8" r="6.8" fill="#d65014"/><circle cx="20.6" cy="5.4" r="4.4" fill="#2463c4"/><circle cx="21.8" cy="13.2" r="2.4" fill="#d9d6cc"/><circle cx="6.1" cy="20.9" r="4.1" fill="#7ea3dc"/><circle cx="18.2" cy="20.2" r="4.8" fill="#eba27e"/><circle cx="12.9" cy="15.3" r="1.5" fill="#d9d6cc"/></svg><span>티커맵</span></a>

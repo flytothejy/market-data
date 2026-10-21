@@ -171,7 +171,8 @@ function drawChart() {
     const box = { tl: [-1.04, 0, 0, 1.04], tr: [0, 1.04, 0, 1.04], bl: [-1.04, 0, -1.04, 0], br: [0, 1.04, -1.04, 0] }[q];
     const ax = Math.max(box[0], x0), bx = Math.min(box[1], x1), cy = Math.max(box[2], y0), dy = Math.min(box[3], y1);
     if (sx(bx) - sx(ax) < 160 || sy(cy) - sy(dy) < 50) return '';
-    const left = q === 'tl' || q === 'bl', top = q === 'tl' || q === 'tr';
+    // 구역 이름은 가운데 축 쪽에 — 바깥 모서리는 범위 밖 값이 붙어 그려지는 자리라 이름을 가림
+    const left = q === 'tl' || q === 'bl', top = q === 'bl' || q === 'br';
     return `<text x="${left ? sx(ax) + 12 : sx(bx) - 12}" y="${top ? sy(dy) + 22 : sy(cy) - 12}" font-size="${W < 600 ? 12 : 14}" font-weight="800" text-anchor="${left ? 'start' : 'end'}" fill="${color}">${esc(txt)}</text>`;
   };
   g += qlab('tl', L.tl, up) + qlab('br', L.br, dn) + qlab('tr', '둘 다 좋음', 'var(--faint)') + qlab('bl', '둘 다 나쁨', 'var(--faint)');
