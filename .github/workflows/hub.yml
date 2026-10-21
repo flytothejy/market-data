@@ -3,18 +3,22 @@ name: hub
 # 종목 허브 데이터 수집 — R2에서 받고 → 수집 → R2로 올림 (저장소에는 커밋하지 않음)
 run-name: "hub ${{ github.event_name == 'workflow_dispatch' && inputs.set || (github.event.schedule == '0 2 * * 6' && 'weekly' || 'daily') }}"
 
+# 주 실행은 Cloudflare Worker(cloudflare/trigger)가 정시에 workflow_dispatch로 깨움:
+#   미국 동부 16:20 → close(종가·옵션·화면), 19:30 → daily(SEC·공매도·컨센서스 등 전부)
+# 아래 깃허브 예약 실행은 Worker가 빠진 날을 위한 예비 (앞선 daily가 성공했으면 바로 끝냄)
 on:
   schedule:
-    - cron: "40 23 * * 1-5"   # 평일(미국 기준) 마감 후: 한국 08:40 화~토
-    # 예비: 깃허브 예약 실행은 몇 시간 늦거나 빠지기도 함 → 앞선 daily가 성공했으면 바로 끝냄
+    - cron: "40 23 * * 1-5"   # 예비: 미국 동부 19:40 무렵 (깃허브는 자주 늦음)
+    #   Worker daily와 겹치면 concurrency로 줄을 서고, 시작 시점엔 이미 끝나 있어 아래 점검에서 건너뜀
+    # 예비 2회 더 (한국 11:30·13:30 화~토): Worker의 daily가 성공했으면 바로 끝냄
     # (미국 동부 23:30 전이라 컨센서스 날짜는 같은 거래일로 저장됨)
-    - cron: "30 1 * * 2-6"
-    - cron: "30 3 * * 2-6"
+    - cron: "30 2 * * 2-6"
+    - cron: "30 4 * * 2-6"
     - cron: "0 2 * * 6"       # 주 1회(토 11:00 한국): 개요·공매도 잔고·13F
   workflow_dispatch:
     inputs:
       set:
-        description: "daily · weekly · 또는 수집기 이름(예: consensus)"
+        description: "close · daily · weekly · 또는 수집기 이름(예: consensus)"
         default: "daily"
 
 permissions:
@@ -50,7 +54,7 @@ jobs:
       - name: skip if today's daily already done
         id: g
         run: |
-          # 예약 실행(매일 23:40·예비 01:30·03:30 UTC): 최근 10시간 안에 가격·화면 데이터가 이미 제대로 만들어졌으면 건너뜀
+          # 예비 예약 실행(23:40·02:30·04:30 UTC): 최근 10시간 안에 가격·화면 데이터가 이미 제대로 만들어졌으면 건너뜀
           # (깃허브 예약 실행이 몇 시간씩 늦게 도는 날이 있어, 손으로 먼저 돌린 뒤 늦게 온 예약 실행이 같은 일을 반복하지 않게)
           if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "0 2 * * 6" ]; then
             python -m hub sync pull --only _status/

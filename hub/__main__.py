@@ -20,6 +20,7 @@
   python -m hub status                  마지막 실행 점검표
   python -m hub sync push|pull|ls [--dry]  Cloudflare R2 동기화
   python -m hub run daily | weekly      Actions 일정용 묶음
+  python -m hub run close               마감 직후 빠른 갱신 (종가·옵션·화면)
   python -m hub notify daily|weekly     실패·주의 시 텔레그램 알림
 
 공통 옵션: --limit N  (소량 시험: 종목 N개 / Form 4 N건 / 공매도 N일)
@@ -38,6 +39,8 @@ ORDER3 = ["news", "f13", "consensus"]
 # Actions 일정용 묶음
 DAILY = ["universe", "prices", "sec_filings", "sec_insider", "sec_financials", "short_volume", "etf", "options", "kr_etf", "news", "consensus", "tenk", "build"]
 WEEKLY = ["profile", "f13", "build"]
+# 미국장 마감 직후(동부 16:20) 빠른 갱신: 종가·옵션만 받고 화면 데이터 재생성 (~10분). 나머지는 저녁 daily가 채움
+CLOSE = ["universe", "prices", "options", "build"]
 
 
 def job(name):
@@ -81,13 +84,13 @@ def main():
         return
     if a.cmd == "notify":
         from . import notify
-        names = {"daily": DAILY, "weekly": WEEKLY}.get(a.set, [x.strip() for x in a.set.split(",")])
-        title = {"daily": "매일", "weekly": "주간"}.get(a.set, a.set)
+        names = {"daily": DAILY, "weekly": WEEKLY, "close": CLOSE}.get(a.set, [x.strip() for x in a.set.split(",")])
+        title = {"daily": "매일", "weekly": "주간", "close": "마감 직후"}.get(a.set, a.set)
         sys.exit(1 if notify.run(names, f"종목 허브 {title} 수집", a.always) else 0)
     if a.cmd == "status":
         core.print_report(core.load_status())
         return
-    groups = {"phase1": ORDER, "phase2": ORDER2, "phase3": ORDER3, "daily": DAILY, "weekly": WEEKLY}
+    groups = {"phase1": ORDER, "phase2": ORDER2, "phase3": ORDER3, "daily": DAILY, "weekly": WEEKLY, "close": CLOSE}
     names = [n for part in a.source.split(",") for n in groups.get(part.strip(), [part.strip()])]
     valid = set(ORDER + ORDER2 + ORDER3 + ["tenk", "build"])
     bad = [n for n in names if n not in valid]

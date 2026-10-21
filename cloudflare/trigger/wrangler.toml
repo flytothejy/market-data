@@ -1,0 +1,8 @@
+# 대시보드에서 붙여넣기로 만들었다면 이 파일은 기록용. (wrangler deploy로 올릴 때만 사용)
+name = "tickermap-trigger"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[triggers]
+# UTC. 뉴욕 16:20 / 19:30을 서머타임(EDT)·표준시(EST) 양쪽으로 등록 — worker.js가 맞는 쪽만 실행
+crons = ["20 20 * * 1-5", "20 21 * * 1-5", "30 23 * * 1-5", "30 0 * * 2-6"]
