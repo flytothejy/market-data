@@ -10,6 +10,7 @@
 // 필요한 비밀값(Settings → Variables and Secrets, 종류 Secret):
 //   GH_TOKEN   깃허브 fine-grained 토큰 (market-data 저장소, Actions: Read and write)
 // 선택(실패 시 텔레그램 알림):  TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+// 선택(주소로 바로 실행):  RUN_KEY  → https://<worker 주소>/?run=close&key=<RUN_KEY>
 
 const REPO = "flytothejy/market-data";
 const WORKFLOW = "hub.yml";
@@ -67,8 +68,19 @@ export default {
     }
   },
 
-  // 주소로 들어오면 상태만 보여줌 (실행은 하지 않음)
+  // 주소로 들어오면 상태만 보여줌. ?run=close|daily&key=<RUN_KEY 비밀값> 이면 지금 바로 실행 (시험·수동용)
   async fetch(req, env) {
+    const u = new URL(req.url), run = u.searchParams.get("run");
+    if (run) {
+      if (!env.RUN_KEY || u.searchParams.get("key") !== env.RUN_KEY) return new Response("key가 맞지 않아요\n", { status: 403 });
+      if (!["close", "daily", "weekly"].includes(run)) return new Response("run은 close · daily · weekly 중 하나\n", { status: 400 });
+      try {
+        await dispatch(env, run);
+        return new Response(`실행 요청 보냄: ${run} (GitHub Actions에서 확인)\n`, { headers: { "content-type": "text/plain; charset=utf-8" } });
+      } catch (e) {
+        return new Response(`실패: ${e.message}\n`, { status: 502, headers: { "content-type": "text/plain; charset=utf-8" } });
+      }
+    }
     const { hm, wd } = nyTime(new Date());
     return new Response(`tickermap trigger — 뉴욕 지금 ${wd} ${hm}\n예약: ${Object.entries(SLOTS).map(([k, v]) => `${k} ${v}`).join(", ")}\n토큰: ${env.GH_TOKEN ? "있음" : "없음"}\n`, {
       headers: { "content-type": "text/plain; charset=utf-8" },
