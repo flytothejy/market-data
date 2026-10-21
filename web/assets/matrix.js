@@ -9,40 +9,47 @@ const sgn = (v, d = 0) => (v > 0 ? '+' : '') + (v * 100).toFixed(d) + '%';
 const LENS = {
   eps: {
     name: 'EPS 전망', max: 0.3, y: r => (r.c_chg90 != null && (r.c_n || 0) >= 3) ? r.c_chg90 : null, fy: v => '전망 ' + sgn(v, Math.abs(v) < 0.1 ? 1 : 0),
-    up: '내년 EPS 전망 상향', dn: '전망 하향', tl: '전망은 오르는데 주가는 빠짐', br: '주가는 오르는데 전망은 꺾임', trail: 'eps',
+    up: '내년 EPS 전망 상향', dn: '전망 하향', tl: '전망은 오르는데 주가는 빠짐', br: '주가는 오르는데 전망은 꺾임', trail: 'eps', spans: ['3m'],
     desc: '세로 = 애널리스트들의 내년 EPS(주당순이익) 전망이 90일 전보다 얼마나 바뀌었나. 왼쪽 위는 이익 전망이 좋아지는데 주가가 빠진 종목입니다.',
   },
   rev: {
     name: '매출 가속', max: 0.3, y: r => (r.rev_qg != null && r.rev_g != null) ? r.rev_qg - r.rev_g : null, fy: v => '가속 ' + (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%p',
-    up: '매출 성장 가속', dn: '매출 성장 둔화', tl: '매출 성장은 빨라지는데 주가는 빠짐', br: '주가는 오르는데 매출 성장은 둔화', trail: 'rev',
+    up: '매출 성장 가속', dn: '매출 성장 둔화', tl: '매출 성장은 빨라지는데 주가는 빠짐', br: '주가는 오르는데 매출 성장은 둔화', trail: 'rev', spans: ['1y', '3y'],
     desc: '세로 = 최근 분기 매출 성장률(1년 전 같은 분기 대비)에서 최근 4개 분기 합계 성장률을 뺀 값. 플러스면 성장이 빨라지는 중입니다. SEC 재무제표 기준.',
   },
   guru: {
     name: '유명 투자자', max: 5, jitter: true, y: r => r.g13_chg ?? null, fy: v => '투자자 ' + (v > 0 ? '+' : '') + (Number.isInteger(v) ? v : v.toFixed(1)) + '곳',
-    up: '유명 투자자 순매수', dn: '순매도', tl: '유명 투자자는 사는데 주가는 빠짐', br: '주가는 오르는데 유명 투자자는 팖', trail: 'guru',
+    up: '유명 투자자 순매수', dn: '순매도', tl: '유명 투자자는 사는데 주가는 빠짐', br: '주가는 오르는데 유명 투자자는 팖', trail: 'guru', spans: ['1y', '3y'],
     desc: '세로 = 유명 투자자 36곳 중 이번 분기 새로 사거나 늘린 곳 − 팔거나 줄인 곳 (13F). 13F는 분기 말 기준이라 최대 4개월 반 늦은 정보예요.',
   },
   insider: {
     name: '내부자', max: 1, raw: true,
     y: r => { const n = (r.ib || 0) - (r.is || 0); return n ? Math.sign(n) * Math.max(0.05, Math.min(1, (Math.log10(Math.abs(n)) - 4) / 4.5)) : null; },
     fy: (v, r) => { if (!r) return (v > 0 ? '순매수 쪽 ' : '순매도 쪽 ') + Math.abs(v).toFixed(2); const n = (r.ib || 0) - (r.is || 0); return (n > 0 ? '순매수 ' : '순매도 ') + money(n); },
-    up: '내부자 순매수 (금액, 로그)', dn: '순매도', tl: '내부자는 사는데 주가는 빠짐', br: '주가는 오르는데 내부자는 팖', trail: null,
+    up: '내부자 순매수 (금액, 로그)', dn: '순매도', tl: '내부자는 사는데 주가는 빠짐', br: '주가는 오르는데 내부자는 팖', trail: 'insider', spans: ['3m', '1y', '3y'],
     desc: '세로 = 최근 90일 임원·이사의 장내 매수 − 매도 금액 (Form 4, 로그 눈금). 매도는 세금·계획 매도가 많아 매수 쪽 신호가 더 의미 있어요.',
   },
   short: {
-    name: '공매도', max: 0.12, y: r => r.sv_chg != null ? -r.sv_chg : null, fy: v => '공매도 ' + (-v > 0 ? '+' : '') + (-v * 100).toFixed(1) + '%p',
-    up: '공매도 감소', dn: '공매도 증가', tl: '공매도는 줄었는데 주가는 빠짐', br: '주가는 오르는데 공매도는 늘어남', trail: 'short',
-    desc: '세로 = 공매도 거래 비중(최근 20거래일)이 직전 20거래일보다 얼마나 줄었나. 오른쪽 아래는 주가가 오르는 동안 하락에 거는 거래가 늘어난 종목입니다.',
+    name: '공매도', max: 0.08, y: r => r.sv_chg60 != null ? -r.sv_chg60 : null, fy: v => '공매도 ' + (-v > 0 ? '+' : '') + (-v * 100).toFixed(1) + '%p',
+    up: '공매도 감소', dn: '공매도 증가', tl: '공매도는 줄었는데 주가는 빠짐', br: '주가는 오르는데 공매도는 늘어남', trail: 'short', spans: ['3m', '1y', '3y'],
+    desc: '세로 = 공매도 거래 비중(최근 60거래일 평균)이 직전 60거래일보다 얼마나 줄었나. 오른쪽 아래는 주가가 오르는 동안 하락에 거는 거래가 늘어난 종목입니다.',
   },
 };
+const SPAN = { '3m': ['3개월', 'r1m', '2주 간격'], '1y': ['1년', 'r3m', '1개월 간격'], '3y': ['3년', 'r6m', '분기 간격'] };   // 트레일 길이 → 함께 쓰는 가로축
+const prefSpan = L => L.spans.includes('1y') ? '1y' : L.spans[0];
+const PATN = { nw: ['꾸준히 ↖', '신호↑ 주가↓ — 어긋남이 커지는 중'], n: ['꾸준히 ↑', '신호만 좋아지는 중'], ne: ['꾸준히 ↗', '주가·신호 함께 개선'], e: ['꾸준히 →', '주가만 오르는 중'],
+  se: ['꾸준히 ↘', '주가↑ 신호↓ — 어긋남이 커지는 중'], s: ['꾸준히 ↓', '신호만 나빠지는 중'], sw: ['꾸준히 ↙', '주가·신호 함께 악화'], w: ['꾸준히 ←', '주가만 빠지는 중'],
+  tn: ['꺾임', '가던 방향이 바뀜'], zz: ['오락가락', '갔다가 제자리 근처로 돌아옴'], st: ['제자리', '거의 움직이지 않음'] };
 const VIEWS = { stock: '종목', sec: '업종', ind: '세부 업종' };
 const TRACK_COL = ['var(--ink)', '#7c3aed', '#0f766e', '#b45309', '#be185d'];
 const FULL = [-1.04, 1.04, -1.04, 1.04];
 const st = {
-  lens: LENS[qs('lens')] ? qs('lens') : 'eps', xw: XW[qs('x')] ? qs('x') : 'r1m', sec: qs('sec') || '', cap: +(qs('cap') || 0),
+  lens: LENS[qs('lens')] ? qs('lens') : 'eps', xw: 'r1m', span: '3m', pat: PATN[qs('pat')] ? qs('pat') : '', sec: qs('sec') || '', cap: +(qs('cap') || 0),
   only: qs('only') || '', view: VIEWS[qs('view')] ? qs('view') : 'stock', track: (qs('t') || '').split(',').filter(Boolean).slice(0, 5),
   onlyTrack: qs('focus') === '1', dom: FULL.slice(), trail: {},
 };
+{ const L0 = LENS[st.lens]; st.span = L0.spans.includes(qs('span')) ? qs('span') : prefSpan(L0); st.xw = XW[qs('x')] ? qs('x') : SPAN[st.span][1]; }
+let PATS = null;
 let U, S, W = 900, H = 640, P = [], GT = null, drawQueued = false, sideTimer = null;
 const PAD = { l: 54, r: 18, t: 44, b: 40 };
 
@@ -58,7 +65,7 @@ const labelOf = id => id.startsWith('sec:') ? secKo(groupName(id)) : id.startsWi
 function sync() {
   const u = new URL(location.href);
   const set = (k, v, d) => v && v !== d ? u.searchParams.set(k, v) : u.searchParams.delete(k);
-  set('lens', st.lens, 'eps'); set('x', st.xw, 'r1m'); set('sec', st.sec); set('cap', st.cap ? String(st.cap) : ''); set('only', st.only);
+  set('lens', st.lens, 'eps'); set('span', st.span, prefSpan(LENS[st.lens])); set('x', st.xw, SPAN[st.span][1]); set('pat', st.pat); set('sec', st.sec); set('cap', st.cap ? String(st.cap) : ''); set('only', st.only);
   set('view', st.view, 'stock'); set('t', st.track.join(',')); set('focus', st.onlyTrack ? '1' : '');
   u.searchParams.delete('zoom');
   history.replaceState(null, '', u);
@@ -85,6 +92,7 @@ function stockPoints(ignoreFocus) {
       if (st.only === 'watch' && !watch.has(r.t)) continue;
       if (st.only === 'hold' && !hold.has(r.t)) continue;
       if (st.only === 'earn' && !(r.c_next && r.c_next >= w0 && r.c_next <= w1)) continue;
+      if (st.pat) { const m = PATS && PATS[st.span] && PATS[st.span][st.lens]; if (!m || m[r.t] !== st.pat) continue; }
     }
     const yC = L.raw ? y : clamp(y / L.max, -1, 1);
     out.push(mk(r.t, r.t, r.ko || r.n || '', r.mcap || 0, x, y, yC, L.jitter ? hash(r.t) * 0.14 : 0, r, watch.has(r.t) || hold.has(r.t)));
@@ -214,20 +222,40 @@ const queueDraw = () => { if (!drawQueued) { drawQueued = true; requestAnimation
 // ---- 티커 트레일: 지도와 같은 기준(선택한 기간의 주가 × 그 시점의 신호)으로 과거 위치를 이어 그림. 끝점 = 지금 점
 function trailPts(id) {
   const L = LENS[st.lens];
-  if (!L.trail) return null;
-  if (isGroup(id)) { const k = id.startsWith('sec:') ? 'sec' : 'ind'; return GT && GT[k] && GT[k][groupName(id)] ? GT[k][groupName(id)][L.trail] : null; }
-  return st.trail[id] ? st.trail[id][L.trail] : null;
+  if (!L.trail || !L.spans.includes(st.span)) return null;
+  const key = `${L.trail}@${st.span}`;
+  if (isGroup(id)) { const k = id.startsWith('sec:') ? 'sec' : 'ind'; return GT && GT[k] && GT[k][groupName(id)] ? GT[k][groupName(id)][key] : null; }
+  return st.trail[id] ? st.trail[id][key] : null;
 }
-function trailLayer(id, color) {
+function trailC(id) {
+  // 그릴 점들 (지도 좌표). 마지막 날짜가 최근 거래일이면 지금 점으로 바꾸고, 아니면(분기 자료 등) 지금 점을 덧붙임
   const L = LENS[st.lens], pts = trailPts(id);
-  if (!pts || !pts.length) return '';
+  if (!pts || !pts.length) return null;
   const xm = XW[st.xw][1], xi = XI[st.xw], cur = P.find(p => p.id === id);
   const jit = L.jitter && !isGroup(id) ? hash(id) * 0.14 : 0;
   const C = pts.filter(q => q[xi] != null && q[5] != null).map(q => ({ d: q[0], xN: clamp(q[xi] / xm, -1, 1), yN: clamp((L.raw ? q[5] : q[5] / L.max) + jit, -1, 1) }));
-  if (cur) {                                   // 마지막 날짜가 최근 거래일이면 지금 점으로 바꾸고, 분기 자료면 지금 점을 덧붙임
+  if (cur) {
     const now = { d: U.asof, xN: cur.xN, yN: cur.yN };
     if (C.length && C[C.length - 1].d >= U.asof) C[C.length - 1] = now; else C.push(now);
   }
+  return C;
+}
+function patternOf(C) {
+  // 모양 이름표 — build.py trail_pattern과 같은 규칙 (점 개수에 덜 휘둘리게 '가장 멀리 간 거리'와 네 점의 큰 흐름으로)
+  if (!C || C.length < 3) return null;
+  const x0 = C[0].xN, y0 = C[0].yN, n = C.length;
+  const ext = Math.max(...C.map(c => Math.hypot(c.xN - x0, c.yN - y0)));
+  if (ext < 0.25) return 'st';
+  const dx = C[n - 1].xN - x0, dy = C[n - 1].yN - y0, net = Math.hypot(dx, dy);
+  if (net < 0.4 * ext) return 'zz';
+  const idx = [0, Math.round((n - 1) / 3), Math.round(2 * (n - 1) / 3), n - 1], ux = dx / net, uy = dy / net;
+  const seg = [0, 1, 2].map(i => (C[idx[i + 1]].xN - C[idx[i]].xN) * ux + (C[idx[i + 1]].yN - C[idx[i]].yN) * uy);
+  if (net >= 0.25 && Math.min(...seg) > -0.05) return ['e', 'ne', 'n', 'nw', 'w', 'sw', 's', 'se'][Math.floor((((Math.atan2(dy, dx) * 180 / Math.PI) + 22.5) % 360 + 360) % 360 / 45)];
+  return 'tn';
+}
+function trailLayer(id, color) {
+  const C = trailC(id), cur = P.find(p => p.id === id);
+  if (!C) return '';
   if (C.length < 2) return '';
   const XY = C.map(c => [sx(c.xN), sy(c.yN)]), n = XY.length;
   const op = i => 0.32 + 0.68 * Math.pow(i / (n - 1), 1.1);      // 과거는 연하게, 지금에 가까울수록 진하게
@@ -251,7 +279,7 @@ function trailLayer(id, color) {
     if (i === n - 1) return;                  // 끝점은 지도 위 실제 점이 그 자리
     const o = op(i);
     g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="${color}" fill-opacity="${o.toFixed(2)}" stroke="var(--card)" stroke-width="2"/>`;
-    g += `<text x="${(x + 8).toFixed(1)}" y="${(y - 7).toFixed(1)}" font-size="11" font-weight="600" fill="${color}" fill-opacity="${Math.max(0.6, o).toFixed(2)}" paint-order="stroke" stroke="var(--card)" stroke-width="3.5" stroke-linejoin="round">${esc(C[i].d.slice(5).replace('-', '/'))}</text>`;
+    g += `<text x="${(x + 8).toFixed(1)}" y="${(y - 7).toFixed(1)}" font-size="11" font-weight="600" fill="${color}" fill-opacity="${Math.max(0.6, o).toFixed(2)}" paint-order="stroke" stroke="var(--card)" stroke-width="3.5" stroke-linejoin="round">${esc(st.span === '3m' ? C[i].d.slice(5).replace('-', '/') : C[i].d.slice(2, 7).replace('-', '.'))}</text>`;
   });
   return `<g pointer-events="none">${halo}${g}</g>`;
 }
@@ -261,12 +289,14 @@ function controls() {
   const secs = [...new Set(S.map(r => r.sec).filter(Boolean))].sort((a, b) => secKo(a).localeCompare(secKo(b), 'ko'));
   return `<div class="mx-ctl">
     <div class="mx-seg" role="tablist" aria-label="세로축 신호">${Object.entries(LENS).map(([k, l]) => `<button role="tab" aria-selected="${k === st.lens}" class="${k === st.lens ? 'on' : ''}" data-lens="${k}">${l.name}</button>`).join('')}</div>
+    <div class="mx-seg" role="tablist" aria-label="트레일 길이"><span class="s13 mut" style="align-self:center;padding:0 4px 0 8px">트레일</span>${Object.entries(SPAN).map(([k, [l, , step]]) => { const ok = LENS[st.lens].spans.includes(k); return `<button role="tab" aria-selected="${k === st.span}" class="${k === st.span ? 'on' : ''}" data-span="${k}" ${ok ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'} title="${ok ? `${l} · ${step} · 가로축은 ${XW[SPAN[k][1]][0]} 주가로 맞춰짐` : `${esc(LENS[st.lens].name)}은(는) 아직 ${l}치 자료가 없어요`}">${l}</button>`; }).join('')}</div>
     <div class="mx-seg" role="tablist" aria-label="가로축 주가 기간">${Object.entries(XW).map(([k, [l]]) => `<button role="tab" aria-selected="${k === st.xw}" class="${k === st.xw ? 'on' : ''}" data-xw="${k}">${l}</button>`).join('')}</div>
     <div class="mx-seg" role="tablist" aria-label="보기 단위">${Object.entries(VIEWS).map(([k, l]) => `<button role="tab" aria-selected="${k === st.view}" class="${k === st.view ? 'on' : ''}" data-view="${k}">${l}</button>`).join('')}</div>
   </div>
   <details class="mx-more" ${window.innerWidth >= 700 || st.track.length ? 'open' : ''}><summary>찾기 · 필터</summary><div class="mx-ctl">
     <div class="mx-find"><input type="search" class="f" id="mx-q" placeholder="${st.view === 'stock' ? '종목 찾아 트레일 보기 (최대 5개)' : '업종 찾기'}" autocomplete="off" aria-label="지도에서 찾기"><div class="mx-sugg" id="mx-sugg"></div></div>
     <label class="s13 mut">업종 <select class="f" id="f-sec"><option value="">전체</option>${secs.map(s => `<option value="${esc(s)}" ${s === st.sec ? 'selected' : ''}>${esc(secKo(s))}</option>`).join('')}</select></label>
+    <label class="s13 mut">모양 <select class="f" id="f-pat" title="${SPAN[st.span][0]} 트레일의 모양으로 거르기"><option value="">전체</option>${Object.entries(PATN).map(([k, [l, d]]) => { const m = PATS && PATS[st.span] && PATS[st.span][st.lens], n = m ? Object.values(m).filter(v => v === k).length : 0; return `<option value="${k}" ${k === st.pat ? 'selected' : ''} ${m ? '' : 'disabled'}>${l} · ${d} (${n})</option>`; }).join('')}</select></label>
     <label class="s13 mut">시가총액 <select class="f" id="f-cap">${[[0, '전체'], [1e10, '100억 달러 이상'], [1e11, '1,000억 달러 이상']].map(([v, l]) => `<option value="${v}" ${v === st.cap ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     <div class="mx-seg" aria-label="보기 범위">${[['', '전체'], ['watch', `관심 ${Watch.list().length}`], ['hold', `보유 ${portfolioTickers().length}`], ['earn', '이번 주 실적']].map(([k, l]) => `<button class="${k === st.only ? 'on' : ''}" data-only="${k}">${l}</button>`).join('')}</div>
   </div></details>
@@ -282,12 +312,14 @@ function side() {
     return st.track.map((id, i) => {
       const p = P.find(q => q.id === id), color = TRACK_COL[i % TRACK_COL.length], pts = trailPts(id);
       const r = isGroup(id) ? null : S.find(x => x.t === id);
-      const note = !L.trail ? '내부자 렌즈는 트레일이 없어요. 종목 화면의 거래 목록을 보세요.'
+      const pat = patternOf(trailC(id)), pn = pat && PATN[pat];
+      const note = !L.spans.includes(st.span) ? `${esc(L.name)}은(는) ${SPAN[st.span][0]} 트레일 자료가 없어요.`
         : pts && pts.length ? `${esc(pts[0][0])}부터 지금까지 지나온 길 · 연한 점이 과거, 진한 쪽이 최근`
         : isGroup(id) ? (GT ? '이 묶음은 이 렌즈의 트레일 자료가 없어요.' : '트레일 불러오는 중…') : st.trail[id] ? '이 종목은 이 렌즈의 트레일 자료가 없어요.' : '트레일 불러오는 중…';
       return `<div class="card" style="box-shadow:inset 3px 0 0 ${color}"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><h3 style="font-size:17px">${esc(labelOf(id))}</h3><span class="mut s13">${esc(r ? (r.ko || r.n) : p ? p.sub : '')}</span></div>
         ${p ? `<div class="kv"><div><span>최근 ${XW[st.xw][0]} 주가</span><b>${pctS(p.x)}</b></div><div><span>${esc(L.name)}</span><b>${esc(L.fy(p.y, p.r))}</b></div><div><span>시가총액</span><b>${fmtUsd(p.mcap)}</b></div>${r ? `<div><span>다음 실적</span><b>${esc(r.c_next || '-')}</b></div>` : ''}</div>` : `<div class="mut s13">지금 렌즈·기간에 값이 없어요</div>`}
         ${r && r.s1 ? `<p class="s13" style="margin:0">${esc(r.s1)}</p>` : ''}
+        ${pn ? `<div class="s13"><span class="mut">${SPAN[st.span][0]} 트레일 모양</span> <b>${esc(pn[0])}</b> <span class="mut">· ${esc(pn[1])}</span></div>` : ''}
         <div class="small mut">${note}</div>
         ${r ? `<div style="display:flex;gap:6px;align-items:center"><a class="btn dark" href="${stockUrl(r.t)}" style="flex:1;text-align:center;text-decoration:none">종목 화면 →</a>${starBtn(r.t)}</div>` : ''}</div>`;
     }).join('');
@@ -334,13 +366,15 @@ function track(id, add) {
 
 // ---- 이벤트
 function bindCtl() {
-  document.querySelectorAll('[data-lens]').forEach(b => b.onclick = () => { st.lens = b.dataset.lens; render(); });
+  document.querySelectorAll('[data-lens]').forEach(b => b.onclick = () => { st.lens = b.dataset.lens; const L = LENS[st.lens]; if (!L.spans.includes(st.span)) { st.span = prefSpan(L); st.xw = SPAN[st.span][1]; } render(); });
+  document.querySelectorAll('[data-span]').forEach(b => b.onclick = () => { if (b.disabled) return; st.span = b.dataset.span; st.xw = SPAN[st.span][1]; render(); });
   document.querySelectorAll('[data-xw]').forEach(b => b.onclick = () => { st.xw = b.dataset.xw; render(); });
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { if (st.view !== b.dataset.view) { st.view = b.dataset.view; st.track = []; st.onlyTrack = false; st.dom = FULL.slice(); } render(); });
   document.querySelectorAll('[data-only]').forEach(b => b.onclick = () => { st.only = b.dataset.only; render(); });
   document.querySelectorAll('[data-untrack]').forEach(b => b.onclick = () => { st.track = st.track.filter(x => x !== b.dataset.untrack); render(true); });
   $('#f-sec').onchange = e => { st.sec = e.target.value; render(); };
   $('#f-cap').onchange = e => { st.cap = +e.target.value; render(); };
+  $('#f-pat').onchange = e => { st.pat = e.target.value; render(); };
   const fc = $('#mx-focus'); if (fc) fc.onchange = e => { st.onlyTrack = e.target.checked; render(); };
   const cl = $('#mx-clear'); if (cl) cl.onclick = () => { st.track = []; st.onlyTrack = false; render(); };
   // 지도 안 검색: 종목(또는 업종)을 찾아 트레일 목록에 추가
@@ -468,6 +502,7 @@ function bindSide() {
     <div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 가로축 범위 밖의 종목은 가장자리에 붙여 그립니다 · 업종 원은 시가총액 가중 평균 · 출처: SEC EDGAR(재무·내부자·13F), FINRA(공매도), yfinance(가격·컨센서스)</div>`;
   render();
   if (st.track.length) ensureTrails();
+  getJSON('free/patterns.json').then(j => { PATS = j; render(true); }).catch(() => { PATS = {}; });
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => render(true), 150); });
   document.addEventListener('watch-change', () => render(true));
   footer();

@@ -316,14 +316,25 @@ def fin_tables(fc, n_a=15, n_q=12):
 
 
 # ---------------------------------------------------------------- 어긋남 지도 경로
-def trails(t, g, ET, sv, gh, fq, now):
-    """종목을 눌렀을 때 지도 위에 그릴 경로 — 점마다 지도와 같은 기준으로 계산
+SPANS = {"3m": (14, 7, "r1m"), "1y": (30, 13, "r3m"), "3y": (91, 13, "r6m")}   # 트레일 길이: (점 간격 일, 점 수, 함께 쓰는 가로축)
+XMAX = {"r1w": 0.12, "r1m": 0.3, "r3m": 0.5, "r6m": 0.7}                       # 화면 matrix.js XW와 같음
+LENS_MAX = {"eps": 0.3, "rev": 0.3, "guru": 5, "short": 0.08, "insider": 1}     # 화면 LENS.max와 같음 (insider는 이미 -1~1)
+
+
+def ins_y(n):
+    """내부자 순매수 금액 → 지도 세로값 (로그 눈금, 화면 LENS.insider.y와 같음)"""
+    return float(np.sign(n) * max(0.05, min(1, (math.log10(abs(n)) - 4) / 4.5))) if n else 0.0
+
+
+def trails(t, g, ET, sv, gh, rq, ih, now):
+    """종목을 눌렀을 때 지도 위에 그릴 경로 — 키 '렌즈@길이' (예: rev@1y), 점마다 지도와 같은 기준으로 계산
     점: [날짜, 1주·1개월·3개월·6개월 수익률(그 날짜 기준), 신호 값]
-    eps   : 90일 — 90일 전 대비 내년 EPS 전망 변화 (마지막 점 = 지도의 'EPS 전망' 값과 같음)
-    short : 90일 — 그 날짜의 공매도 비중(20일 평균) − 그 전 20거래일 평균, 줄면 + (지도와 같은 정의)
-    guru  : 분기 — 그 분기에 이 종목을 가진 유명 투자자 수의 직전 분기 대비 변화
-    rev   : 분기 — 그 분기 매출 성장률 − 그때까지 4개 분기 합계 성장률
-    화면은 마지막에 '현재 점'을 이어 붙여 경로의 끝이 지도 위 점과 정확히 겹치게 그림"""
+    길이: 3m = 2주 간격 7점, 1y = 1개월 간격 13점, 3y = 분기 간격 13점 (자료가 모자라면 있는 만큼)
+    eps    : 3m만 — 야후가 주는 90·60·30·7일 전 전망 (우리 스냅샷이 쌓이면 늘릴 수 있음)
+    short  : 공매도 비중 60일 평균 − 직전 60일 평균, 줄면 + (20일은 월 단위로 보면 오락가락이 심해 60일로)
+    insider: 그 날짜까지 제출된 최근 90일 임원·이사 장내 순매수 (SEC 과거 자료)
+    rev·guru: 분기 자료라 값이 바뀐 분기마다 한 점 (1y·3y)
+    화면은 마지막 점을 '현재 점'으로 바꿔 경로의 끝이 지도 위 점과 정확히 겹치게 그림"""
     if g is None or not len(g):
         return {}
     gg = g[["date", "adj_close"]].dropna()
@@ -338,6 +349,9 @@ def trails(t, g, ET, sv, gh, fq, now):
         return [round(float(a[i] / a[i - n] - 1), 4) if i - n >= 0 and a[i - n] > 0 else None for n in (5, 21, 63, 126)]
     def pt(d, y):
         return [str(pd.Timestamp(d).date())] + rets(d) + [round(float(y), 4)]
+    def grid(span):
+        step, n, _ = SPANS[span]
+        return [last - pd.Timedelta(days=step * k) for k in range(n - 1, -1, -1)]
     out = {}
     if not ET.empty and t in ET.index:
         e = ET.loc[t]
@@ -347,43 +361,95 @@ def trails(t, g, ET, sv, gh, fq, now):
                    for off, f in ((90, "90daysAgo"), (60, "60daysAgo"), (30, "30daysAgo"), (7, "7daysAgo"), (0, "current"))
                    if e.get(f) is not None and e.get(f) == e.get(f)]
             if len(pts) >= 3:
-                out["eps"] = pts
-    if sv is not None and len(sv) >= 60:
+                out["eps@3m"] = pts
+    if sv is not None and len(sv) >= 130:
         s = sv.sort_values("date")
-        m20 = (s.short_vol / s.total_vol).rolling(20).mean()
-        chg = (m20 - m20.shift(20)).values
+        m60 = (s.short_vol / s.total_vol).rolling(60, min_periods=45).mean()
+        chg = (m60 - m60.shift(60)).values
         sd = s.date.values
-        pts = []
-        for k in (90, 75, 60, 45, 30, 15, 0):
-            d = last - pd.Timedelta(days=k)
-            i = int(np.searchsorted(sd, np.datetime64(d), side="right")) - 1
-            if i >= 0 and chg[i] == chg[i]:
-                pts.append(pt(sd[i], -chg[i]))
-        if len(pts) >= 3:
-            out["short"] = pts
+        for span in SPANS:
+            pts = []
+            for d in grid(span):
+                i = int(np.searchsorted(sd, np.datetime64(d), side="right")) - 1
+                if i >= 0 and chg[i] == chg[i] and (pd.Timestamp(d) - pd.Timestamp(sd[i])).days < 10:
+                    pts.append(pt(sd[i], -chg[i]))
+            if len(pts) >= 3:
+                out[f"short@{span}"] = pts
+    if ih is not None and len(ih):
+        fd, td, sv_ = ih.filed.values, ih.date.values, np.where(ih.code.values == "P", ih.value.values, -ih.value.values)
+        for span in SPANS:
+            pts = []
+            for d in grid(span):
+                d64, lo = np.datetime64(d), np.datetime64(d - pd.Timedelta(days=90))
+                m = (fd <= d64) & (td > lo) & (td <= d64)
+                pts.append(pt(d, ins_y(float(sv_[m].sum()))))
+            if sum(1 for p in pts if p[5]) >= 1 and len(pts) >= 3:      # 기간 안에 거래가 한 번이라도 있어야
+                out[f"insider@{span}"] = pts
     if gh and len(gh) >= 3:
-        out["guru"] = [pt(gh[i][0], gh[i][1] - gh[i - 1][1]) for i in range(1, len(gh))]
-    if fq:
-        rq = [(r["end"], r.get("rev")) for r in fq if r.get("rev")]
-        pts = []
-        for i in range(7, len(rq)):
-            q = [v for _, v in rq[i - 7:i + 1]]
-            if all(v and v > 0 for v in q):
-                pts.append(pt(rq[i][0], (q[7] / q[3] - 1) - (sum(q[4:8]) / sum(q[0:4]) - 1)))
-        if len(pts) >= 2:
-            out["rev"] = pts[-4:]
+        allp = [pt(gh[i][0], gh[i][1] - gh[i - 1][1]) for i in range(1, len(gh))]
+        for span, days in (("1y", 400), ("3y", 1170)):
+            pts = [p for p in allp if pd.Timestamp(p[0]) >= last - pd.Timedelta(days=days)]
+            if len(pts) >= 2:
+                out[f"guru@{span}"] = pts
+    if rq:
+        ks = sorted(rq)
+        allp = []
+        for i in range(7, len(ks)):
+            q8 = ks[i - 7:i + 1]
+            if (q8[-1] - q8[0]).days > 800:
+                continue
+            v = [rq[k] for k in q8]
+            if all(x and x > 0 for x in v):
+                allp.append(pt(q8[-1], (v[7] / v[3] - 1) - (sum(v[4:8]) / sum(v[0:4]) - 1)))
+        for span, days in (("1y", 400), ("3y", 1170)):
+            pts = [p for p in allp if pd.Timestamp(p[0]) >= last - pd.Timedelta(days=days)]
+            if len(pts) >= 2:
+                out[f"rev@{span}"] = pts
     return out
 
 
+def trail_pattern(pts, xkey, lens, cur):
+    """경로 모양 이름표 — 화면 matrix.js의 patternOf와 같은 규칙
+    st 제자리 · n/ne/e/se/s/sw/w/nw 꾸준히 한 방향(8방위, ↑=신호 개선 →=주가 상승) · tn 꺾임(방향 전환) · zz 오락가락(갔다가 돌아옴)
+    점 개수(7~13개)에 덜 휘둘리게 '가장 멀리 간 거리'와 네 점의 큰 흐름으로 판단"""
+    xi = {"r1w": 1, "r1m": 2, "r3m": 3, "r6m": 4}[xkey]
+    xm, ym = XMAX[xkey], LENS_MAX[lens]
+    C = [(max(-1, min(1, p[xi] / xm)), max(-1, min(1, p[5] if lens == "insider" else p[5] / ym))) for p in pts if p[xi] is not None and p[5] is not None]
+    if cur is not None:
+        if C and pts[-1][0] >= cur[0]:
+            C[-1] = cur[1:]
+        else:
+            C.append(cur[1:])
+    if len(C) < 3:
+        return None
+    X, Y = np.array([c[0] for c in C]), np.array([c[1] for c in C])
+    ext = float(np.hypot(X - X[0], Y - Y[0]).max())          # 출발점에서 가장 멀리 간 거리
+    if ext < 0.25:
+        return "st"
+    dx, dy = X[-1] - X[0], Y[-1] - Y[0]
+    net = math.hypot(dx, dy)
+    if net < 0.4 * ext:
+        return "zz"                                             # 멀리 갔다가 출발점 근처로 돌아옴
+    # 처음·1/3·2/3·끝 네 점으로 큰 흐름만 봄: 세 구간이 모두 같은 쪽(전체 방향)으로 가면 '꾸준히'
+    idx = [0, round((len(X) - 1) / 3), round(2 * (len(X) - 1) / 3), len(X) - 1]
+    ux, uy = dx / net, dy / net
+    seg = [(X[idx[i + 1]] - X[idx[i]]) * ux + (Y[idx[i + 1]] - Y[idx[i]]) * uy for i in range(3)]
+    if net >= 0.25 and min(seg) > -0.05:
+        return ["e", "ne", "n", "nw", "w", "sw", "s", "se"][int(((math.degrees(math.atan2(dy, dx)) + 22.5) % 360) // 45)]
+    return "tn"
+
+
 # 신호를 평균낼 때 한 종목이 튀어 전체를 끌고 가지 않게 지도 눈금 끝에서 자름 (화면 matrix.js의 max와 같음)
-TRAIL_CLIP = {"eps": 0.3, "rev": 0.3, "guru": 5, "short": 0.12}
+TRAIL_CLIP = {"eps": 0.3, "rev": 0.3, "guru": 5, "short": 0.08, "insider": 1}
 
 
 def group_trails(items, min_n=3):
     """업종·세부 업종 경로: 같은 순서의 점끼리 시가총액 가중 평균 (점 개수가 다르면 뒤에서부터 맞춤)"""
     def agg(members):
         out = {}
-        for lens, clip in TRAIL_CLIP.items():
+        for key in sorted({k for _, tr in members for k in tr}):
+            clip = TRAIL_CLIP.get(key.split("@")[0], 1)
+            lens = key
             ms = [(w, tr[lens]) for w, tr in members if tr.get(lens)]
             if len(ms) < min_n:
                 continue
@@ -615,10 +681,11 @@ def run(limit=0, **_):
     FA = FA[FA.cik.isin(set(S.cik.dropna().astype(int)))]
     FA = FA[["cik", "tag", "unit", "start", "end", "val", "filed", "form", "accn"]]
     FA = FA.assign(end_dt=pd.to_datetime(FA.end, errors="coerce"), start_dt=pd.to_datetime(FA.start, errors="coerce"))
-    fin, ftab = {}, {}
+    fin, ftab, revq = {}, {}, {}
     for cik, G in FA.groupby("cik"):
         try:
             fc = fin_company(G)
+            revq[int(cik)] = fc["q"].get("rev") or {}
             fin[int(cik)] = fin_metrics(fc)
             ftab[int(cik)] = fin_tables(fc)
         except Exception as e:
@@ -629,7 +696,19 @@ def run(limit=0, **_):
     if not INS.empty:
         INS["date"] = pd.to_datetime(INS["date"], errors="coerce")
         INS["value"] = INS.shares * INS.price
-    SV = pd.concat([read(p) for p in sorted((DATA / "short" / "volume").glob("*.parquet"))[-2:]], ignore_index=True) if list((DATA / "short" / "volume").glob("*.parquet")) else pd.DataFrame()
+    SV = pd.concat([read(p) for p in sorted((DATA / "short" / "volume").glob("*.parquet"))[-4:]], ignore_index=True) if list((DATA / "short" / "volume").glob("*.parquet")) else pd.DataFrame()
+    # 내부자 트레일용 긴 이력 (SEC 분기 자료) + 그 뒤 최근분(공시 원문, 임원·이사만)
+    IH = read(DATA / "sec" / "insider_hist.parquet")
+    if not IH.empty:
+        IH = IH[["cik", "filed", "date", "code", "value"]]
+    if not INS.empty and "is_officer" in INS:
+        c_of = dict(zip(S.ticker, S.cik))
+        rec = INS[(INS.is_officer.fillna(False) | INS.is_director.fillna(False)) & INS.code.isin(["P", "S"])].copy()
+        rec = rec.assign(cik=rec.ticker.map(c_of), filed=pd.to_datetime(rec.filed, errors="coerce")).dropna(subset=["cik", "filed", "value"])
+        if not IH.empty:
+            rec = rec[rec.filed > IH.filed.max()]
+        IH = pd.concat([IH, rec[["cik", "filed", "date", "code", "value"]].astype({"cik": int})], ignore_index=True) if len(rec) else IH
+    IHg = dict(tuple(IH.groupby("cik"))) if not IH.empty else {}
     SI = read(DATA / "profile" / "short_interest.parquet")
     OP = pd.concat([read(p) for p in sorted((DATA / "options").glob("*.parquet"))], ignore_index=True) if list((DATA / "options").glob("*.parquet")) else pd.DataFrame()
     NW = pd.concat([read(p) for p in sorted((DATA / "news").glob("*.parquet"))[-2:]], ignore_index=True) if list((DATA / "news").glob("*.parquet")) else pd.DataFrame()
@@ -768,6 +847,7 @@ def run(limit=0, **_):
             ET = et.pivot_table(index="ticker", columns="field", values="value", aggfunc="last")
     log("종목별 지표 계산·저장 중")
     rows, n_files = [], 0
+    PAT = {}                                            # 트레일 모양 이름표 {길이: {렌즈: {종목: 코드}}}
     ALL_TR = []                                         # 업종 경로용 (업종, 세부 업종, 시가총액, 종목 경로)
     for r in S.itertuples():
         t = r.ticker
@@ -821,6 +901,7 @@ def run(limit=0, **_):
                 rr = (sv.short_vol / sv.total_vol)
                 row["sv"] = rr.tail(20).mean()
                 row["sv_chg"] = rr.tail(20).mean() - rr.iloc[-40:-20].mean() if len(sv) >= 40 else None
+                row["sv_chg60"] = rr.tail(60).mean() - rr.iloc[-120:-60].mean() if len(sv) >= 120 else None   # 티커맵 공매도 렌즈 (덜 흔들리게 60일)
         if not SI.empty:
             si = SI[SI.ticker == t].sort_values("date")
             if len(si):
@@ -940,7 +1021,21 @@ def run(limit=0, **_):
         if len(nw):
             detail["news"] = [{"d": x.published, "t": x.title, "s": x.source, "u": x.url, "k": x.kind} for x in nw.sort_values("published", ascending=False).head(25).itertuples()]
         detail["etf_in"] = etf_in.get(t, [])
-        detail["trail"] = trails(t, g, ET, SVg.get(t), g13_hist.get(t), ftab.get(cik, (None, None))[1], now)
+        detail["trail"] = trails(t, g, ET, SVg.get(t), g13_hist.get(t), revq.get(cik), IHg.get(cik), now)
+        # 모양 이름표 (지도 필터용): 지금 점 = 지도 위 점
+        ys = {"eps": row.get("c_chg90") if (row.get("c_n") or 0) >= 3 else None,
+              "rev": (row["rev_qg"] - row["rev_g"]) if row.get("rev_qg") is not None and row.get("rev_g") is not None else None,
+              "guru": row.get("g13_chg"), "short": -row["sv_chg60"] if row.get("sv_chg60") is not None else None,
+              "insider": ins_y((row.get("ib") or 0) - (row.get("is") or 0)) if (row.get("ib") or row.get("is")) else None}
+        for key, pts in detail["trail"].items():
+            lens, span = key.split("@")
+            xk = SPANS[span][2]
+            if ys.get(lens) is None or row.get(xk) is None:
+                continue
+            yv = ys[lens] if lens == "insider" else ys[lens] / LENS_MAX[lens]
+            code = trail_pattern(pts, xk, lens, (str(now.date()), max(-1, min(1, row[xk] / XMAX[xk])), max(-1, min(1, yv))))
+            if code:
+                PAT.setdefault(span, {}).setdefault(lens, {})[t] = code
         if detail["trail"] and row.get("mcap"):
             ALL_TR.append((row.get("sec"), row.get("ind"), row["mcap"], detail["trail"]))
         detail["er"] = {"next": row.get("c_next"), "when": row.get("c_when"), "est": row.get("c_est"), "imp": row.get("er_imp"),
@@ -1063,6 +1158,7 @@ def run(limit=0, **_):
         mk["krw"] = {"d": f.Date.tolist(), "c": f.Close.round(2).tolist()}
     dump(OUT / "free" / "market.json", mk)
     dump(OUT / "free" / "sector_trails.json", group_trails(ALL_TR))
+    dump(OUT / "free" / "patterns.json", PAT)
     if f13_page:
         dump(OUT / "free" / "f13.json", f13_page)
     # 예전 S&P 500 컨센서스 페이지 데이터 (Pages 배포 때 /consensus_data.json 으로 복사)

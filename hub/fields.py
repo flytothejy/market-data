@@ -38,7 +38,7 @@ F = {
     "rsi": ("RSI(14)", "tech", "num", "free"), "hi52": ("52주 고가 대비", "tech", "pct", "free"),
     "lo52": ("52주 저가 대비", "tech", "pct", "free"), "vr": ("거래량 배수(20일/120일)", "tech", "x", "free"),
     "vol": ("변동성(60일, 연)", "tech", "pct", "free"), "gc": ("최근 골든크로스", "tech", "date", "free"),
-    "sv": ("공매도 거래 비중(20일)", "tech", "pct", "free"), "sv_chg": ("공매도 비중 변화", "tech", "pct", "free"),
+    "sv": ("공매도 거래 비중(20일)", "tech", "pct", "free"), "sv_chg": ("공매도 비중 변화", "tech", "pct", "free"), "sv_chg60": ("공매도 비중 변화(60일)", "tech", "pct", "free"),
     "si": ("공매도 잔고(유통주식 대비)", "tech", "pct", "free"), "iv": ("내재변동성(30일)", "tech", "pct", "free"),
     "pcr": ("풋/콜 거래 비율", "tech", "x", "free"), "skew": ("옵션 왜곡(풋-콜 IV)", "tech", "pct", "free"),
     "etfn": ("편입 ETF 수(추적 대상)", "tech", "int", "free"), "g13": ("유명 투자자 보유 수", "tech", "int", "free"),

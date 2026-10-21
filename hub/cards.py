@@ -23,19 +23,19 @@ MIN_CAP = 1e10
 
 XW = {"r1m": ("1개월", 0.3, 2)}            # 가로축: 최근 1개월 주가 (트레일 점의 2번째 값)
 LENS = {
-    "eps": dict(max=0.3, rank_max=1.0, trail="eps", metric="EPS 전망", unit="pct",
+    "eps": dict(max=0.3, rank_max=1.0, trail="eps@3m", metric="EPS 전망", unit="pct",
                 y=lambda r: r.get("c_chg90") if r.get("c_chg90") is not None and (r.get("c_n") or 0) >= 3 else None,
                 kicker="이익 전망 × 주가", h1=("주가는 빠졌는데", "이익 전망은 올랐다"),
                 tl="이익 전망은 오르는데\n주가는 빠진 종목", br="주가는 오르는데\n이익 전망은 꺾인 종목",
                 tl_short="전망↑ 주가↓", br_short="주가↑ 전망↓", up="내년 EPS 전망 상향", dn="전망 하향",
                 note="EPS 전망 = 애널리스트들의 내년 주당순이익 전망이 90일 전보다 얼마나 바뀌었나"),
-    "rev": dict(max=0.3, rank_max=0.5, trail="rev", metric="매출 가속", unit="pp",
+    "rev": dict(max=0.3, rank_max=0.5, trail="rev@1y", metric="매출 가속", unit="pp",
                 y=lambda r: (r["rev_qg"] - r["rev_g"]) if r.get("rev_qg") is not None and r.get("rev_g") is not None else None,
                 kicker="매출 성장 × 주가", h1=("주가는 빠졌는데", "매출 성장은 빨라졌다"),
                 tl="매출 성장은 빨라지는데\n주가는 빠진 종목", br="주가는 오르는데\n매출 성장은 둔화된 종목",
                 tl_short="매출 가속 · 주가↓", br_short="주가↑ · 매출 둔화", up="매출 성장 가속", dn="둔화",
                 note="매출 가속 = 최근 분기 매출 성장률 − 최근 4개 분기 성장률 (SEC 재무제표)"),
-    "insider": dict(max=1, raw=True, trail=None, rank_ok=lambda r: abs((r.get("ib") or 0) - (r.get("is") or 0)) >= 1e5, metric="내부자 순매수", unit="usd",
+    "insider": dict(max=1, raw=True, trail="insider@1y", rank_ok=lambda r: abs((r.get("ib") or 0) - (r.get("is") or 0)) >= 1e5, metric="내부자 순매수", unit="usd",
                     y=lambda r: _ins(r), kicker="내부자 거래 × 주가", h1=("주가는 빠졌는데", "임원들은 샀다"),
                     tl="내부자는 사는데\n주가는 빠진 종목", br="주가는 오르는데\n내부자는 판 종목",
                     tl_short="내부자 매수 · 주가↓", br_short="주가↑ · 내부자 매도", up="내부자 순매수", dn="순매도",
@@ -259,7 +259,7 @@ def run(limit=0, **_):
             continue
         tr = (json.loads(sp.read_text(encoding="utf-8")).get("trail") or {}).get(L["trail"]) or []
         xm, xi = XW["r1m"][1], XW["r1m"][2]
-        pts = [(q[xi] / xm, q[5] / L["max"], q[0]) for q in tr if q[xi] is not None and q[5] is not None]
+        pts = [(q[xi] / xm, q[5] if L.get("raw") else q[5] / L["max"], q[0]) for q in tr if q[xi] is not None and q[5] is not None]
         if pts and pts[-1][2] >= asof:
             pts = pts[:-1]
         pts.append((cand["xu"], cand["yu"], asof))
@@ -285,7 +285,7 @@ def run(limit=0, **_):
         tdom = (min(xs) - mx_, max(xs) + mx_, min(ys) - my_, max(ys) + my_)
         name = tstock["ko"] or tstock["n"]
         s4 = (top_bar(asof, wk) + f'<div class="kick">티커 트레일 · 지나온 길</div>'
-              f'<h2 style="margin-top:14px">{html.escape(tstock["t"])}{(" " + html.escape(name)) if name and len(name) <= 10 else ""},<br>지난 3개월 이렇게 움직였어요</h2>'
+              f'<h2 style="margin-top:14px">{html.escape(tstock["t"])}{(" " + html.escape(name)) if name and len(name) <= 10 else ""},<br>지난 {"3개월" if L["trail"].endswith("3m") else "1년"} 이렇게 움직였어요</h2>'
               f'<div style="margin-top:26px;margin-left:-20px">{map_svg(P, L, 976, 820, hot=[], labels=False, trail=trail, dom=tdom)}</div>'
               f'<div class="foot"><span>흐린 점 → 진한 점 순서 · 각 시점의 1개월 주가 × {html.escape(L["metric"])}</span><span class="next">4/{total}</span></div>')
         slides.append((s4, 1080, 1350))
