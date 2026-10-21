@@ -149,10 +149,13 @@ def push(dry=False, only=None):
     if not dry:
         _parallel(lambda j: _put(s3, b, *j), todo)
     # 화면용 결과물은 로컬이 정본: 로컬에서 사라진 파일(빠진 종목 등)은 R2에서도 지움
+    # 단, 그 묶음을 이번에 통째로 가지고 있을 때만 (표시 파일로 판단) — 카드만 만든 실행이 화면 데이터를 지우거나, 화면만 만든 실행이 지난 카드를 지우지 않게
     gone = []
-    if (DATA / "site").exists() and not only:
+    if not only:
         loc = {rel for rel, _ in local_files() if rel.startswith("site/")}
-        gone = [k for k in rem if k.startswith("site/") and k not in loc]
+        for sub, marker in (("site/api/", "site/api/v1/meta.json"), ("site/cards/", "site/cards/latest.json")):
+            if (DATA / marker).exists():
+                gone += [k for k in rem if k.startswith(sub) and k not in loc]
         if gone and not dry:
             for i in range(0, len(gone), 1000):
                 s3.delete_objects(Bucket=b, Delete={"Objects": [{"Key": PREFIX + k} for k in gone[i:i + 1000]]})

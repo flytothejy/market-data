@@ -229,6 +229,12 @@ def list_slide(L, items, q, asof, wk, idx, total):
 def run(limit=0, **_):
     R = Run("cards")
     p = SITE / "free" / "universe.json"
+    if os.environ.get("R2_BUCKET"):                      # 지난 카드(정리용)와, 단독 실행이면 화면 데이터도 R2에서 받음
+        from . import sync
+        try:
+            sync.pull(only=["site/cards/"] + ([] if p.exists() else ["site/api/v1/free/universe.json", "site/api/v1/free/stock/"]))
+        except Exception as e:
+            R.warning(f"R2에서 받기 실패: {e}")
     if not p.exists():
         R.warning("치명: universe.json 없음")
         return R.done(ok=False)
