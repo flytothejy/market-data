@@ -48,6 +48,53 @@ def to_long(raw, tickers):
     return L, A
 
 
+def expected_day(now=None):
+    """지금 기준 마지막으로 끝난 미국 거래일 (휴장일은 무시 — 휴장일이면 그날 시간봉이 없어 아무것도 안 채워짐)"""
+    ny = (now or pd.Timestamp.now(tz="America/New_York")).tz_convert("America/New_York")
+    d = ny.normalize().tz_localize(None)
+    if ny.hour * 60 + ny.minute < 16 * 60 + 10:
+        d -= pd.Timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= pd.Timedelta(days=1)
+    return d
+
+
+def intraday_fill(tickers, upto):
+    """일봉 마지막 날 종가가 비어 오는 경우(야후 장애, 2026-10-21 실제 발생: 전 종목 NaN) 시간봉으로 그날 일봉을 만듦.
+    잠정값 — 다음 실행이 최근 1개월 일봉을 다시 받으며 야후 값으로 덮어씀."""
+    out = []
+    for i in range(0, len(tickers), CHUNK):
+        part = tickers[i:i + CHUNK]
+        try:
+            raw = yf.download(part, interval="1h", period="5d", auto_adjust=False, group_by="ticker", threads=True, progress=False)
+        except Exception as e:
+            log(f"  시간봉 실패: {str(e)[:80]}")
+            continue
+        if raw is None or raw.empty:
+            continue
+        single = not isinstance(raw.columns, pd.MultiIndex)
+        for t in part:
+            try:
+                d = raw if single else raw[t]
+            except KeyError:
+                continue
+            d = d.dropna(subset=["Close"])
+            if d.empty:
+                continue
+            idx = d.index.tz_convert("America/New_York") if d.index.tz is not None else d.index
+            day = idx.normalize().tz_localize(None) if idx.tz is not None else idx.normalize()
+            for dt_, g in d.groupby(day):
+                if dt_ > upto or len(g) < 3:
+                    continue
+                out.append({"date": dt_, "ticker": t, "open": g["Open"].iloc[0], "high": g["High"].max(), "low": g["Low"].min(),
+                            "close": g["Close"].iloc[-1], "adj_close": g["Close"].iloc[-1], "volume": int(g["Volume"].fillna(0).sum())})
+    F = pd.DataFrame(out)
+    if not F.empty:
+        for c in ("open", "high", "low", "close", "adj_close"):
+            F[c] = F[c].astype("float32")
+    return F
+
+
 def run(limit=0, full=False, **_):
     R = Run("prices")
     U = universe.load()
@@ -109,6 +156,25 @@ def run(limit=0, full=False, **_):
                             A = pd.concat([A, A2], ignore_index=True)
                 except Exception as e:
                     log(f"  재시도 실패: {str(e)[:80]}")
+            have_last = set(L[L.date == last].ticker)
+            lagging = [t for t in old_t if t not in have_last]
+        # 일봉 마지막 날 종가가 통째로 비어 오는 경우 → 시간봉으로 채움 (전 종목이 빠지면 last 자체가 하루 이르게 잡힘)
+        exp = expected_day()
+        if last < exp:                                      # 휴장일이면 SPY 시간봉에도 그날이 없음 → 건너뜀
+            pr = intraday_fill(["SPY"], exp)
+            if pr.empty or pr.date.max() < exp:
+                exp = last
+        if lagging and len(lagging) > 300 or last < exp:
+            need = lagging if last >= exp else old_t
+            log(f"  일봉 마지막 날이 비어 시간봉으로 채우기: {len(need)}종목 (기대 거래일 {exp:%Y-%m-%d})")
+            F = intraday_fill(need, exp)
+            if not F.empty:
+                have = set(zip(L.ticker, L.date))
+                F = F[[(t, d) not in have for t, d in zip(F.ticker, F.date)]]
+                L = pd.concat([L, F], ignore_index=True)
+                R.set(intraday_filled=len(F))
+                R.warning(f"야후 일봉에 {F.date.max():%Y-%m-%d} 종가가 없어 시간봉으로 잠정 채움 {len(F)}행 (다음 실행에서 일봉으로 교체)")
+            last = L.date.max()
             have_last = set(L[L.date == last].ticker)
             lagging = [t for t in old_t if t not in have_last]
         if lagging and len(lagging) <= 300:                 # 그래도 빠지면 종목별로 (느리지만 확실)
