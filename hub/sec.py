@@ -194,7 +194,7 @@ TAGS = {
                 "NetIncomeLossAvailableToCommonStockholdersBasic", "IncomeLossFromContinuingOperations",
                 "EarningsPerShareDiluted", "EarningsPerShareBasic", "WeightedAverageNumberOfDilutedSharesOutstanding",
                 "ResearchAndDevelopmentExpense", "SellingGeneralAndAdministrativeExpense", "IncomeTaxExpenseBenefit", "InterestExpense",
-                "DepreciationDepletionAndAmortization", "Assets", "Liabilities", "StockholdersEquity", "AssetsCurrent", "LiabilitiesCurrent",
+                "DepreciationDepletionAndAmortization", "Assets", "Liabilities", "StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "AssetsCurrent", "LiabilitiesCurrent",
                 "CashAndCashEquivalentsAtCarryingValue", "LongTermDebt", "LongTermDebtNoncurrent", "InventoryNet", "AccountsReceivableNetCurrent",
                 "NetCashProvidedByUsedInOperatingActivities", "PaymentsToAcquirePropertyPlantAndEquipment",
                 "PaymentsForRepurchaseOfCommonStock", "PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "ShareBasedCompensation"],

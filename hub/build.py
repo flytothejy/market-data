@@ -85,7 +85,7 @@ CONCEPTS = {
     "divpaid": ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends"], "sbc": ["ShareBasedCompensation"],
     "nii": ["InterestIncomeExpenseNet"], "nonii": ["NoninterestIncome"],
 }
-BAL = {"assets": ["Assets"], "liab": ["Liabilities"], "equity": ["StockholdersEquity", "Equity"],
+BAL = {"assets": ["Assets"], "liab": ["Liabilities"], "equity": ["StockholdersEquity", "Equity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
        "cash": ["CashAndCashEquivalentsAtCarryingValue", "CashAndCashEquivalents"], "ltd": ["LongTermDebtNoncurrent", "LongTermDebt"],
        "ca": ["AssetsCurrent"], "cl": ["LiabilitiesCurrent"], "shares": ["EntityCommonStockSharesOutstanding"]}
 
@@ -262,6 +262,8 @@ def fin_company(G0):
     for c, tags in BAL.items():
         g = pick(G, tags)
         g = g[g.start_dt.isna()] if len(g) else g
+        if len(g) and g.end_dt.max() < gmax - pd.Timedelta(days=200):   # 몇 년 전에 끊긴 잔액(예: 스팩 시절 자본 500만 달러) → 버림
+            g = g.iloc[:0]
         if len(g):
             g = g.sort_values(["end_dt", "filed"])
             last = g[g.end_dt == g.end_dt.max()]
@@ -274,6 +276,9 @@ def fin_company(G0):
 def fin_metrics(fc):
     Q, B = fc["q"], fc["bal"]
     T = {c: ttm(Q[c]) for c in Q}
+    # 자본이 0 이하이거나 자산의 2% 미만(자사주 매입으로 자본이 거의 없는 회사, 상장 직전 껍데기 자본)이면 PBR·ROE·부채비율은 의미가 없어 비움
+    eq = B.get("equity")
+    eq = eq if eq is not None and eq >= 1e6 and (not B.get("assets") or eq >= 0.02 * B["assets"]) else None
     P = {c: ttm(Q[c], back=4) for c in Q}
     rq = Q["rev"]
     ks = sorted(rq)
@@ -292,10 +297,10 @@ def fin_metrics(fc):
          "gm": div(A("gp"), A("rev")), "om": div(A("opi"), A("rev")), "nm": div(A("ni"), A("rev")), "ni": T["ni"],
          "ni_g": (div(T["ni"], P["ni"]) - 1) if (P["ni"] or 0) > 0 and div(T["ni"], P["ni"]) else None, "eps": T["eps"],
          "fcf": (T["cfo"] - T["capex"]) if T["cfo"] is not None and T["capex"] is not None else T["cfo"],
-         "roe": div(T["ni"], B.get("equity")) if (B.get("equity") or 0) > 0 else None, "roa": div(T["ni"], B.get("assets")),
-         "de": div(B.get("ltd"), B.get("equity")) if (B.get("equity") or 0) > 0 else None, "cr": div(B.get("ca"), B.get("cl")),
+         "roe": div(T["ni"], eq), "roa": div(T["ni"], B.get("assets")),
+         "de": div(B.get("ltd"), eq), "cr": div(B.get("ca"), B.get("cl")),
          "rnd": div(T["rnd"], T["rev"]), "fq": max(ks) if ks else None, "cur": fc["cur"],
-         "_buyback": T["buyback"], "_divpaid": T["divpaid"], "_equity": B.get("equity"), "_shares": B.get("shares")}
+         "_buyback": T["buyback"], "_divpaid": T["divpaid"], "_equity": eq, "_shares": B.get("shares")}
     om0 = div(P["opi"], P["rev"])
     m["om_chg"] = (m["om"] - om0) if m["om"] is not None and om0 is not None else None
     return m

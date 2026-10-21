@@ -19,7 +19,8 @@ def run(names, title="수집 점검", always=False):
         if not r.get("ok"):
             lines.append(f"❌ {n}: " + html.escape("; ".join(r.get("warnings", [])[:2])[:200])); bad += 1
         elif r.get("n_warnings"):
-            lines.append(f"⚠️ {n}: " + html.escape(r["warnings"][0][:150]))
+            k = 4 if n == "check" else 1                 # 이상값 점검은 항목별로 몇 줄 더
+            lines.append(f"⚠️ {n}: " + "\n   ".join(html.escape(w[:180]) for w in r["warnings"][:k]))
         else:
             lines.append(f"✅ {n} ({r.get('seconds', 0):.0f}초)")
     warn = sum(1 for l in lines if l.startswith("⚠️"))
