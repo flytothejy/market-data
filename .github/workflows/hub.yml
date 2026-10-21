@@ -50,8 +50,9 @@ jobs:
       - name: skip if today's daily already done
         id: g
         run: |
-          # 예비 실행(01:30·03:30 UTC)만: 오늘 가격·화면 데이터가 이미 제대로 만들어졌으면 건너뜀
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "40 23 * * 1-5" ] && [ "${{ github.event.schedule }}" != "0 2 * * 6" ]; then
+          # 예약 실행(매일 23:40·예비 01:30·03:30 UTC): 최근 10시간 안에 가격·화면 데이터가 이미 제대로 만들어졌으면 건너뜀
+          # (깃허브 예약 실행이 몇 시간씩 늦게 도는 날이 있어, 손으로 먼저 돌린 뒤 늦게 온 예약 실행이 같은 일을 반복하지 않게)
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" != "0 2 * * 6" ]; then
             python -m hub sync pull --only _status/
             python - <<'PY' >> $GITHUB_OUTPUT
           import json, datetime as dt, pathlib
