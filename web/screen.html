@@ -114,7 +114,7 @@ function render() {
   <div class="card">
     <div class="filters"><div class="seg" id="cats">${[['info', '기본'], ['cons', '컨센서스'], ['fin', '재무'], ['tech', '차트·수급'], ['doc', '공시·내부자'], ['news', '뉴스']].map(([c, l]) => `<button class="btn" data-c="${c}">${c === 'info' ? '' : `<span class="cat-dot c-${c}"></span>`}${l}</button>`).join('')}</div>
       <span class="mut s13" id="count" style="margin-left:auto"></span>
-      <button class="btn" disabled title="프로 멤버십">조건 저장 <span class="pro">PRO</span></button><button class="btn" disabled title="프로 멤버십">알림 <span class="pro">PRO</span></button><button class="btn" disabled title="프로 멤버십">CSV <span class="pro">PRO</span></button></div>
+</div>
     <div class="tbl-wrap" style="max-height:72vh;overflow:auto"><table class="t" id="tbl"></table></div>
     <button class="btn" id="more">100개 더 보기</button>
   </div>`;

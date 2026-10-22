@@ -67,7 +67,7 @@ function bars(rows, keys, labels, colors) {
 }
 
 function kvGrid(m, keys, F) {
-  return `<div class="kv">${keys.filter(k => F[k]).map(k => {
+  return `<div class="kv">${keys.filter(k => F[k] && (F[k].tier !== 'pro' || Plan.isPro())).map(k => {
     const f = F[k]; let v = m[k];
     let txt = f.fmt === 'pct' && ['r1d', 'r1w', 'r1m', 'r3m', 'r6m', 'r1y', 'rytd', 'r12_1', 'd50', 'd200', 'hi52', 'lo52', 'rev_g', 'rev_qg', 'ni_g', 'c_chg90', 'c_upside', 'c_eps_g', 'c_rev_g', 'c_surp', 'c_ratio'].includes(k) ? pctS(v)
       : k === 'om_chg' || k === 'sv_chg' ? (v == null ? '-' : `<span class="${cls(v)}">${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%p</span>`) : fmt(v, f.fmt);
@@ -162,18 +162,17 @@ async function renderStock(U, d, P) {
   const fakeHist = `<div style="height:140px;background:linear-gradient(180deg,transparent 40%,var(--soft));border-radius:10px"></div>`;
   h += sec('cons', 'cons', '컨센서스', '애널리스트 전망과 그 변화',
     erRes + erCard + (m.c_n ? card('', '', kvGrid(m, consKeys, F)) : card('', '', `<div class="mut s13">이 종목의 컨센서스는 준비 중입니다. 지금은 S&P 500 종목부터 제공하고 있어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
-    card('전망치 일별 이력 <span class="pro">PRO</span>', '내년 EPS 전망과 30일 상향·하향 건수를 날마다 쌓은 기록',
-      !isPro ? lockBox(fakeHist, '전망치가 언제, 얼마나 바뀌었는지 일별로 볼 수 있어요')
-        : P.cons_hist ? `<div class="small mut">내년 EPS 전망 ($)</div><div class="chart sm" id="ch-eps"></div><div class="small mut">30일 상향(위) · 하향(아래) 건수</div><div class="chart sm" id="ch-rev" style="height:130px"></div>
+    (!isPro ? '' : card('전망치 일별 이력', '내년 EPS 전망과 30일 상향·하향 건수를 날마다 쌓은 기록',
+        P.cons_hist ? `<div class="small mut">내년 EPS 전망 ($)</div><div class="chart sm" id="ch-eps"></div><div class="small mut">30일 상향(위) · 하향(아래) 건수</div><div class="chart sm" id="ch-rev" style="height:130px"></div>
           <div class="small faint">${P.cons_hist.d.length}일째 쌓는 중 (${esc(P.cons_hist.d[0])}부터) — 날마다 한 점씩 늘어납니다</div>`
-        : '<div class="mut s13">이 종목의 전망 이력이 아직 없습니다</div>'));
+        : '<div class="mut s13">이 종목의 전망 이력이 아직 없습니다</div>')));
 
   // 재무
   const fin = d.fin || {};
   let finBody = '';
   if (fin.annual && fin.annual.length) {
     finBody += `<div class="card"><div class="seg" id="fin-seg"><button class="btn on" data-k="annual">연간 (최근 5년)</button><button class="btn" data-k="quarterly">분기 (최근 12분기)</button>
-      ${isPro && P.fin_annual_full ? '<button class="btn" data-k="full">15년 <span class="pro">PRO</span></button>' : '<button class="btn" disabled title="프로 멤버십">15년 <span class="pro">PRO</span></button>'}</div><div id="fin-box"></div></div>`;
+      ${isPro && P.fin_annual_full ? '<button class="btn" data-k="full">15년</button>' : ''}</div><div id="fin-box"></div></div>`;
     if (isPro && P.fin_annual_full) fin.full = P.fin_annual_full;
   }
   finBody += card('', `최근 4개 분기 합계 · 기준일 ${fmt(m.fq, 'date')}${m.cur && m.cur !== 'USD' ? ` · 재무 통화 ${esc(m.cur)} (밸류에이션 지표 제외)` : ''}`,
@@ -207,9 +206,8 @@ async function renderStock(U, d, P) {
   const nsBody = !TK.length ? '' : NS ? `<div class="small mut">${esc(NS.filed)} 10-K에 새로 들어온 위험 문장 ${NS.sentences.length}개 (긴 순, 영문 원문)</div>
       <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:13.5px;line-height:1.55" id="ns-list">${NS.sentences.map((x, i) => `<li ${i >= 8 ? 'class="more" style="display:none"' : ''}>${esc(x)}</li>`).join('')}</ol>
       ${NS.sentences.length > 8 ? '<button class="btn" id="ns-more">전체 보기</button>' : ''}`
-    : isPro ? '<div class="mut s13">새 위험 문장 원문이 아직 없습니다</div>'
-    : lockBox(`<div style="display:flex;flex-direction:column;gap:6px">${Array(4).fill('<div style="height:14px;background:var(--soft);border-radius:4px"></div>').join('')}</div>`, '새로 들어온 위험 문장 원문을 볼 수 있어요');
-  docBody += card('10-K 변화', '해마다 내는 연간 보고서(10-K)의 위험요인·경영진 논의를 작년 것과 비교', tkTable + (nsBody ? `<div style="border-top:1px solid var(--line2);padding-top:10px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">새로 들어온 위험 문장 <span class="pro">PRO</span></b>${nsBody}</div>` : ''));
+    : isPro ? '<div class="mut s13">새 위험 문장 원문이 아직 없습니다</div>' : '';
+  docBody += card('10-K 변화', '해마다 내는 연간 보고서(10-K)의 위험요인·경영진 논의를 작년 것과 비교', tkTable + (nsBody ? `<div style="border-top:1px solid var(--line2);padding-top:10px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px">새로 들어온 위험 문장</b>${nsBody}</div>` : ''));
   h += sec('doc', 'doc', '공시·내부자', 'SEC EDGAR 제출 원문 기준', docBody);
 
   // 뉴스

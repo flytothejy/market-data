@@ -45,7 +45,7 @@ function render() {
     <input class="f" id="ac" type="number" step="any" min="0" placeholder="평균 매입가($, 선택)" style="width:170px">
     <button class="btn dark" id="add" ${left <= 0 ? 'disabled' : ''}>추가</button>
     <span class="mut s13" id="msg">${left <= 0 ? '무료 한도(10종목)에 도달했어요' : `${left}종목 더 넣을 수 있어요`}</span>
-    <span style="margin-left:auto;display:flex;gap:6px"><a class="btn dark" href="report.html" style="text-decoration:none">주간 리포트 보기</a><button class="btn" disabled>포트폴리오 추가 <span class="pro">PRO</span></button><button class="btn" disabled>알림 받기 <span class="pro">PRO</span></button></span></div>
+    <span style="margin-left:auto;display:flex;gap:6px"><a class="btn dark" href="report.html" style="text-decoration:none">주간 리포트 보기</a></span></div>
     <datalist id="tick">${U.rows.map(r => `<option value="${r.t}">${esc(r.n)}</option>`).join('')}</datalist></div>`;
 
   if (!rows.length) {
@@ -83,7 +83,7 @@ function render() {
       <th><span class="cat-dot c-tech"></span>1개월</th><th>200일선</th><th>공매도 비중</th><th><span class="cat-dot c-doc"></span>내부자 순매수(90일)</th><th>8-K(30일)</th><th><span class="cat-dot c-news"></span>뉴스(7일)</th></tr></thead><tbody>
       ${rows.map(({ t, r }) => `<tr><td><a href="${stockUrl(t)}"><b>${t}</b></a></td><td>${pctS(r.c_ratio)}</td><td>${pctS(r.c_upside)}</td><td>${pctS(r.rev_g)}</td><td class="num">${fmt(r.om, 'pct')}</td><td class="num">${fmt(r.pe, 'x')}</td>
         <td>${pctS(r.r1m)}</td><td>${pctS(r.d200)}</td><td class="num">${fmt(r.sv, 'pct')}</td><td class="num ${cls((r.ib || 0) - (r.is || 0))}">${r.ib != null || r.is != null ? fmtUsd((r.ib || 0) - (r.is || 0)) : '-'}</td><td class="num">${r.k8 ?? '-'}</td><td class="num">${r.nw7 ?? '-'}</td></tr>`).join('')}</tbody></table></div></div>`;
-    h += `<div class="card"><h3>성과 분석 <span class="pro">PRO</span></h3><div class="sub">기간별 수익률, 지수 대비 성과, 위험 지표</div>${lockBox('<div style="height:120px;background:linear-gradient(90deg,var(--soft),transparent)"></div>', '지수 대비 성과와 위험 지표를 볼 수 있어요')}</div>`;
+    // (성과 분석 카드는 유료 기능 공개 전까지 숨김)
   }
   $('#app').innerHTML = h;
   $('#add').onclick = () => {
