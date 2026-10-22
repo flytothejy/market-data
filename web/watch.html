@@ -22,7 +22,7 @@
 .wi-kv span{color:var(--muted)}
 .chg{display:flex;flex-direction:column;gap:4px;font-size:13px}
 .chg div{display:flex;gap:6px;align-items:baseline}
-.warn{background:color-mix(in srgb,var(--dn) 10%,var(--card));color:var(--dn);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
+.warn{background:color-mix(in srgb,var(--warn) 12%,var(--card));color:var(--warn);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
 .wi textarea{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--bg);color:var(--ink);resize:vertical;min-height:34px}
 .src{font-size:12px;color:var(--faint)}
 .wi-ck summary{cursor:pointer;color:var(--muted);padding:2px 0}
@@ -90,7 +90,7 @@ function item(rec) {
       ${ret != null ? `<div><span>담은 뒤</span> ${pctS(ret)}</div>` : ''}${r && r.c_next ? `<div><span>다음 실적</span> <b>${esc(r.c_next)}</b></div>` : ''}</div>
     ${warn.length ? `<div class="warn">⚠ 오른쪽 아래 진입 (주가↑ 신호↓): ${esc(warn.join(', '))}</div>` : ''}
     ${lines.length ? `<div class="chg"><div class="mut small">담은 뒤 바뀐 것</div>${lines.join('')}</div>` : rec.snap ? '<div class="small faint">담은 뒤 구역·모양 변화 없음</div>' : ''}
-    ${r ? `<details class="wi-ck"><summary class="s13">종목 점검표 · ${(() => { const c = checklist(r, U); return `<span style="color:var(--dn)">경고 ${c.filter(x => x.s === 'warn').length}</span> · <span style="color:#15803d">우호 ${c.filter(x => x.s === 'good').length}</span>`; })()}</summary>${checklistHtml(checklist(r, U))}</details>` : ''}
+    ${r ? `<details class="wi-ck"><summary class="s13">종목 점검표 · ${(() => { const c = checklist(r, U); return `<span style="color:var(--warn)">경고 ${c.filter(x => x.s === 'warn').length}</span> · <span style="color:var(--good)">우호 ${c.filter(x => x.s === 'good').length}</span>`; })()}</summary>${checklistHtml(checklist(r, U))}</details>` : ''}
     <textarea data-note placeholder="메모" rows="1">${esc(rec.note || '')}</textarea>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="${stockUrl(rec.t)}" style="text-decoration:none">종목 화면 →</a>${againLink(rec)}</div>
   </div>`;
