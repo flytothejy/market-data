@@ -15,5 +15,5 @@ API_URL = "https://api.tickermap.kr"
 [[d1_databases]]
 binding = "DB"
 database_name = "tickermap"
-database_id = "D1_DATABASE_ID"
+database_id = "c2fd5fab-32b2-4116-999b-eaa988d4c36f"
 migrations_dir = "migrations"
