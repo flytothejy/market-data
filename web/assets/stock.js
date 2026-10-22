@@ -6,7 +6,7 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 // ---- 가격 차트 (일봉 2년 / 주간 종가 20년)
 function priceChart(el, d, isEtf) {
   const chart = LightweightCharts.createChart(el, {
-    autoSize: true, layout: { background: { color: 'transparent' }, textColor: css('--muted'), fontSize: 11 },
+    autoSize: true, layout: { fontFamily: getComputedStyle(document.body).fontFamily, background: { color: 'transparent' }, textColor: css('--muted'), fontSize: 11 },
     grid: { vertLines: { visible: false }, horzLines: { color: css('--line2') } },
     rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false }, crosshair: { mode: 0 },
     localization: { locale: 'ko-KR' },
@@ -40,7 +40,7 @@ function priceChart(el, d, isEtf) {
 
 function miniLine(el, dates, vals, color, fmtFn) {
   const c = LightweightCharts.createChart(el, {
-    autoSize: true, layout: { background: { color: 'transparent' }, textColor: css('--muted'), fontSize: 11 },
+    autoSize: true, layout: { fontFamily: getComputedStyle(document.body).fontFamily, background: { color: 'transparent' }, textColor: css('--muted'), fontSize: 11 },
     grid: { vertLines: { visible: false }, horzLines: { color: css('--line2') } },
     rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false }, handleScroll: false, handleScale: false, localization: { locale: 'ko-KR' },
   });
@@ -235,7 +235,7 @@ async function renderStock(U, d, P) {
   if (isPro && P.cons_hist) {
     const h2 = P.cons_hist;
     miniLine($('#ch-eps'), h2.d, h2.eps1y, css('--accent'), v => '$' + v.toFixed(2));
-    const c = LightweightCharts.createChart($('#ch-rev'), { autoSize: true, layout: { background: { color: 'transparent' }, textColor: css('--muted'), fontSize: 11 },
+    const c = LightweightCharts.createChart($('#ch-rev'), { autoSize: true, layout: { fontFamily: getComputedStyle(document.body).fontFamily, background: { color: 'transparent' }, textColor: css('--muted'), fontSize: 11 },
       grid: { vertLines: { visible: false }, horzLines: { color: css('--line2') } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false },
       handleScroll: false, handleScale: false, localization: { locale: 'ko-KR' } });
     const up = c.addHistogramSeries({ color: css('--up'), priceFormat: { type: 'custom', formatter: v => Math.abs(v).toFixed(0) } });

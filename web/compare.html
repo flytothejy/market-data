@@ -102,7 +102,7 @@ async function render() {
   // 가격 이력
   const ds = await Promise.all(rows.map(r => (r.k === 'etf' ? Data.etf(r.t) : Data.stock(r.t)).catch(() => null)));
   const chart = LightweightCharts.createChart($('#cc'), {
-    autoSize: true, layout: { background: { color: 'transparent' }, textColor: css('--muted'), fontSize: 11 },
+    autoSize: true, layout: { fontFamily: getComputedStyle(document.body).fontFamily, background: { color: 'transparent' }, textColor: css('--muted'), fontSize: 11 },
     grid: { vertLines: { visible: false }, horzLines: { color: css('--line2') } },
     rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false }, localization: { locale: 'ko-KR' },
   });
