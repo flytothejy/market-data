@@ -102,6 +102,17 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
     card('매도 예정 신고 (Form 144)', '최근 30일 내부자·대주주 매도 예정 신고 건수', rankList(by(S.filter(r => r.f144 > 0), 'f144'), r => `${r.f144}건`, r => `내부자 매도 90일 ${fmtUsd(r.is)}`)),
   ], 'screen.html?cat=doc');
 
+  // ---- 유명 투자자·ETF (누가 담고 있나)
+  const gNew = by(S.filter(r => r.g13_new > 0), 'g13_new').sort((a, b) => b.g13_new - a.g13_new || (b.g13_chg || 0) - (a.g13_chg || 0));
+  const eAdd = S.filter(r => r.etf_add > 0).sort((a, b) => b.etf_add - a.etf_add || (b.etf_wchg || 0) - (a.etf_wchg || 0));
+  const eBase = U.etf_base ? U.etf_base.slice(5).replace('-', '/') : null;
+  h += section('who', '유명 투자자·ETF', '누가 새로 담고 있나 · 13F는 분기 말 기준(최대 4개월 반 늦음), ETF는 매일 구성 비교', [
+    card('유명 투자자가 새로 산 종목 <a class="small" href="investors.html" style="font-weight:400">투자자 →</a>', '이번 분기 13F에서 처음 담은 유명 투자자 수', rankList(gNew, r => `${r.g13_new}곳`, r => `보유 ${r.g13 ?? 0}곳 · 순증 ${r.g13_chg > 0 ? '+' : ''}${r.g13_chg ?? 0}`)),
+    card('유명 투자자 매수 우위', '새로 사거나 늘린 곳 − 팔거나 줄인 곳', rankList(by(S.filter(r => r.g13_chg > 0), 'g13_chg'), r => `<span class="up">+${r.g13_chg}곳</span>`, r => `보유 ${r.g13 ?? 0}곳 · ${secKo(r.sec)}`)),
+    card('ETF 편입이 늘어난 종목', `전체 구성을 받는 ETF 기준, ${eBase ? eBase + ' 대비' : '약 30일 전 대비'}`, eAdd.length ? rankList(eAdd, r => `+${r.etf_add}개`, r => `편출 ${r.etf_drop ?? 0} · 비중 변화 ${fmt(r.etf_wchg, 'pct', { sign: true })}`)
+      : `<div class="mut s13">ETF 구성은 10/19부터 매일 쌓고 있어요. ${eBase ? eBase + ' 이후' : '그동안'} 새로 편입된 종목이 아직 없어요 — 한 달쯤 지나면 의미 있는 숫자가 나와요.</div>`),
+  ], 'screen.html?cat=tech');
+
   // ---- 뉴스
   const nw = by(S.filter(r => r.nw7 > 0), 'nw7');
   h += `<div class="sec-head"><h2><span class="cat-dot c-news"></span>뉴스</h2><span class="desc">최근 7일 기사·보도자료가 많은 종목</span></div>
