@@ -18,6 +18,17 @@
 table.t td.best{font-weight:750}
 table.t td.best::after{content:' ●';font-size:8px;color:var(--accent);vertical-align:2px}
 tr.grp td{background:var(--soft);font-weight:700;font-size:12.5px;color:var(--muted)}
+.sg-top{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sg-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.sg{display:flex;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:9px 10px;cursor:pointer;font:inherit;color:var(--ink);min-height:56px}
+.sg:hover{border-color:var(--ink)}
+.sg .sg-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sg .sg-n{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg .sg-r{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg .sg-p{font-size:20px;color:var(--faint);line-height:1}
+.sg.full{opacity:.5;cursor:not-allowed}
+.sg-base{font-weight:700}
+.str{font-size:11px;border-radius:6px;padding:1px 5px;background:var(--soft);color:var(--muted);margin-left:4px}
 </style>
 </head>
 <body>
@@ -57,6 +68,7 @@ async function render() {
   h += `<div class="card"><div class="cmp-add">${rows.map((r, i) => `<span class="cmp-chip"><i style="background:${COLORS[i]}"></i><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a><span class="mut">${esc((r.n || '').slice(0, 16))}</span><button data-rm="${esc(r.t)}" aria-label="${esc(r.t)} 빼기">×</button></span>`).join('')}
     ${rows.length < MAX ? `<input class="f" id="add" list="tk" placeholder="티커 추가 (예: MSFT)" autocomplete="off" style="width:180px"><datalist id="tk">${S.map(r => `<option value="${esc(r.t)}">${esc(r.n || '')}</option>`).join('')}</datalist><button class="btn" id="addb">추가</button>` : ''}
     ${Watch.list().length ? `<button class="btn" id="usew">후보함 종목으로 채우기</button>` : ''}</div></div>`;
+  if (rows.length) h += `<div class="card" id="sg"></div>`;
   if (!rows.length) {
     h += `<div class="card"><div class="mut s13">위에서 비교할 종목을 추가하세요. 예: <a href="?t=AAPL,MSFT,GOOGL">AAPL · MSFT · GOOGL</a> · <a href="?t=NVDA,AMD,AVGO,INTC">NVDA · AMD · AVGO · INTC</a> · <a href="?t=SPY,QQQ,SCHD">SPY · QQQ · SCHD</a></div></div>`;
     $('#app').innerHTML = h; bind(); footer(); return;
@@ -85,6 +97,7 @@ async function render() {
   h += `<div class="card"><h3>지표 비교</h3><div class="tbl-wrap"><table class="t">${tb}</table></div></div>`;
   $('#app').innerHTML = h;
   bind();
+  suggest(rows);
   footer();
   // 가격 이력
   const ds = await Promise.all(rows.map(r => (r.k === 'etf' ? Data.etf(r.t) : Data.stock(r.t)).catch(() => null)));
@@ -118,6 +131,115 @@ async function render() {
   draw(1);
 }
 
+// ---- 비슷한 종목 추천: 기준 종목 하나에서 관점별로 뻗어 나가기
+const LENS = {
+  info: { name: '기본', sub: '같은 세부 업종 → 같은 업종 안에서 시가총액이 비슷한 순' },
+  cons: { name: '컨센서스', sub: '애널리스트 전망의 방향·속도·밸류가 비슷한 종목', feats: ['c_chg90', 'c_ratio', 'c_upside', 'c_buy', 'c_eps_g', 'c_rev_g', 'c_fpe', 'c_surp'] },
+  fin: { name: '재무', sub: '성장·수익성·재무구조·밸류가 비슷한 종목', feats: ['rev_g', 'rev_qg', 'gm', 'om', 'nm', 'roe', 'de', 'pe', 'ps', 'fcfy'] },
+  tech: { name: '차트', sub: '최근 1년 주가가 같이 움직인 종목 (시장 전체 움직임을 뺀 일간 상관)' },
+  doc: { name: '공시·내부자', sub: '내부자 매매·유명 투자자·공매도 흐름이 비슷한 종목', feats: ['ins_net', 'g13', 'g13_chg', 'sv', 'sv_chg60', 'si', 'rf_new'] },
+};
+const LOGF = new Set(['c_fpe', 'pe', 'ps', 'mcap']);
+const sgSt = { base: null, lens: 'info', all: false, more: false };
+let PCT = null, PEERS = null;
+const featVal = (r, k) => k === 'ins_net' ? (r.mcap ? ((r.ib || 0) - (r.is || 0)) / r.mcap : null) : r[k];
+function pctTable() {
+  // 지표마다 전 종목 백분위 (0~1) — 단위가 다른 지표를 같은 저울에
+  if (PCT) return PCT;
+  PCT = {};
+  const S = U.rows.filter(r => r.k === 'stock');
+  const ks = new Set(Object.values(LENS).flatMap(L => L.feats || []));
+  for (const k of ks) {
+    const xs = S.map(r => [r.t, featVal(r, k)]).filter(([, v]) => v != null && isFinite(v) && !(LOGF.has(k) && v <= 0)).sort((a, b) => a[1] - b[1]);
+    const m = {}, n = xs.length;
+    for (let i = 0; i < n;) {                          // 같은 값은 같은 백분위 (0이 많은 지표에서 순서가 임의로 갈리지 않게)
+      let j = i; while (j + 1 < n && xs[j + 1][1] === xs[i][1]) j++;
+      const p = n > 1 ? ((i + j) / 2) / (n - 1) : 0.5;
+      for (let q = i; q <= j; q++) m[xs[q][0]] = p;
+      i = j + 1;
+    }
+    PCT[k] = m;
+  }
+  return PCT;
+}
+function nearest(base, lens) {
+  const L = LENS[lens], all = U.rows.filter(r => r.k === base.k && r.t !== base.t && !tickers.includes(r.t));
+  if (lens === 'info') {
+    const lm = v => Math.log10(Math.max(v || 1, 1));
+    const sizeOf = r => base.k === 'etf' ? r.aum : r.mcap;
+    const pool = base.k === 'etf'
+      ? all.filter(r => r.grp === base.grp && r.grp !== '레버리지·인버스').map(r => ({ r, d: (r.cat === base.cat ? 0 : 1) + Math.abs(lm(sizeOf(r)) - lm(sizeOf(base))) / 3 }))
+      : all.filter(r => r.sec && r.sec === base.sec).map(r => ({ r, d: (r.ind && r.ind === base.ind ? 0 : 1) + Math.abs(lm(r.mcap) - lm(base.mcap)) / 3 }));
+    return pool.sort((a, b) => a.d - b.d).map(({ r }) => ({ r, why: base.k === 'etf' ? `${r.cat || r.grp || ''} · 운용자산 ${fmtUsd(r.aum)}` : `${r.ind === base.ind ? r.ind : secKo(r.sec)} · 시가총액 ${fmtUsd(r.mcap)}` }));
+  }
+  if (lens === 'tech') {
+    const p = PEERS && PEERS[base.t]; if (!p) return [];
+    const by = Object.fromEntries(U.rows.map(r => [r.t, r]));
+    return [...(p.s || []), ...(p.e || [])].filter(([t]) => by[t] && !tickers.includes(t))
+      .map(([t, c]) => ({ r: by[t], c, why: `${by[t].k === 'etf' ? 'ETF · ' : ''}같이 움직인 정도 ${c.toFixed(2)}` }));
+  }
+  const P = pctTable(), F = U.fields;
+  const fs = L.feats.filter(k => P[k][base.t] != null);
+  if (fs.length < 3) return [];
+  const pool = sgSt.all ? all : all.filter(r => r.sec === base.sec);
+  const out = [];
+  for (const r of pool) {
+    let s = 0, n = 0; const ds = [];
+    for (const k of fs) { const b = P[k][r.t]; if (b == null) continue; const d = b - P[k][base.t]; s += d * d; n++; ds.push([Math.abs(d), k]); }
+    if (n < Math.max(3, fs.length * 0.6)) continue;
+    // 근거: 기준 종목이 두드러진 지표(백분위가 가운데에서 먼) 중 가장 가까운 2개
+    const why = ds.filter(([, k]) => Math.abs(P[k][base.t] - 0.5) > 0.15).sort((a, b) => a[0] - b[0]).slice(0, 2)
+      .map(([, k]) => `${shortLab(k)} ${val(k, featVal(r, k))}`).join(' · ');
+    out.push({ r, d: Math.sqrt(s / n), why: why || '전반적으로 비슷' });
+  }
+  return out.sort((a, b) => a.d - b.d);
+}
+const SHORT = { c_chg90: 'EPS 전망 90일', c_ratio: '순상향률', c_upside: '목표가 여력', c_buy: '매수 의견', c_eps_g: 'EPS 성장 전망', c_rev_g: '매출 성장 전망', c_fpe: '선행 PER', c_surp: '서프라이즈',
+  rev_g: '매출 성장', rev_qg: '분기 매출 성장', gm: '매출총이익률', om: '영업이익률', nm: '순이익률', roe: 'ROE', de: '부채비율', pe: 'PER', ps: 'PSR', fcfy: 'FCF 수익률',
+  ins_net: '내부자 순매수', g13: '유명 투자자', g13_chg: '유명 투자자 순증', sv: '공매도 비중', sv_chg60: '공매도 변화', si: '공매도 잔고', f144: '매도 예정 신고', rf_new: '10-K 새 위험' };
+const shortLab = k => SHORT[k] || k;
+function val(k, v) {
+  if (v == null) return '-';
+  if (k === 'ins_net') return v === 0 ? '0' : (v > 0 ? '+' : '−') + (Math.abs(v) * 100).toFixed(2) + '%';
+  if (k === 'c_fpe' || k === 'pe' || k === 'ps' || k === 'de') return v.toFixed(1) + (k === 'de' ? '' : '배');
+  if (k === 'g13' || k === 'f144') return String(Math.round(v));
+  if (k === 'g13_chg') return (v > 0 ? '+' : '') + Math.round(v);
+  if (k === 'sv_chg60') return (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%p';
+  return (v > 0 && ['c_chg90', 'c_ratio', 'c_upside', 'c_eps_g', 'c_rev_g', 'c_surp', 'rev_g', 'rev_qg'].includes(k) ? '+' : '') + (v * 100).toFixed(Math.abs(v) < 0.1 ? 1 : 0) + '%';
+}
+async function suggest(rows) {
+  const el = $('#sg'); if (!el) return;
+  if (!PEERS) { try { PEERS = await getJSON('free/peers.json'); } catch (e) { PEERS = {}; } }
+  const base = rows.find(r => r.t === sgSt.base) || rows[0];
+  sgSt.base = base.t;
+  const lenses = base.k === 'etf' ? ['info', 'tech'] : Object.keys(LENS);
+  if (!lenses.includes(sgSt.lens)) sgSt.lens = 'info';
+  // 같은 회사의 다른 주식(GOOG·GOOGL 등)은 하나만
+  const co = r => (r.n || r.t).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 14);
+  const seen = new Set([co(base), ...rows.map(co)]);
+  const L = LENS[sgSt.lens], list = nearest(base, sgSt.lens).filter(x => { const c = co(x.r); if (seen.has(c)) return false; seen.add(c); return true; }), N = sgSt.more ? 16 : 8, full = tickers.length >= MAX;
+  const P0 = L.feats ? pctTable() : null;
+  const prof = L.feats ? L.feats.filter(k => P0[k][base.t] != null).sort((a, b) => Math.abs(P0[b][base.t] - 0.5) - Math.abs(P0[a][base.t] - 0.5)).slice(0, 4)
+      .map(k => `${shortLab(k)} <b>${val(k, featVal(base, k))}</b>`).join(' · ')
+    : sgSt.lens === 'info' ? (base.k === 'etf' ? `${esc(base.cat || base.grp || '')} · 운용자산 <b>${fmtUsd(base.aum)}</b>` : `${esc(base.ind || secKo(base.sec))} · 시가총액 <b>${fmtUsd(base.mcap)}</b>`)
+    : '숫자가 1이면 똑같이, 0이면 무관하게 움직인 것 · 강 0.5↑ · 중 0.3↑ · 약';
+  const strTag = c => c == null ? '' : `<span class="str">${c >= 0.5 ? '강' : c >= 0.3 ? '중' : '약'}</span>`;
+  el.innerHTML = `<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h3>비슷한 종목 찾기</h3><span class="small mut">${esc(L.sub)}</span></div>
+    <div class="sg-top">${rows.length > 1 ? `<span class="s13 mut">기준</span><div class="seg">${rows.map(r => `<button class="btn ${r.t === base.t ? 'on' : ''}" data-base="${esc(r.t)}">${esc(r.t)}</button>`).join('')}</div>` : `<span class="s13">기준 <b>${esc(base.t)}</b></span>`}
+      <div class="seg">${lenses.map(k => `<button class="btn ${k === sgSt.lens ? 'on' : ''}" data-lens="${k}">${k === 'info' ? '' : `<span class="cat-dot c-${k}"></span>`}${LENS[k].name}</button>`).join('')}</div>
+      ${LENS[sgSt.lens].feats && base.k === 'stock' ? `<label class="s13 mut" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sg-all" ${sgSt.all ? 'checked' : ''}>업종 밖에서도 찾기</label>` : ''}</div>
+    <div class="small mut">${sgSt.lens === 'tech' ? '' : `<span class="faint">${esc(base.t)}</span> `}${prof}</div>
+    ${list.length ? `<div class="sg-list">${list.slice(0, N).map(({ r, why, c }) => `<button class="sg ${full ? 'full' : ''}" data-add="${esc(r.t)}" title="${full ? `최대 ${MAX}개까지 비교할 수 있어요` : '비교에 추가'}">
+        <span class="sg-b"><span class="sg-n"><b>${esc(r.t)}</b> <span class="mut">${esc(r.ko || (r.n || '').slice(0, 22))}</span>${strTag(c)}</span><span class="sg-r">${esc(why)}</span></span><span class="sg-p">${full ? '' : '+'}</span></button>`).join('')}</div>
+      ${list.length > 8 ? `<button class="btn" id="sg-more" style="align-self:flex-start">${sgSt.more ? '접기' : '더 보기'}</button>` : ''}`
+      : `<div class="small mut">${sgSt.lens === 'tech' ? '같이 움직인 종목이 뚜렷하지 않아요 (회사 고유 요인으로 움직이는 편)' : '이 관점으로 비교할 데이터가 부족해요'}</div>`}
+    ${full ? `<div class="small faint">비교는 최대 ${MAX}개 — 위에서 하나를 빼면 추가할 수 있어요</div>` : ''}`;
+  el.querySelectorAll('[data-base]').forEach(b => b.onclick = () => { sgSt.base = b.dataset.base; sgSt.more = false; suggest(rows); });
+  el.querySelectorAll('[data-lens]').forEach(b => b.onclick = () => { sgSt.lens = b.dataset.lens; sgSt.more = false; suggest(rows); });
+  const a = $('#sg-all'); if (a) a.onchange = () => { sgSt.all = a.checked; suggest(rows); };
+  const m = $('#sg-more'); if (m) m.onclick = () => { sgSt.more = !sgSt.more; suggest(rows); };
+  el.querySelectorAll('[data-add]').forEach(b => b.onclick = () => { if (tickers.length >= MAX) return; const y = scrollY; tickers.push(b.dataset.add); setUrl(); render(); scrollTo(0, y); });
+}
 function bind() {
   document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { tickers = tickers.filter(t => t !== b.dataset.rm); setUrl(); render(); });
   const add = () => {

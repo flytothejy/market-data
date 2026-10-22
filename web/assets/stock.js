@@ -97,7 +97,7 @@ function headBlock(m, extraTags) {
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b style="font-size:28px" class="num">${fmt(m.px, 'px')}</b>${pctS(m.r1d)}
     <span class="mut s13">${m.mcap ? '시가총액 ' + fmtUsd(m.mcap) : m.aum ? '순자산 ' + fmtUsd(m.aum) : ''}</span></div>
     <div class="pill-row" style="align-items:center">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}
-      <span style="margin-left:auto;display:flex;gap:6px">${watchBtn(m.t)}<a class="btn" href="compare.html?t=${encodeURIComponent([m.t, ...Watch.list().filter(x => x !== m.t)].slice(0, 3).join(','))}" style="text-decoration:none">비교하기</a></span></div>
+      <span style="margin-left:auto;display:flex;gap:6px">${watchBtn(m.t)}<a class="btn" href="compare.html?t=${encodeURIComponent(m.t)}" style="text-decoration:none" title="비슷한 종목을 추천받아 나란히 비교">비교하기</a></span></div>
     ${m.s1 ? `<p style="margin:6px 0 0;font-size:15px;color:var(--ink)">${esc(m.s1)}</p>` : ''}</div>`;
 }
 

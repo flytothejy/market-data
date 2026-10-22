@@ -671,6 +671,38 @@ def consensus_table(d, asof):
     return C, asof
 
 
+# ---------------------------------------------------------------- 비교 추천: 주가가 같이 움직인 종목 (최근 1년 일간 수익률 상관)
+def co_movers(PX, etfs=(), excl=(), days=260):
+    """{티커: {"s": [[종목, 상관]…10], "e": [[ETF, 상관]…5]}} — 시장 전체 움직임(SPY 베타만큼)을 뺀 나머지끼리의 상관이라
+    '같은 이야기로 움직인' 종목에 가까움. 레버리지·인버스 ETF는 후보에서 뺌"""
+    last = PX.date.max()
+    P = PX[PX.date >= last - pd.Timedelta(days=int(days * 1.45))].pivot_table(index="date", columns="ticker", values="adj_close").sort_index()
+    P = P.tail(days + 1)
+    Rt = np.log(P).diff().iloc[1:]
+    Rt = Rt.loc[:, Rt.notna().mean() >= 0.8]
+    if "SPY" in Rt:
+        m = Rt["SPY"].fillna(0)
+        beta = Rt.apply(lambda c: c.cov(m) / m.var())
+        Rt = Rt - np.outer(m, beta.values)
+    Z = ((Rt - Rt.mean()) / Rt.std()).fillna(0).values
+    C = (Z.T @ Z) / max(1, len(Z) - 1)
+    np.fill_diagonal(C, -1)
+    cols = np.array(Rt.columns)
+    etfs, excl = set(etfs), set(excl)
+    is_e = np.array([c in etfs for c in cols])
+    ok = np.array([c not in excl for c in cols])
+    out = {}
+    for i, t in enumerate(cols):
+        row = C[i]
+        res = {}
+        for key, mask, k in (("s", ~is_e & ok, 10), ("e", is_e & ok, 5)):
+            idx = np.where(mask & (row > 0.15))[0]
+            idx = idx[np.argsort(-row[idx])][:k]
+            res[key] = [[str(cols[j]), round(float(row[j]), 3)] for j in idx]
+        out[str(t)] = res
+    return out
+
+
 # ---------------------------------------------------------------- 실적 결과 (발표 전 마지막 컨센서스 vs 실제, 발표 뒤 전망 변화)
 ER_BLOCKS = ("ehist", "rev", "eps", "pt", "eps_rev", "actual")
 
@@ -1329,6 +1361,11 @@ def run(limit=0, **_):
     dump(OUT / "free" / "market.json", mk)
     dump(OUT / "free" / "sector_trails.json", group_trails(ALL_TR))
     dump(OUT / "free" / "patterns.json", PAT)
+    try:
+        lev = set(E[E.get("etf_group", pd.Series(dtype=str)).astype(str).str.contains("레버리지")].ticker) if "etf_group" in E else set()
+        dump(OUT / "free" / "peers.json", co_movers(PX, set(E.ticker), lev))
+    except Exception as e:
+        R.warning(f"같이 움직인 종목: {str(e)[:80]}")
     for key, by in FRAMES.items():
         fd, tt = max(by.items(), key=lambda kv: len(kv[1]))     # 가장 많은 종목이 쓰는 격자
         dump(OUT / "free" / "frames" / f"{key}.json", {"d": list(fd), "t": tt})
