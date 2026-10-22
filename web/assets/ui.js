@@ -49,14 +49,16 @@ const ICON = {
   home: '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',
   map: '<circle cx="8" cy="8" r="4"/><circle cx="17" cy="7" r="2.5"/><circle cx="7" cy="17" r="2.5"/><circle cx="16.5" cy="16.5" r="3.5"/>',
   rank: '<path d="M5 20V11M12 20V5M19 20v-6"/>',
+  find: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
   star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/>',
   more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
 };
 function bottomNav(active) {
   const page = ((location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') || 'index') + '.html';   // Cloudflare는 .html 없는 주소로 보여 줌
-  const tabs = [['index.html', '홈', 'home'], ['matrix.html', '티커맵', 'map'], ['ranking.html', '랭킹', 'rank'], ['watch.html', '후보함', 'star']];
-  const more = [['screen.html', '검색'], ['stock.html', '종목'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오'], ['terms.html', '이용약관'], ['privacy.html', '개인정보처리방침']];
-  const inMore = more.some(([h]) => h === page) || /\/s\/|\/i\//.test(location.pathname);
+  // 홈은 티커맵·랭킹 미리보기라 탭에서 빼고 로고로 (더보기에도 둠)
+  const tabs = [['matrix.html', '티커맵', 'map'], ['ranking.html', '랭킹', 'rank'], ['screen.html', '검색', 'find'], ['watch.html', '후보함', 'star']];
+  const more = [['index.html', '홈'], ['earnings.html', '실적 달력'], ['compare.html', '비교'], ['investors.html', '유명 투자자'], ['stock.html', '종목'], ['portfolio.html', '포트폴리오'], ['terms.html', '이용약관'], ['privacy.html', '개인정보처리방침']];
+  const inMore = more.some(([h]) => h === page && h !== 'index.html') || /\/s\/|\/i\//.test(location.pathname);
   const svg = k => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${ICON[k]}</svg>`;
   const nav = document.createElement('nav');
   nav.className = 'bnav';

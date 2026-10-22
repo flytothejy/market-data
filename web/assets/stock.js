@@ -113,7 +113,7 @@ async function renderStock(U, d, P) {
 
   // 다섯 카테고리 요약
   const pick = (k) => m[k];
-  h += `<div class="grid g4" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+  h += `<div class="grid g4 sum5" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
     ${[['cons', '컨센서스', m.c_n ? `순상향률 ${fmt(m.c_ratio, 'pct', { sign: true })}` : '준비 중', m.c_next ? `다음 실적 ${m.c_next}` : m.c_n ? `애널리스트 ${m.c_n}명` : 'S&P 500부터 제공'],
        ['fin', '재무', `매출 성장 ${fmt(m.rev_g, 'pct', { sign: true })}`, `영업이익률 ${fmt(m.om, 'pct')} · PER ${fmt(m.pe, 'x')}`],
        ['tech', '차트·수급', `1년 ${fmt(m.r1y, 'pct', { sign: true })}`, `200일선 대비 ${fmt(m.d200, 'pct', { sign: true })} · 공매도 ${fmt(m.sv, 'pct')}`],
