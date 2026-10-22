@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="티커맵 로그인 — 구글·카카오·네이버로 여러 기기에서 후보함을 이어 써요.">
+<title>로그인 | 티커맵</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/app.css">
+<script src="assets/data.js"></script>
+<script src="assets/ui.js"></script>
+<style>
+.ac{max-width:560px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.sso{display:flex;flex-direction:column;gap:8px}
+.sso button{display:flex;align-items:center;justify-content:center;gap:10px;height:48px;border-radius:12px;font:inherit;font-size:15px;font-weight:600;cursor:pointer;border:1px solid var(--line)}
+.sso button:disabled{opacity:.6;cursor:wait}
+.sso .g{background:#fff;color:#1f1f1f;border-color:#dadce0}
+.sso .k{background:#FEE500;color:rgba(0,0,0,.85);border-color:#FEE500}
+.sso .n{background:#03C75A;color:#fff;border-color:#03C75A}
+.sso svg{width:20px;height:20px;flex-shrink:0}
+.benefit{margin:0;padding-left:18px;font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.prof{display:flex;gap:12px;align-items:center}
+.prof img,.prof .acct-i{width:48px;height:48px;font-size:19px}
+.prof img{border-radius:50%;object-fit:cover}
+.prov{display:flex;gap:6px;flex-wrap:wrap}
+.lst{display:flex;flex-direction:column}
+.lst>div{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line2);font-size:13.5px}
+.lst>div:first-child{border-top:0}
+.lst .r{margin-left:auto;color:var(--muted);font-size:12.5px;white-space:nowrap}
+.danger{color:var(--dn)}
+.msg{border-radius:10px;padding:10px 12px;font-size:13.5px;background:var(--soft)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="skel" role="status" aria-label="불러오는 중"><i class="sk sk-h"></i><i class="sk sk-p"></i><div class="sk-grid"><i class="sk sk-c"></i><i class="sk sk-c"></i><i class="sk sk-c"></i></div><i class="sk sk-b"></i></div></div>
+<script>
+header('');
+const ICONS = {
+  google: '<svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 38.2 44 33 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>',
+  kakao: '<svg viewBox="0 0 24 24"><path fill="#000" d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.2 4.7 6.6l-1 3.6c-.1.3.3.6.6.4l4.2-2.8c.5.1 1 .1 1.5.1 5.5 0 10-3.5 10-7.9S17.5 3 12 3z"/></svg>',
+  naver: '<svg viewBox="0 0 24 24"><path fill="#fff" d="M15.6 12.8L8.1 2H2v20h6.4V11.2L15.9 22H22V2h-6.4z"/></svg>',
+};
+const PROV = { google: '구글', kakao: '카카오', naver: '네이버', credential: '이메일' };
+const P = new URLSearchParams(location.search);
+const when = ms => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+function device(ua) {
+  ua = ua || '';
+  const os = /iPhone|iPad/.test(ua) ? (/(iPad)/.test(ua) ? 'iPad' : 'iPhone') : /Android/.test(ua) ? '안드로이드' : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : '기기';
+  const br = /KAKAOTALK/.test(ua) ? '카카오톡' : /NAVER/.test(ua) ? '네이버 앱' : /Edg\//.test(ua) ? 'Edge' : /SamsungBrowser/.test(ua) ? '삼성 인터넷' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : /Firefox\//.test(ua) ? 'Firefox' : '';
+  return `${os}${br ? ' · ' + br : ''}`;
+}
+const EV = { login: '로그인', device_link: '이 기기 연결', logout: '로그아웃', account_deleted: '계정 삭제' };
+
+function loginView(note) {
+  $('#app').innerHTML = `<div class="ac"><div class="hero"><h1>로그인</h1><p>로그인하지 않아도 모든 기능을 쓸 수 있어요</p></div>
+    ${note ? `<div class="msg">${note}</div>` : ''}
+    <div class="card"><ul class="benefit"><li>휴대폰·PC 어디서든 같은 <b>후보함</b></li><li>브라우저를 지워도 후보함·텔레그램 알림 유지</li><li>앞으로 나올 검색 조건 저장·알림</li></ul>
+      ${ON_SITE ? `<div class="sso">
+        <button class="g" data-p="google">${ICONS.google}구글로 계속하기</button>
+        <button class="k" data-p="kakao">${ICONS.kakao}카카오로 계속하기</button>
+        <button class="n" data-p="naver">${ICONS.naver}네이버로 계속하기</button></div>`
+      : `<div class="msg">로그인은 <a href="https://tickermap.kr/hub/account">tickermap.kr</a>에서만 돼요</div>`}
+      <div class="small faint">이 브라우저에 담아 둔 후보함은 로그인하면 계정으로 합쳐져요 · 계속하면 <a href="terms.html">이용약관</a>과 <a href="privacy.html">개인정보처리방침</a>에 동의하는 것으로 봅니다</div></div></div>`;
+  document.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+    document.querySelectorAll('[data-p]').forEach(x => x.disabled = true);
+    try { await Auth.signIn(b.dataset.p); } catch (e) { notice('로그인을 시작하지 못했어요: ' + e.message); document.querySelectorAll('[data-p]').forEach(x => x.disabled = false); }
+  });
+}
+
+async function accountView(me, note) {
+  const u = me.user, items = me.items || 0;
+  $('#app').innerHTML = `<div class="ac"><div class="hero"><h1>내 계정</h1></div>
+    ${note ? `<div class="msg">${note}</div>` : ''}
+    <div class="card"><div class="prof">${u.image ? `<img src="${esc(u.image)}" alt="" referrerpolicy="no-referrer">` : `<span class="acct-i">${esc((u.name || '나').slice(0, 1))}</span>`}
+      <div><b style="font-size:17px">${esc(u.name || '이름 없음')}</b><div class="small mut">${u.email ? esc(u.email) + ' · ' : ''}${esc(String(u.since || '').slice(0, 10))} 가입</div>
+      <div class="prov" style="margin-top:4px">${me.providers.map(p => `<span class="tag">${PROV[p] || p}</span>`).join('')}</div></div></div></div>
+    <div class="card"><div class="kv"><div><span>후보함</span><b>${items}종목</b></div><div><span>텔레그램 알림</span><b>${me.tg && me.tg.linked ? (me.tg.mode === 'off' ? '꺼짐' : '켜짐') : '연결 안 됨'}</b></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="watch.html" style="text-decoration:none">후보함 →</a></div></div>
+    <div class="card"><h3>로그인된 기기</h3><div class="lst" id="sess"><div class="mut">불러오는 중…</div></div>
+      <div><button class="btn" id="others">다른 기기 모두 로그아웃</button></div></div>
+    <div class="card"><h3>최근 보안 기록</h3><div class="sub">로그인·기기 연결·로그아웃 (1년 보관 · IP는 저장하지 않음)</div><div class="lst" id="log"></div></div>
+    <div class="card" style="flex-direction:row;gap:8px;flex-wrap:wrap"><button class="btn" id="out">로그아웃</button><button class="btn danger" id="del" style="margin-left:auto">계정 삭제</button></div>
+    <div class="small faint">로그아웃해도 이 브라우저의 후보함은 남아요 · 계정을 삭제하면 서버의 후보함·기기·텔레그램 연결·로그인 정보가 모두 지워져요</div></div>`;
+  $('#out').onclick = async () => { await Auth.signOut(); location.href = 'account.html'; };
+  $('#del').onclick = async () => {
+    if (!confirm('계정을 삭제할까요? 서버의 후보함·텔레그램 연결·로그인 정보가 모두 지워지고 되돌릴 수 없어요. 이 브라우저의 후보함은 남아요.')) return;
+    try { await Auth.remove(); location.href = 'account.html?deleted=1'; } catch (e) { notice('삭제하지 못했어요: ' + e.message); }
+  };
+  $('#others').onclick = async () => { try { await Auth.revokeOthers(); notice('다른 기기를 모두 로그아웃했어요'); loadSessions(); } catch (e) { notice('실패: ' + e.message); } };
+  loadSessions();
+  Auth.log().then(j => { $('#log').innerHTML = (j && j.log || []).slice(0, 12).map(x => `<div><b>${EV[x.ev] || esc(x.ev)}</b><span class="mut">${esc(device(x.ua))}</span><span class="r">${when(x.at)}</span></div>`).join('') || '<div class="mut">기록 없음</div>'; }).catch(() => { });
+}
+async function loadSessions() {
+  try {
+    const ss = await Auth.sessions(), cur = await fetch(API_BASE + '/api/auth/get-session', { credentials: 'include' }).then(r => r.json()).catch(() => null);
+    const curId = cur && cur.session && cur.session.id;
+    $('#sess').innerHTML = (ss || []).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).map(x => `<div><b>${esc(device(x.userAgent))}</b>${x.id === curId ? '<span class="tag">이 기기</span>' : ''}<span class="r">${when(new Date(x.updatedAt).getTime())}</span></div>`).join('') || '<div class="mut">없음</div>';
+  } catch (e) { $('#sess').innerHTML = '<div class="mut">불러오지 못했어요</div>'; }
+}
+
+(async () => {
+  if (P.get('deleted')) { history.replaceState(null, '', 'account.html'); loginView('계정을 삭제했어요. 그동안 이용해 주셔서 고마워요.'); footer(); return; }
+  if (P.get('error')) { history.replaceState(null, '', 'account.html'); loginView(`로그인하지 못했어요${P.get('error') !== '1' ? ` (${esc(P.get('error'))})` : ''}. 다시 시도해 주세요.`); footer(); return; }
+  let me = null, note = '';
+  try {
+    if (P.get('login')) {
+      history.replaceState(null, '', 'account.html');
+      await Auth.claim();
+      note = P.get('new') ? '가입을 환영해요! 이 브라우저의 후보함을 계정에 담았어요.' : '로그인했어요. 이 기기의 후보함을 계정과 합쳤어요.';
+    }
+    me = await Auth.me();
+  } catch (e) { note = '계정 정보를 불러오지 못했어요: ' + esc(e.message); }
+  me ? accountView(me, note) : loginView(note);
+  document.querySelectorAll('header .acct').forEach(a => a.outerHTML = acctBtn());
+  footer();
+})();
+</script>
+</body>
+</html>

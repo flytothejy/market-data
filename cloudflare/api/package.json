@@ -1,0 +1,15 @@
+{
+  "name": "tickermap-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler d1 migrations apply tickermap --remote && wrangler deploy"
+  },
+  "dependencies": {
+    "better-auth": "1.7.7"
+  },
+  "devDependencies": {
+    "wrangler": "3.114.17"
+  }
+}

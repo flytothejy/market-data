@@ -57,7 +57,7 @@ function bottomNav(active) {
   const page = ((location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') || 'index') + '.html';   // Cloudflare는 .html 없는 주소로 보여 줌
   // 홈은 티커맵·랭킹 미리보기라 탭에서 빼고 로고로 (더보기에도 둠)
   const tabs = [['matrix.html', '티커맵', 'map'], ['ranking.html', '랭킹', 'rank'], ['screen.html', '검색', 'find'], ['watch.html', '후보함', 'star']];
-  const more = [['index.html', '홈'], ['earnings.html', '실적 달력'], ['compare.html', '비교'], ['investors.html', '유명 투자자'], ['stock.html', '종목'], ['portfolio.html', '포트폴리오'], ['terms.html', '이용약관'], ['privacy.html', '개인정보처리방침']];
+  const more = [['index.html', '홈'], ['earnings.html', '실적 달력'], ['compare.html', '비교'], ['investors.html', '유명 투자자'], ['stock.html', '종목'], ['portfolio.html', '포트폴리오'], ['account.html', Auth.hint() ? '내 계정' : '로그인'], ['terms.html', '이용약관'], ['privacy.html', '개인정보처리방침']];
   const inMore = more.some(([h]) => h === page && h !== 'index.html') || /\/s\/|\/i\//.test(location.pathname);
   const svg = k => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${ICON[k]}</svg>`;
   const nav = document.createElement('nav');
@@ -74,13 +74,53 @@ function bottomNav(active) {
   btn.onclick = e => { e.stopPropagation(); set(!sheet.classList.contains('open')); };
   sheet.onclick = e => { if (e.target === sheet) set(false); };
 }
+// ---- 로그인 (구글·카카오·네이버 — Better Auth, api.tickermap.kr). 로그인 안 해도 모든 기능을 씀
+// 로그인 = 이 기기의 기기코드를 계정에 묶기. 묶인 뒤에도 후보함 동기화는 기기코드로 그대로 (다른 기기에서 로그인하면 같은 후보함)
+const Auth = {
+  KEY: 'hub.auth.v1',
+  hint() { try { return JSON.parse(localStorage.getItem(this.KEY)); } catch (e) { return null; } },   // 이름·사진만 (화면 첫 표시용)
+  setHint(h) { try { h ? localStorage.setItem(this.KEY, JSON.stringify(h)) : localStorage.removeItem(this.KEY); } catch (e) { } },
+  async call(path, body) {
+    const r = await fetch(API_BASE + path, body === undefined ? { credentials: 'include' } : { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401) { this.setHint(null); return null; }
+    if (!r.ok) throw new Error(j.error || j.message || r.status);
+    return j;
+  },
+  async me() { const j = await this.call('/api/account/me'); if (j) this.setHint({ name: j.user.name, image: j.user.image }); return j; },
+  async signIn(provider) {
+    const back = location.origin + '/hub/account';
+    const j = await this.call('/api/auth/sign-in/social', { provider, callbackURL: back + '?login=1', newUserCallbackURL: back + '?login=1&new=1', errorCallbackURL: back + '?error=1' });
+    if (j && j.url) location.href = j.url; else throw new Error('로그인 주소를 받지 못했어요');
+  },
+  async claim() {                                        // 로그인 직후: 이 기기를 계정에 묶고 후보함을 합침
+    const j = await this.call('/api/account/claim', { code: Sync.st().code || null });
+    if (j && j.code) { Sync.set({ code: j.code }); await Sync.run().catch(() => { }); }
+    return j;
+  },
+  async signOut() {
+    const code = Sync.st().code;
+    try { await this.call('/api/account/forget-device', { code }); } catch (e) { }
+    try { await this.call('/api/auth/sign-out', {}); } catch (e) { }
+    Sync.set({ code: null, me: null, at: 0 }); this.setHint(null);   // 이 기기 후보함은 브라우저에 그대로 남음
+  },
+  sessions() { return this.call('/api/auth/list-sessions'); },
+  revokeOthers() { return this.call('/api/auth/revoke-other-sessions', {}); },
+  log() { return this.call('/api/account/log'); },
+  async remove() { const j = await this.call('/api/account/delete', {}); Sync.set({ code: null, me: null, at: 0 }); this.setHint(null); return j; },
+};
+function acctBtn() {
+  const h = Auth.hint();
+  const ini = h && h.name ? esc(h.name.trim().slice(0, 1)) : '';
+  return `<a class="acct" href="account.html" aria-label="${h ? '내 계정' : '로그인'}">${h ? (h.image ? `<img src="${esc(h.image)}" alt="" referrerpolicy="no-referrer">` : `<span class="acct-i">${ini || '나'}</span>`) : '<span class="acct-t">로그인</span>'}</a>`;
+}
 function header(active) {
   const items = [['matrix.html', '티커맵'], ['ranking.html', '티커랭킹'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['watch.html', '후보함'], ['portfolio.html', '포트폴리오']];
   const el = document.createElement('header');
   el.className = 'top';
   el.innerHTML = `<div class="in"><a class="brand" href="index.html" aria-label="티커맵 홈"><svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true" style="flex-shrink:0"><circle cx="7.8" cy="7.8" r="6.8" fill="#d65014"/><circle cx="20.6" cy="5.4" r="4.4" fill="#2463c4"/><circle cx="21.8" cy="13.2" r="2.4" fill="#d9d6cc"/><circle cx="6.1" cy="20.9" r="4.1" fill="#7ea3dc"/><circle cx="18.2" cy="20.2" r="4.8" fill="#eba27e"/><circle cx="12.9" cy="15.3" r="1.5" fill="#d9d6cc"/></svg><span>티커맵</span></a>
   <nav class="main">${items.map(([h, l]) => `<a href="${h}" class="${l === active ? 'on' : ''}">${l}</a>`).join('')}</nav>
-  <div class="search"><input type="search" placeholder="티커·회사명 (한글 가능)" aria-label="종목 검색" autocomplete="off"><div class="sugg"></div></div></div>`;
+  <div class="search"><input type="search" placeholder="티커·회사명 (한글 가능)" aria-label="종목 검색" autocomplete="off"><div class="sugg"></div></div>${acctBtn()}</div>`;
   document.body.prepend(el);
   bottomNav(active);
   const hh = () => document.documentElement.style.setProperty('--hdr-h', el.offsetHeight + 'px');   // 따라오는 탭 줄이 헤더 바로 밑에 붙게
@@ -185,7 +225,9 @@ function notice(msg) {
   const el = document.createElement('div'); el.className = 'notice-pop'; el.textContent = msg;
   document.body.appendChild(el); setTimeout(() => el.remove(), 5000);
 }
-const API_BASE = (window.HUB_API || 'https://tickermap-api.flytothejy.workers.dev').replace(/\/$/, '');
+// tickermap.kr에서는 같은 사이트의 api.tickermap.kr (로그인 쿠키가 통하려면 같은 사이트여야 함), 그 밖(github.io 사본 등)은 workers.dev
+const ON_SITE = /(^|\.)tickermap\.kr$/.test(location.hostname) || !!window.HUB_AUTH_TEST;
+const API_BASE = (window.HUB_API || (ON_SITE ? 'https://api.tickermap.kr' : 'https://tickermap-api.flytothejy.workers.dev')).replace(/\/$/, '');
 const Sync = {
   KEY: 'hub.sync.v1',
   st() { try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch (e) { return {}; } },
