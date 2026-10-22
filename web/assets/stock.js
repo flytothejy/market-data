@@ -120,6 +120,9 @@ async function renderStock(U, d, P) {
       .map(([k, l, a, b]) => `<a class="card" href="#${k}" style="color:inherit;text-decoration:none;gap:2px"><span class="small mut"><span class="cat-dot c-${k}"></span>${l}</span><b>${a}</b><span class="small mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b}</span></a>`).join('')}
   </div>`;
 
+  // 실적 발표 뒤 2주 동안은 결과를 맨 위에
+  { const L = d.er && d.er.last; if (L && (Date.now() - new Date(L.d + 'T12:00:00Z')) / 864e5 <= 14) h += `<div class="card"><div class="small mut" style="margin-bottom:6px">최근 실적 결과</div>${erResultHtml(L, { note: false })}</div>`; }
+
   // 종목 점검표 (경고 먼저)
   { const ck = checklistHtml(checklist(U.rows.find(x => x.t === m.t), U)); if (ck) h += `<div class="card">${ck}</div>`; }
 
@@ -149,11 +152,14 @@ async function renderStock(U, d, P) {
       ${hist.length ? `<div class="small mut">최근 ${hist.length}번의 실적 발표 때 주가 변동 (발표 전날 → 다음 날 종가)</div>${bars8}` : ''}`);
   }
 
+  // 최근 실적 결과 (발표 뒤 75일)
+  const erRes = er.last ? card('최근 실적 결과', '발표 전 예상과 비교한 실제 숫자, 발표 뒤 주가와 애널리스트 전망 변화', erResultHtml(er.last)) : '';
+
   // 컨센서스
   const consKeys = ['c_n', 'c_up', 'c_dn', 'c_ratio', 'c_chg90', 'c_eps_g', 'c_rev_g', 'c_fpe', 'c_upside', 'c_buy', 'c_surp', 'c_beats', 'c_next'];
   const fakeHist = `<div style="height:140px;background:linear-gradient(180deg,transparent 40%,var(--soft));border-radius:10px"></div>`;
   h += sec('cons', 'cons', '컨센서스', '애널리스트 전망과 그 변화',
-    erCard + (m.c_n ? card('', '', kvGrid(m, consKeys, F)) : card('', '', `<div class="mut s13">이 종목의 컨센서스는 준비 중입니다. 지금은 S&P 500 종목부터 제공하고 있어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
+    erRes + erCard + (m.c_n ? card('', '', kvGrid(m, consKeys, F)) : card('', '', `<div class="mut s13">이 종목의 컨센서스는 준비 중입니다. 지금은 S&P 500 종목부터 제공하고 있어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
     card('전망치 일별 이력 <span class="pro">PRO</span>', '내년 EPS 전망과 30일 상향·하향 건수를 날마다 쌓은 기록',
       !isPro ? lockBox(fakeHist, '전망치가 언제, 얼마나 바뀌었는지 일별로 볼 수 있어요')
         : P.cons_hist ? `<div class="small mut">내년 EPS 전망 ($)</div><div class="chart sm" id="ch-eps"></div><div class="small mut">30일 상향(위) · 하향(아래) 건수</div><div class="chart sm" id="ch-rev" style="height:130px"></div>

@@ -64,6 +64,10 @@ def usd(v):
     return f"${v / 1e8:,.1f}억" if v >= 1e8 else f"${v / 1e4:,.0f}만" if v >= 1e4 else f"${v:,.0f}"
 
 
+def eps_s(v):
+    return ("-" if v < 0 else "") + f"${abs(v):,.2f}" if v is not None else "-"
+
+
 def warns(r, sec_med):
     """지금 켜져 있는 경고 {키: (제목, 설명, 검증 여부)}"""
     w = {}
@@ -145,27 +149,36 @@ def detect(U, prev, init):
             out.append({"k": f"er_d1:{nxt}", "kind": "er", "ord": 1, "title": f"실적 발표 임박 — 미국 {kday(nxt)} {r.get('c_when') or ''}".strip(),
                         "desc": f"한국 시간 {kst}" + (f" · {extra}" if extra else "")})
         # 실적 뒤 주가 반응 + 내부자 매수는 종목 파일에서 (후보함에 있을 만한 종목만 읽으면 되지만 단순하게 필요할 때만)
-        need_stock = (r.get("er_avg") is not None) or s["ib_last"] != p.get("ib_last")
+        # 실적 결과 (build.py er_result → 종목 파일 er.last). 같은 이벤트는 사용자별 sent로 한 번만
         sj = None
-        er_last = p.get("er_last")
-        if need_stock:
+        if r.get("er_d") and r["er_d"] >= (date.fromisoformat(asof) - timedelta(days=14)).isoformat():
             sj = stock_json(t)
-            hist = (sj.get("er") or {}).get("hist") or []
-            if hist:
-                s["er_last"] = hist[-1][0]
-                if not init and er_last and hist[-1][0] > er_last and hist[-1][0] >= (date.fromisoformat(asof) - timedelta(days=5)).isoformat():
-                    d0, mv = hist[-1]
-                    avg = r.get("er_avg")
-                    sur = r.get("c_surp")
-                    big = avg and abs(mv) > 1.5 * avg
-                    out.append({"k": f"er_res:{d0}", "kind": "er", "ord": 0, "v": False,
-                                "title": f"실적 발표 뒤 주가 {pct(mv)}" + (" — 평소보다 크게 움직임" if big else ""),
-                                "desc": f"{kday(d0)} 발표 · 발표 전날 → 다음 날 종가" + (f" · 최근 평균 ±{avg * 100:.1f}%" if avg else "")
-                                        + (f" · 직전 분기 EPS 예상 대비 {pct(sur)}" if sur is not None and (U.get('consensus_asof') or '') > d0 else "")})
-            elif er_last:
-                s["er_last"] = er_last
-        elif er_last:
-            s["er_last"] = er_last
+            L = (sj.get("er") or {}).get("last") or {}
+            if L.get("d") == r["er_d"]:
+                fresh = L["d"] >= (date.fromisoformat(asof) - timedelta(days=7)).isoformat()
+                eps, rev, mv, avg = L.get("eps"), L.get("rev"), L.get("mv"), L.get("avg")
+                bits = []
+                if eps:
+                    bits.append(f"EPS {eps_s(eps['a'])} (예상 {eps_s(eps['e'])}, {pct(eps['s'])})")
+                if rev:
+                    bits.append(f"매출 {usd(rev['a'])} (예상 {usd(rev['e'])}, {pct(rev['s'])})")
+                mvt = f"주가 {pct(mv)}" + (f" (평소 ±{avg * 100:.1f}%{', 평소보다 큼' if avg and abs(mv) > 1.5 * avg else ''})" if avg else "") if mv is not None else ""
+                if fresh and eps:
+                    out.append({"k": f"er_res:{L['d']}", "kind": "er", "ord": 0,
+                                "title": f"실적 결과: {L.get('verdict') or '발표'}" + (f" · {mvt.split(' (')[0]}" if mvt else ""),
+                                "desc": " · ".join(bits + ([mvt] if mvt else []))})
+                elif fresh and mv is not None and L.get("days", 0) >= 2:      # 컨센서스가 없는 종목: 주가 반응만
+                    out.append({"k": f"er_mv:{L['d']}", "kind": "er", "ord": 0, "title": f"실적 발표 뒤 {mvt.split(' (')[0]}",
+                                "desc": f"{kday(L['d'])} 발표 · " + mvt})
+                if L.get("days", 0) >= 3 and L.get("guide"):
+                    nq = L.get("nq") or {}
+                    g = [f"다음 분기 매출 전망 {pct(nq['rev'])}" if nq.get("rev") is not None else "",
+                         f"다음 분기 EPS 전망 {pct(nq['eps'])}" if nq.get("eps") is not None else "",
+                         f"올해 EPS 전망 {pct(L['fy'])}" if L.get("fy") is not None else "",
+                         f"목표가 {pct(L['pt'])}" if L.get("pt") is not None else "",
+                         f"최근 7일 상향 {int(L.get('up7') or 0)} · 하향 {int(L.get('dn7') or 0)}" if L.get("up7") is not None else ""]
+                    out.append({"k": f"er_g:{L['d']}", "kind": "er", "ord": 1, "title": f"실적 뒤 애널리스트 반응: {L['guide']}",
+                                "desc": " · ".join(x for x in g if x) + " (발표 전 대비)"})
         # 임원 장내 매수
         if not init and s["ib_last"] and s["ib_last"] != p.get("ib_last") and (p.get("ib_last") or "") < s["ib_last"]:
             sj = sj or stock_json(t)

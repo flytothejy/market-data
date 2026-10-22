@@ -61,6 +61,21 @@ function render(U) {
       <div class="rank">${hot.map((r, i) => `<a class="r" href="${stockUrl(r.t)}"><span class="i num">${i + 1}</span><span class="nm"><b>${esc(r.t)}</b><small>${esc(r.c_next.slice(5))} ${r.c_when || ''} · 예상 ±${fmt(r.er_imp, 'pct')} / 평소 ±${fmt(r.er_avg, 'pct')}</small></span><span class="v num">${r.x.toFixed(1)}배</span></a>`).join('')}</div></div>`;
   }
 
+  // 최근 발표 결과 (지난 7일)
+  const rec = U.rows.filter(r => r.k === 'stock' && r.er_d && r.er_d >= addDays(today, -7) && inScope(r)).sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
+  if (rec.length) {
+    const lab = r => { const e = r.er_eps_s, v = r.er_rev_s, L = x => x == null ? null : x > 0.02 ? 1 : x < -0.02 ? -1 : 0, a = L(e), b = v == null ? null : v > 0.01 ? 1 : v < -0.01 ? -1 : 0;
+      const k = a ?? b; if (k == null) return '<span class="faint">집계 중</span>';
+      const t = (a != null && b != null && a !== b) ? '엇갈림' : k > 0 ? '예상 상회' : k < 0 ? '예상 하회' : '예상 부합';
+      return `<span class="${k > 0 && t !== '엇갈림' ? 'up' : k < 0 && t !== '엇갈림' ? 'dn' : 'mut'}">${t}</span>`; };
+    const N = state.recAll ? rec.length : 12;
+    h += `<div class="card"><h3>최근 발표 결과 <span class="mut">지난 7일 · ${rec.length}개</span></h3><div class="sub">예상 = 발표 전날까지 애널리스트 평균 · 다음 분기 매출 전망 = 발표 뒤 애널리스트가 고친 정도 (가이던스의 온도)</div>
+      <div class="tbl-wrap"><table class="t"><thead><tr><th></th><th class="l">종목</th><th>발표</th><th>결과</th><th>EPS</th><th>매출</th><th>주가 반응</th><th>평소</th><th>다음 분기 매출 전망</th></tr></thead><tbody>
+      ${rec.slice(0, N).map(r => `<tr><td style="width:30px">${starBtn(r.t)}</td><td class="l nm"><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.ko || r.n || '').slice(0, 16))}</span></td>
+        <td>${esc(r.er_d.slice(5).replace('-', '/'))}</td><td>${lab(r)}</td><td>${pctS(r.er_eps_s)}</td><td>${pctS(r.er_rev_s)}</td><td>${pctS(r.er_mv)}</td><td class="num mut">${r.er_avg != null ? '±' + fmt(r.er_avg, 'pct') : '-'}</td><td>${pctS(r.er_nq)}</td></tr>`).join('')}
+      </tbody></table></div>${rec.length > 12 ? `<button class="btn" id="rec-more" style="align-self:flex-start">${state.recAll ? '접기' : `${rec.length - 12}개 더 보기`}</button>` : ''}</div>`;
+  }
+
   if (!days.length) {
     h += `<div class="card"><div class="mut s13">${esc(rl)}에 ${state.scope === 'all' ? '' : esc(scopes[state.scope][0].replace(/ \d+$/, '')) + ' 중 '}실적을 발표하는 종목이 없습니다.${state.scope === 'watch' && !watch.size ? ' 종목 화면에서 ☆ 관심 종목에 추가를 눌러 보세요.' : ''}</div></div>`;
   }
@@ -78,6 +93,7 @@ function render(U) {
   h += `<div class="small faint">옵션 예상 변동폭은 옵션을 수집하는 시가총액 상위 종목만, 발표 후 7일 안에 끝나는 옵션 만기가 있을 때(보통 발표 주간) 계산합니다 · 과거 평균 변동은 실적 발표 공시(8-K 2.02) 제출일 전날 종가 → 다음 날 종가 기준</div>`;
   $('#app').innerHTML = h;
   document.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { state.range = b.dataset.range; sync(); render(U); });
+  const rm = document.getElementById('rec-more'); if (rm) rm.onclick = () => { state.recAll = !state.recAll; render(U); };
   document.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { state.scope = b.dataset.scope; sync(); render(U); });
   footer();
 }

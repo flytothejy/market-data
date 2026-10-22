@@ -671,6 +671,108 @@ def consensus_table(d, asof):
     return C, asof
 
 
+# ---------------------------------------------------------------- 실적 결과 (발표 전 마지막 컨센서스 vs 실제, 발표 뒤 전망 변화)
+ER_BLOCKS = ("ehist", "rev", "eps", "pt", "eps_rev", "actual")
+
+
+def _rel(a, b):
+    """변화율 (기준이 0 근처·음수면 차이를 기준 절댓값으로 나눔)"""
+    if a is None or b is None or b == 0:
+        return None
+    return (a - b) / abs(b)
+
+
+def er_result(Ht, d, move=None, avg=None, sec_rev=None):
+    """d = 실적 발표일(8-K 2.02 제출일, 'YYYY-MM-DD'). Ht = 그 종목의 컨센서스 이력(긴 형식)
+    반환: {d, q, eps:{a,e,s}, rev:{a,e,s}, mv, avg, nq:{rev,eps}, fy, pt, up7, dn7, days, verdict, guide} — 숫자가 아직 없으면 그 칸은 None"""
+    if Ht is None or Ht.empty:
+        return None
+    dates = sorted(Ht.date.unique())
+    pre = [x for x in dates if x < d]
+    if not pre:
+        return None
+    pre = pre[-1]
+    V = Ht.set_index(["date", "block", "period", "field"]).value
+    V = V[~V.index.duplicated(keep="last")]
+    def v(date, b, per, f):
+        try:
+            x = V.loc[(date, b, per, f)]
+            return float(x) if x == x else None
+        except KeyError:
+            return None
+    def ehmax(date):
+        x = Ht[(Ht.date == date) & (Ht.block == "ehist")].period
+        return x.max() if len(x) else None
+    pe = ehmax(pre)
+    post = [x for x in dates if x >= d and ehmax(x) and (pe is None or ehmax(x) > pe)]
+    last = dates[-1]
+    out = {"d": d, "q": None, "eps": None, "rev": None, "mv": move, "avg": avg, "nq": None, "fy": None, "pt": None,
+           "up7": None, "dn7": None, "days": sum(1 for x in dates if x > d)}
+    # 매출 예상 = 발표 전 마지막 스냅숏의 이번 분기(0q) 평균
+    rev_e = v(pre, "rev", "0q", "avg")
+    if post:
+        q = ehmax(post[-1])
+        out["q"] = q
+        a, e = v(post[-1], "ehist", q, "epsActual"), v(post[-1], "ehist", q, "epsEstimate")
+        if a is not None and e is not None:
+            out["eps"] = {"a": a, "e": e, "s": _rel(a, e)}
+        # 실제 매출: 발표 뒤 받은 분기 손익(같은 분기 ±25일) → 없으면 SEC 분기 매출
+        qd = pd.Timestamp(q)
+        ra = None
+        act = Ht[(Ht.block == "actual") & (Ht.date >= d) & Ht.field.isin(["rev", "rev_op"])]
+        if len(act):
+            act = act.assign(pd_=pd.to_datetime(act.period, errors="coerce"))
+            act = act[(act.pd_ - qd).abs() <= pd.Timedelta(days=25)]
+            if len(act):
+                act = act.sort_values(["field", "date"])          # rev 우선
+                ra = float(act[act.field == "rev"].value.iloc[-1]) if (act.field == "rev").any() else float(act.value.iloc[-1])
+        if ra is None and sec_rev:
+            m = [(k, x) for k, x in sec_rev.items() if abs((pd.Timestamp(k) - qd).days) <= 25]
+            if m:
+                ra = float(m[-1][1])
+        if ra is not None and rev_e:
+            out["rev"] = {"a": ra, "e": rev_e, "s": _rel(ra, rev_e)}
+        # 발표 뒤 전망 변화: 분기가 넘어갔으면(작년 같은 분기 매출이 바뀜) 발표 전 '다음 분기' vs 지금 '이번 분기'
+        ya0, ya1 = v(pre, "rev", "0q", "yearAgoRevenue"), v(last, "rev", "0q", "yearAgoRevenue")
+        if ya0 and ya1 and abs(ya1 / ya0 - 1) > 0.002 and last > d:
+            out["nq"] = {"rev": _rel(v(last, "rev", "0q", "avg"), v(pre, "rev", "+1q", "avg")),
+                         "eps": _rel(v(last, "eps", "0q", "avg"), v(pre, "eps", "+1q", "avg"))}
+        ye0, ye1 = v(pre, "eps", "0y", "yearAgoEps"), v(last, "eps", "0y", "yearAgoEps")
+        if last > d and v(last, "eps", "0y", "avg") is not None:
+            same = ye0 is not None and ye1 is not None and abs(ye1 - ye0) <= max(0.01, abs(ye0) * 0.002)
+            out["fy"] = _rel(v(last, "eps", "0y", "avg"), v(pre, "eps", "0y" if same else "+1y", "avg"))
+        if last > d:
+            out["pt"] = _rel(v(last, "pt", "now", "mean"), v(pre, "pt", "now", "mean"))
+            out["up7"], out["dn7"] = v(last, "eps_rev", "0y", "upLast7days"), v(last, "eps_rev", "0y", "downLast7days")
+    out["verdict"], out["guide"] = er_verdict(out)
+    return out
+
+
+def er_verdict(r):
+    """한 줄 정리: (실적, 전망)"""
+    es = r["eps"]["s"] if r.get("eps") else None
+    rs = r["rev"]["s"] if r.get("rev") else None
+    def lv(x, th):
+        return None if x is None else 1 if x > th else -1 if x < -th else 0
+    e, v = lv(es, 0.02), lv(rs, 0.01)
+    if e is None and v is None:
+        res = None
+    elif e is not None and v is not None and e == v:
+        res = {1: "예상보다 좋은 실적", -1: "예상에 못 미친 실적", 0: "예상 수준의 실적"}[e]
+    elif e is not None and v is not None:
+        nm = {1: "상회", -1: "하회", 0: "부합"}
+        res = f"EPS는 예상 {nm[e]}, 매출은 예상 {nm[v]}"
+    else:
+        res = {1: "예상보다 좋은 실적", -1: "예상에 못 미친 실적", 0: "예상 수준의 실적"}[e if e is not None else v] + (" (EPS 기준)" if e is not None else " (매출 기준)")
+    g = None
+    nq = (r.get("nq") or {}).get("rev")
+    base = nq if nq is not None else r.get("fy")
+    if base is not None:
+        what = "다음 분기 매출 전망" if nq is not None else "올해 EPS 전망"
+        g = f"{what} 올라감" if base > 0.01 else f"{what} 내려감" if base < -0.01 else f"{what} 거의 그대로"
+    return res, g
+
+
 # ---------------------------------------------------------------- 메인
 def run(limit=0, **_):
     global OUT
@@ -739,6 +841,8 @@ def run(limit=0, **_):
     TK = read(DATA / "sec" / "tenk_features.parquet")
     TS = read(DATA / "sec" / "tenk_newsents.parquet")
     c_snap, c_asof, c_H = consensus_latest()
+    _cut = (pd.Timestamp.today() - pd.Timedelta(days=100)).strftime("%Y-%m-%d")
+    ERH = {t: g for t, g in c_H[c_H.block.isin(ER_BLOCKS) & (c_H.date >= _cut)].groupby("ticker")} if not c_H.empty else {}
     C, c_asof = consensus_table(c_snap, c_asof)
     c_hist = consensus_hist(c_H)
     now = pd.Timestamp.now().normalize()
@@ -972,7 +1076,7 @@ def run(limit=0, **_):
         row["k10"] = k10.filed.max() if len(k10) else None
         row["f144"] = int(((fl.form == "144") & (fl.filed >= now - pd.Timedelta(days=30))).sum())
         # 실적 발표 때 주가 반응: 8-K(2.02 실적 발표) 제출일 기준 전날 종가 → 다음날 종가 (장 전·장 후 발표 모두 포함)
-        er_hist = []
+        er_hist, er_d = [], None
         if g is not None and len(g) and len(fl):
             e8 = sorted(set(fl[fl.form.str.startswith("8-K") & fl["items"].astype(str).str.contains("2.02", regex=False)].filed.dropna().dt.normalize()))
             # 2.02는 인도량 발표 등에도 쓰임(테슬라) → 분기·연간 보고서 제출일 직전 40일 안의 마지막 2.02만 실적 발표로 봄
@@ -985,6 +1089,7 @@ def run(limit=0, **_):
             if e8 and (not ds or e8[-1] > ds[-1]) and (not rq or e8[-1] > rq[-1]) and (now - e8[-1]).days <= 40:
                 ds.append(e8[-1])                         # 방금 발표하고 보고서는 아직 안 낸 경우
             pxa = g.set_index("date").adj_close
+            er_d = str(ds[-1].date()) if ds else None
             for d in ds[-12:]:
                 i = pxa.index.searchsorted(d)
                 if 1 <= i and i + 1 < len(pxa):
@@ -992,6 +1097,17 @@ def run(limit=0, **_):
         if er_hist:
             mv = [abs(x[1]) for x in er_hist[-8:]]
             row["er_avg"] = sum(mv) / len(mv)
+        # 최근 실적 결과 (발표 뒤 75일 동안 카드 유지)
+        er_last = None
+        if er_d and (now - pd.Timestamp(er_d)).days <= 75:
+            try:
+                er_last = er_result(ERH.get(t, ERH.get(t.replace("-", "."))), er_d, move=er_hist[-1][1] if er_hist and er_hist[-1][0] == er_d else None,
+                                    avg=row.get("er_avg"), sec_rev=revq.get(cik))
+            except Exception as e:
+                R.warning(f"실적 결과 {t}: {str(e)[:60]}")
+            if er_last:
+                row.update(er_d=er_last["d"], er_eps_s=(er_last["eps"] or {}).get("s"), er_rev_s=(er_last["rev"] or {}).get("s"),
+                           er_mv=er_last["mv"], er_nq=(er_last["nq"] or {}).get("rev"))
         er_exp = None
         opx = OPg.get(t)
         if opx is not None and len(opx) and row.get("c_next"):
@@ -1093,7 +1209,7 @@ def run(limit=0, **_):
         if detail["trail"] and row.get("mcap"):
             ALL_TR.append((row.get("sec"), row.get("ind"), row["mcap"], detail["trail"]))
         detail["er"] = {"next": row.get("c_next"), "when": row.get("c_when"), "est": row.get("c_est"), "imp": row.get("er_imp"),
-                        "exp": er_exp, "avg": row.get("er_avg"), "hist": er_hist}
+                        "exp": er_exp, "avg": row.get("er_avg"), "hist": er_hist, "last": er_last}
         if t in g13:
             detail["g13"] = g13[t]
         if len(tk):                                       # 10-K 변화 숫자는 무료 (최근 6건)

@@ -4,6 +4,7 @@
   date, ticker, block, period, field, value
   block: rev(매출 전망) · eps(EPS 전망) · eps_trend(7/30/60/90일 전 전망치) · eps_rev(30일 상향·하향 수)
          growth(성장률 전망) · pt(목표주가) · rec(투자의견 분포) · ehist(최근 4분기 예상 vs 실제)
+         actual(최근 실적 발표 종목만: 분기 실제 매출 rev·희석 EPS eps — 실적 결과 카드의 '매출 실제 vs 예상'용)
 하루 한 번 찍어 두는 스냅숏이라, 지나간 날은 다시 받을 수 없음 → 빠지지 않는 게 가장 중요
 예전 S&P 500 수집분(저장소 consensus/*.csv.gz)은 처음 실행 때 함께 옮겨 담음
 """
@@ -41,9 +42,45 @@ def _frame_rows(df, block):
     return out
 
 
-def one(tk):
+def actuals(t):
+    """분기 손익계산서의 최근 2개 분기 실제 매출·희석 EPS (발표 직후 며칠 동안만 받음)"""
+    out = []
+    try:
+        q = t.quarterly_income_stmt
+    except Exception as e:
+        if _rate(e):
+            raise RateLimited(str(e)[:80])
+        return out
+    if q is None or getattr(q, "empty", True):
+        return out
+    for col in list(q.columns)[:2]:
+        p = str(col.date() if hasattr(col, "date") else col)[:10]
+        for name, f in (("Total Revenue", "rev"), ("Operating Revenue", "rev_op"), ("Diluted EPS", "eps"), ("Net Income", "ni")):
+            if name in q.index:
+                v = q.at[name, col]
+                if isinstance(v, (int, float)) and v == v:
+                    out.append(("actual", p, f, float(v)))
+    return out
+
+
+def recent_reporters(days=12):
+    """최근 실적 발표(8-K 2.02)를 낸 종목 — 실제 매출을 따로 받을 대상"""
+    try:
+        F = read(DATA / "sec" / "filings.parquet", columns=["ticker", "form", "filed", "items"])
+    except Exception:
+        return set()
+    if F is None or F.empty:
+        return set()
+    F = F[F.form.astype(str).str.startswith("8-K") & F["items"].astype(str).str.contains("2.02", regex=False)]
+    cut = (dt.date.today() - dt.timedelta(days=days)).isoformat()
+    return set(F[F.filed.astype(str) >= cut].ticker.dropna().astype(str).str.replace(".", "-", regex=False))
+
+
+def one(tk, with_actual=False):
     t = yf.Ticker(tk)
     rows = []
+    if with_actual:
+        rows += actuals(t)
     for block, attr in BLOCKS:
         try:
             df = getattr(t, attr)
@@ -104,12 +141,13 @@ def run(limit=0, **_):
         tickers = tickers[:limit]
     from zoneinfo import ZoneInfo                      # 미국 동부 날짜 = 그날 장 마감 기준 스냅숏 (자정 넘겨도 같은 날짜)
     today = dt.datetime.now(ZoneInfo("America/New_York")).date().isoformat()
-    log(f"컨센서스 수집: {len(tickers)}종목")
+    rec = recent_reporters()
+    log(f"컨센서스 수집: {len(tickers)}종목 (최근 실적 발표 {len(rec & set(tickers))}종목은 실제 매출도)")
     rows, empty, failed, t0, n429, pause = [], [], [], time.time(), 0, 0.35
     for i, tk in enumerate(tickers, 1):
         for k in range(4):
             try:
-                rs = one(tk)
+                rs = one(tk, tk in rec)
                 rows += [(today, tk) + r for r in rs]
                 if not rs:
                     empty.append(tk)
@@ -134,6 +172,7 @@ def run(limit=0, **_):
     got = D.ticker.nunique() if not D.empty else 0
     with_rev = D[(D.block == "eps_rev")].ticker.nunique() if not D.empty else 0
     with_pt = D[(D.block == "pt")].ticker.nunique() if not D.empty else 0
+    R.set(actual=int(D[D.block == "actual"].ticker.nunique()) if not D.empty else 0)
     if failed:
         R.warning(f"받지 못한 종목 {len(failed)}개: {', '.join(failed[:20])}")
     if got < 0.8 * len(tickers):

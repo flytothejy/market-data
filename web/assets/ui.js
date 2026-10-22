@@ -397,6 +397,30 @@ function checklistHtml(items, compact) {
     <div class="small faint">점수나 추천이 아니라 확인할 거리예요 · '검증' 표시는 16년 백테스트에서 이후 성과와 관련이 확인된 신호(오른쪽 아래 경고·임원 매수)뿐이에요</div></div>`;
 }
 
+// ---- 최근 실적 결과 (build.py er_result) — 종목 화면·후보함에서 같이 씀
+function erResultHtml(L, opt = {}) {
+  if (!L) return '';
+  const md = s => s ? `${+s.slice(5, 7)}/${+s.slice(8, 10)}` : '';
+  const usd = v => v == null ? '-' : Math.abs(v) >= 1e6 ? fmtUsd(v) : '$' + v.toFixed(2);
+  const vs = (x, unit) => x ? `<b class="num">${usd(x.a)}</b> ${pb(x.s)}<span class="mut s13">예상 ${usd(x.e)}</span>` : `<span class="mut s13">${unit}</span>`;
+  const pb = v => `<b class="${cls(v)} num">${fmt(v, 'pct', { sign: true })}</b>`;
+  const big = L.mv != null && L.avg ? Math.abs(L.mv) > 1.5 * L.avg : false;
+  const head = [L.verdict, L.guide].filter(Boolean).join(' · ');
+  const after = L.days >= 1 && (L.nq || L.fy != null || L.pt != null);
+  return `<div class="er-res">
+    <div class="er-h"><b>${head ? esc(head) : '결과 집계 중'}</b><span class="mut s13">${md(L.d)} 발표${L.q ? ` · ${esc(L.q.slice(0, 7))} 분기` : ''}</span></div>
+    <div class="kv">
+      <div><span>EPS</span>${vs(L.eps, '집계 중 (보통 발표 다음 날)')}</div>
+      <div><span>매출</span>${vs(L.rev, '집계 중 (분기 보고서 제출 뒤)')}</div>
+      <div><span>주가 반응</span>${L.mv != null ? `${pb(L.mv)}<span class="mut s13">평소 ±${fmt(L.avg, 'pct')}${big ? ' · 평소보다 큼' : ''}</span>` : '<span class="mut s13">다음 거래일 종가 뒤</span>'}</div>
+    </div>
+    ${after ? `<div class="er-after"><div class="small mut">발표 뒤 애널리스트 전망 변화 (발표 전 대비 · ${L.days}거래일째)</div>
+      <div class="kv">${L.nq && L.nq.rev != null ? `<div><span>다음 분기 매출 전망</span>${pb(L.nq.rev)}</div>` : ''}${L.nq && L.nq.eps != null ? `<div><span>다음 분기 EPS 전망</span>${pb(L.nq.eps)}</div>` : ''}${L.fy != null ? `<div><span>올해 EPS 전망</span>${pb(L.fy)}</div>` : ''}${L.pt != null ? `<div><span>평균 목표가</span>${pb(L.pt)}</div>` : ''}${L.up7 != null || L.dn7 != null ? `<div><span>최근 7일 상향·하향</span><b class="num">${L.up7 ?? 0} · ${L.dn7 ?? 0}</b></div>` : ''}</div></div>`
+      : L.eps ? '<div class="small faint">발표 뒤 애널리스트 전망 변화는 다음 갱신부터 보여요</div>' : ''}
+    ${opt.note === false ? '' : '<div class="small faint">예상 = 발표 전날까지의 애널리스트 평균 · 가이던스 원문 대신 발표 뒤 애널리스트가 고친 전망으로 회사 전망의 온도를 봐요</div>'}
+  </div>`;
+}
+
 // ---- 지표 설명 (라벨 옆 ? 에 마우스를 올리거나 누르면 표시)
 const GLOSS = {
   c_ratio: '최근 30일 동안 내년 EPS 전망을 올린 애널리스트 수에서 내린 수를 빼고, 전체 수로 나눈 값. 플러스면 전망이 좋아지는 중',

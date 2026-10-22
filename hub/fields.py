@@ -17,7 +17,10 @@ F = {
     "c_rev_g": ("내년 매출 성장(전망)", "cons", "pct", "free"), "c_fpe": ("선행 PER", "cons", "x", "free"),
     "c_surp": ("최근 실적 서프라이즈", "cons", "pct", "free"), "c_beats": ("최근 4분기 상회 횟수", "cons", "int", "free"),
     "c_next": ("다음 실적 발표", "cons", "date", "free"), "c_when": ("발표 시점(장 전/후)", "cons", "text", "free"),
-    "er_avg": ("실적 발표 평균 주가 변동(최근 8회)", "cons", "pct", "free"), "er_imp": ("옵션 예상 변동폭(발표 포함 만기)", "cons", "pct", "free"),
+    "er_avg": ("실적 발표 평균 주가 변동(최근 8회)", "cons", "pct", "free"),
+    "er_d": ("최근 실적 발표일", "cons", "date", "free"), "er_eps_s": ("최근 실적 EPS 서프라이즈", "cons", "pct", "free"),
+    "er_rev_s": ("최근 실적 매출 서프라이즈", "cons", "pct", "free"), "er_mv": ("최근 실적 발표 뒤 주가 반응", "cons", "pct", "free"),
+    "er_nq": ("발표 뒤 다음 분기 매출 전망 변화", "cons", "pct", "free"), "er_imp": ("옵션 예상 변동폭(발표 포함 만기)", "cons", "pct", "free"),
     # 재무
     "rev": ("매출(TTM)", "fin", "usd", "free"), "rev_g": ("매출 성장(TTM)", "fin", "pct", "free"),
     "rev_qg": ("매출 성장(최근 분기)", "fin", "pct", "free"), "gm": ("매출총이익률", "fin", "pct", "free"),
