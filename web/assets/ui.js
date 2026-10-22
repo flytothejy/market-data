@@ -130,15 +130,82 @@ const Watch = {
       return a;
     } catch (e) { return this._mem || []; }
   },
-  save(a) { this._mem = a; try { localStorage.setItem(this.KEY, JSON.stringify(a)); } catch (e) { } },
+  save(a, quiet) { this._mem = a; try { localStorage.setItem(this.KEY, JSON.stringify(a)); } catch (e) { } if (!quiet) Sync.soon(); },
   list() { return this.records().map(r => r.t); },
   get(t) { return this.records().find(r => r.t === t) || null; },
   has(t) { return this.list().includes(t); },
-  add(rec) { const a = this.records().filter(r => r.t !== rec.t); a.unshift(rec); this.save(a); },
-  update(t, patch) { const a = this.records(); const r = a.find(x => x.t === t); if (r) { Object.assign(r, patch); this.save(a); } return r; },
-  remove(t) { this.save(this.records().filter(r => r.t !== t)); },
+  add(rec) { const a = this.records().filter(r => r.t !== rec.t); a.unshift({ ...rec, u: Date.now() }); this.undel(rec.t); this.save(a); },
+  update(t, patch) { const a = this.records(); const r = a.find(x => x.t === t); if (r) { Object.assign(r, patch, { u: Date.now() }); this.save(a); } return r; },
+  remove(t) { this.tomb(t, Date.now()); this.save(this.records().filter(r => r.t !== t)); },
   toggle(t) { if (this.has(t)) { this.remove(t); return false; } this.add({ t, at: null, px: null, purpose: '', why: '', note: '', src: { page: 'unknown' }, snap: null }); return true; },
+  // 지운 기록 (다른 기기에도 지워지게 동기화할 때 씀)
+  DEL: 'hub.watch.del',
+  dels() { try { return JSON.parse(localStorage.getItem(this.DEL)) || {}; } catch (e) { return {}; } },
+  tomb(t, u) { const d = this.dels(); d[t] = u; try { localStorage.setItem(this.DEL, JSON.stringify(d)); } catch (e) { } },
+  undel(t) { const d = this.dels(); if (t in d) { delete d[t]; try { localStorage.setItem(this.DEL, JSON.stringify(d)); } catch (e) { } } },
 };
+
+// ---- 후보함 동기화 + 텔레그램 알림 (Cloudflare Worker + D1)
+// 이 브라우저의 기기코드(무작위)가 로그인 전 단계의 계정 역할. 코드는 이 브라우저에만 있고 서버엔 해시만 저장
+// 화면은 언제나 localStorage로 바로 그리고, 바뀐 것만 뒤에서 서버와 주고받음 (항목마다 수정 시각이 더 최근인 쪽이 이김)
+function notice(msg) {
+  const el = document.createElement('div'); el.className = 'notice-pop'; el.textContent = msg;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 5000);
+}
+const API_BASE = (window.HUB_API || 'https://tickermap-api.flytothejy.workers.dev').replace(/\/$/, '');
+const Sync = {
+  KEY: 'hub.sync.v1',
+  st() { try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch (e) { return {}; } },
+  set(p) { const s = { ...this.st(), ...p }; try { localStorage.setItem(this.KEY, JSON.stringify(s)); } catch (e) { } return s; },
+  on() { return !!this.st().code; },
+  async call(path, body) {
+    const r = await fetch(API_BASE + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { if (r.status === 401) this.set({ code: null, me: null }); throw new Error(j.error || r.status); }
+    return j;
+  },
+  async ensure() { if (!this.on()) this.set({ code: (await this.call('/api/register')).code }); return this.st().code; },
+  _t: null,
+  soon() { if (!this.on()) return; clearTimeout(this._t); this._t = setTimeout(() => this.run().catch(() => { }), 1500); },
+  async run() {
+    const code = this.st().code; if (!code) return null;
+    const recs = Watch.records(), dels = Watch.dels();
+    const items = [...recs.map(r => ({ ...r, u: r.u || (r.at ? Date.parse(r.at) : 1) })), ...Object.entries(dels).map(([t, u]) => ({ t, u, del: 1 }))];
+    const j = await this.call('/api/sync', { code, items });
+    // 서버 결과 반영: 서버 쪽이 더 최근이면 받아옴
+    const by = Object.fromEntries(recs.map(r => [r.t, r]));
+    let changed = false;
+    for (const x of j.items || []) {
+      const loc = by[x.t], lu = loc ? (loc.u || 0) : (dels[x.t] || -1);
+      if (!(x.u > lu)) continue;
+      changed = true;
+      if (x.del) { delete by[x.t]; Watch.tomb(x.t, x.u); } else { by[x.t] = x; Watch.undel(x.t); }
+    }
+    if (changed) {
+      const order = recs.map(r => r.t).filter(t => by[t]), extra = Object.keys(by).filter(t => !order.includes(t)).sort((a, b) => (by[b].u || 0) - (by[a].u || 0));
+      Watch.save([...extra, ...order].map(t => by[t]), true);
+      document.dispatchEvent(new CustomEvent('watch-change'));
+    }
+    this.set({ me: j.me, at: Date.now() });
+    document.dispatchEvent(new CustomEvent('sync-change'));
+    return j.me;
+  },
+  async link() { await this.ensure(); await this.run(); return (await this.call('/api/link', { code: this.st().code })).url; },
+  async mode(m) { const j = await this.call('/api/mode', { code: this.st().code, mode: m }); this.set({ me: j.me }); return j.me; },
+  async unlink() { const j = await this.call('/api/unlink', { code: this.st().code }); this.set({ me: j.me }); return j.me; },
+  async join(token) {                                  // 텔레그램 /기기 링크 → 이 기기를 같은 후보함에 붙임 (이 기기 후보함은 합쳐짐)
+    const j = await this.call('/api/join', { token });
+    this.set({ code: j.code });
+    return this.run();
+  },
+};
+(() => {                                               // 페이지를 열 때 (연결된 경우만) 1분에 한 번 받아오기 + 기기 추가 링크 처리
+  const m = location.hash.match(/join=([\w-]+)/);
+  if (m) {
+    history.replaceState(null, '', location.pathname + location.search);
+    Sync.join(m[1]).then(() => notice('이 기기에 후보함을 이어 붙였어요')).catch(e => notice('기기 추가 실패: ' + e.message));
+  } else if (Sync.on() && Date.now() - (Sync.st().at || 0) > 60e3) setTimeout(() => Sync.run().catch(() => { }), 300);
+})();
 // 포트폴리오 보유 종목 (포트폴리오 화면과 같은 저장소)
 function portfolioTickers() {
   try { const p = JSON.parse(localStorage.getItem('hub.portfolio.v1')); return (p && p.items || []).map(x => x.t); } catch (e) { return []; }

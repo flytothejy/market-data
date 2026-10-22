@@ -47,6 +47,8 @@ jobs:
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      ALERT_API: ${{ vars.ALERT_API }}     # 후보함 알림: Cloudflare Worker(tickermap-api) 주소 — 없으면 감지만
+      ALERT_KEY: ${{ secrets.ALERT_KEY }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

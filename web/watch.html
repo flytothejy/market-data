@@ -27,6 +27,11 @@
 .src{font-size:12px;color:var(--faint)}
 .wi-ck summary{cursor:pointer;color:var(--muted);padding:2px 0}
 .wi-ck[open] summary{margin-bottom:8px}
+.al{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.al .al-t{flex:1;min-width:240px}
+.al .al-t b{font-size:15px}
+.al ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}
+.al .on-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#15803d;margin-right:6px;vertical-align:1px}
 </style>
 </head>
 <body>
@@ -90,6 +95,44 @@ function item(rec) {
     <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="${stockUrl(rec.t)}" style="text-decoration:none">종목 화면 →</a>${againLink(rec)}</div>
   </div>`;
 }
+// ---- 텔레그램 알림 연결
+let waiting = 0;
+function alertPanel() {
+  const el = $('#alert'); if (!el) return;
+  const me = Sync.st().me;
+  if (me && me.linked) {
+    el.innerHTML = `<div class="al"><div class="al-t"><b><span class="on-dot"></span>텔레그램 알림 ${me.mode === 'off' ? '꺼짐' : '켜짐'}</b>${me.tg ? ` <span class="mut s13">· ${esc(me.tg)}</span>` : ''}
+        <div class="small mut">${me.mode === 'off' ? '다시 켜면 매일 아침 후보함 소식을 모아 보내요' : '매일 아침 8~9시(한국 시간)에 후보함 종목의 새 소식을 한 번에 · 다른 기기는 봇에게 /기기'}</div></div>
+      <button class="btn" data-al="mode">${me.mode === 'off' ? '알림 켜기' : '알림 끄기'}</button><button class="btn" data-al="unlink">연결 끊기</button></div>`;
+  } else {
+    el.innerHTML = `<div class="al"><div class="al-t"><b>📨 후보함 소식을 텔레그램으로 받기</b>
+        <ul><li>실적 발표 하루 전, 발표 뒤 주가 반응</li><li>종목 점검표에 새로 생긴 경고</li><li>임원 장내 매수</li></ul>
+        <div class="small faint" style="margin-top:6px">매일 아침 한 번 모아서 · 로그인 없이 이 브라우저를 텔레그램과 연결해요 (후보함이 서버에도 저장돼 다른 기기에서 이어 쓸 수 있어요)</div></div>
+      <button class="btn dark" data-al="link">${waiting ? '연결 기다리는 중…' : '텔레그램 연결'}</button></div>`;
+  }
+  el.querySelectorAll('[data-al]').forEach(b => b.onclick = async () => {
+    const a = b.dataset.al;
+    b.disabled = true;
+    try {
+      if (a === 'link') {
+        const w = window.open('about:blank', '_blank');           // 팝업 차단을 피하려고 먼저 창을 엶
+        const url = await Sync.link();
+        if (w) w.location = url; else location.href = url;
+        waiting = Date.now(); poll();
+      } else if (a === 'mode') await Sync.mode(me.mode === 'off' ? 'digest' : 'off');
+      else if (a === 'unlink') { if (confirm('텔레그램 연결을 끊을까요? 후보함은 그대로 남아요')) await Sync.unlink(); }
+    } catch (e) { notice('실패: ' + e.message); }
+    alertPanel();
+  });
+}
+async function poll() {                                         // 봇에서 시작을 누를 때까지 3초마다 확인 (최대 3분)
+  if (!waiting || Date.now() - waiting > 180e3) { waiting = 0; alertPanel(); return; }
+  try { const me = await Sync.run(); if (me && me.linked) { waiting = 0; notice('텔레그램과 연결됐어요'); alertPanel(); return; } } catch (e) { }
+  setTimeout(poll, 3000);
+}
+document.addEventListener('sync-change', alertPanel);
+document.addEventListener('watch-change', () => { if (U && !document.activeElement.matches('input,textarea')) render(); });
+
 function render() {
   const all = Watch.records();
   let rs = all.filter(r => !st.p || (st.p === 'none' ? !r.purpose : r.purpose === st.p));
@@ -98,13 +141,15 @@ function render() {
   const rets = all.map(ret).filter(v => v != null), avg = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
   const nwarn = all.filter(rec => changes(rec, U.rows.find(x => x.t === rec.t)).warn.length).length;
   const cnt = k => all.filter(r => k === 'none' ? !r.purpose : r.purpose === k).length;
-  $('#app').innerHTML = `<div class="hero"><h1>후보함</h1><p>담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었나 · 이 브라우저에 저장됨 · 어느 화면에서든 ☆를 누르면 그때의 상태가 함께 기록돼요</p></div>
+  $('#app').innerHTML = `<div class="hero"><h1>후보함</h1><p>담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었나 · ${Sync.on() ? '이 기기와 서버에 저장됨' : '이 브라우저에 저장됨'} · 어느 화면에서든 ☆를 누르면 그때의 상태가 함께 기록돼요</p></div>
+    <div class="card" id="alert"></div>
     ${all.length ? `<div class="card"><div class="kv"><div><span>담은 종목</span><b>${all.length}개</b></div>${avg != null ? `<div><span>담은 뒤 평균</span><b>${pctS(avg)}</b></div>` : ''}<div><span>오른쪽 아래로 들어간 종목</span><b>${nwarn}개</b></div></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="mx-seg seg">${[['', `전체 ${all.length}`], ['hold', `${PURPOSE.hold} ${cnt('hold')}`], ['consider', `${PURPOSE.consider} ${cnt('consider')}`], ['watch', `${PURPOSE.watch} ${cnt('watch')}`], ['none', `목적 미정 ${cnt('none')}`]].map(([k, l]) => `<button class="btn ${st.p === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')}</div>
       <label class="s13 mut" style="margin-left:auto">정렬 <select class="f" id="sort"><option value="at">담은 순</option><option value="ret" ${st.sort === 'ret' ? 'selected' : ''}>담은 뒤 수익률</option></select></label></div>
     <div class="wl">${rs.map(item).join('') || '<div class="card mut s13">해당하는 종목이 없어요</div>'}</div>`
     : `<div class="card"><p class="s13" style="margin:0">아직 담은 종목이 없어요. <a href="matrix.html">티커맵</a>·종목 화면·<a href="ranking.html">티커랭킹</a>·<a href="earnings.html">실적 달력</a>에서 ☆를 누르면, 그때의 렌즈 위치·트레일 모양·가격이 담은 이유와 함께 여기에 모여요.</p></div>`}
     <div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 담은 뒤 수익률은 담을 때 화면 데이터의 종가 기준</div>`;
+  alertPanel();
   document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { st.p = b.dataset.f; render(); });
   const so = $('#sort'); if (so) so.onchange = e => { st.sort = e.target.value; render(); };
   document.querySelectorAll('.wi').forEach(c => {
