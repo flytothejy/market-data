@@ -5,6 +5,7 @@ main = "worker.js"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 keep_vars = true          # 대시보드에서 넣은 변수를 배포 때 지우지 않음
+workers_dev = true       # 예전 주소(tickermap-api.flytothejy.workers.dev)도 계속 — 텔레그램 웹훅·Actions 알림·github.io 사본이 씀
 
 routes = [{ pattern = "api.tickermap.kr", custom_domain = true }]
 
