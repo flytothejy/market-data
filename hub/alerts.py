@@ -249,6 +249,16 @@ def _api(path, body=None):
 
 def run(limit=0, full=False, **_):
     R = Run("alerts")
+    p = SITE / "free" / "universe.json"
+    if os.environ.get("R2_BUCKET") and not p.exists():   # 단독 실행: 화면 데이터를 R2에서 (지우기 표시 파일은 안 받으니 push가 화면 데이터를 지우지 않음)
+        from . import sync
+        try:
+            sync.pull(only=["site/api/v1/free/universe.json", "site/api/v1/free/stock/"])
+        except Exception as e:
+            R.warning(f"R2에서 받기 실패: {e}")
+    if not p.exists():
+        R.warning("치명: universe.json 없음")
+        return R.done(ok=False)
     U = json.loads((SITE / "free" / "universe.json").read_text(encoding="utf-8"))
     old = json.loads(ST.read_text(encoding="utf-8")) if ST.exists() else {}
     init = not old.get("tickers")
