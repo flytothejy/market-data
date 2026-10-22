@@ -107,7 +107,9 @@ async function renderStock(U, d, P) {
   const F = U.fields, m = d.m;
   const tabs = [['ov', '개요'], ['cons', '컨센서스'], ['fin', '재무'], ['tech', '차트·수급'], ['doc', '공시·내부자'], ['news', '뉴스']];
   let h = headBlock(m, []);
-  h += `<nav class="tabs">${tabs.map(([k, l], i) => `<a href="#${k}" class="${i ? '' : 'on'}">${l}</a>`).join('')}</nav>`;
+  // 탭 줄 오른쪽 끝: 스크롤해도 따라오는 티커·종가·후보함 담기 (담으면 지금 보고 있는 칸이 '담은 곳'으로 기록됨)
+  h += `<nav class="tabs">${tabs.map(([k, l], i) => `<a href="#${k}" class="${i ? '' : 'on'}">${l}</a>`).join('')}
+    <span class="tab-end"><span class="tab-tk"><b>${esc(m.t)}</b>${m.px ? ` <span class="num mut">$${(+m.px).toFixed(2)}</span>` : ''}</span>${starBtn(m.t)}</span></nav>`;
 
   // 다섯 카테고리 요약
   const pick = (k) => m[k];

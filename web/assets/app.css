@@ -115,6 +115,9 @@ input.f,select.f{font:inherit;font-size:13px;padding:6px 10px;border:1px solid v
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto;position:sticky;top:57px;background:var(--bg);z-index:10}
 .tabs a{padding:10px 12px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
 .tabs a.on{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
+.tabs .tab-end{margin-left:auto;position:sticky;right:0;display:flex;align-items:center;gap:4px;padding-left:22px;background:linear-gradient(90deg,transparent,var(--bg) 20px);font-size:13px;white-space:nowrap}
+.tabs .tab-end .star{font-size:19px;min-width:36px;min-height:36px}
+@media (max-width:760px){.tabs .tab-tk .num{display:none}}
 .tabs a:hover{text-decoration:none;color:var(--ink)}
 @media (max-width:760px){.tabs{top:96px}}
 
