@@ -417,10 +417,11 @@ function side() {
   }
   const row = p => `<a data-pick="${esc(p.id)}" class="${st.view === 'stock' ? '' : 'g'}"><b>${esc(st.view === 'stock' ? p.id : p.label)}</b><small>${esc(st.view === 'stock' ? p.sub : '')}</small><span class="v">${sgn(p.x)} · ${esc(L.fy(p.y, p.r))}</span></a>`;
   const tl = pick(visible, 'tl'), br = pick(visible, 'br'), where = zoomed() ? '확대한 영역 · ' : '';
-  return `<div class="card"><h3>어떻게 읽나요</h3><p class="s13 mut" style="margin:0">${esc(L.desc)}</p><p class="small faint" style="margin:0">휠·두 손가락으로 확대, 끌어서 이동, 두 번 누르면 전체 보기. 점을 누르면 티커 트레일(지나온 길)을, Shift를 누른 채 누르면 여러 개를 함께 그려요.</p></div>
-    <div class="card"><h3 style="color:var(--up)">${esc(where + L.tl)}</h3><div class="mx-list">${tl.map(row).join('') || '<span class="mut s13">해당하는 곳이 없어요</span>'}</div></div>
+  return `<div class="card"><h3 style="color:var(--up)">${esc(where + L.tl)}</h3><div class="mx-list">${tl.map(row).join('') || '<span class="mut s13">해당하는 곳이 없어요</span>'}</div></div>
     <div class="card"><h3 style="color:var(--dn)">${esc(where + L.br)}</h3><div class="mx-list">${br.map(row).join('') || '<span class="mut s13">해당하는 곳이 없어요</span>'}</div></div>`;
 }
+// 지도 아래 '어떻게 읽나요' (오른쪽 목록이 지도 위쪽과 나란히 시작하게 옆에서 뺌)
+const howTo = () => `<div class="mx-how"><b>어떻게 읽나요</b><span class="s13 mut">${esc(LENS[st.lens].desc)}</span><span class="small faint">휠·두 손가락으로 확대, 끌어서 이동, 두 번 누르면 전체 보기 · 점을 누르면 티커 트레일(지나온 길), Shift를 누른 채 누르면 여러 개를 함께</span></div>`;
 const queueSide = () => { clearTimeout(sideTimer); sideTimer = setTimeout(() => { $('#mx-side').innerHTML = side(); bindSide(); }, 220); };
 
 // ---- 전체 다시 그리기 (렌즈·필터·트레일 목록이 바뀔 때)
@@ -440,6 +441,7 @@ function render(keepDom) {
     <svg id="mx-svg" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="티커맵: 가로 최근 ${XW[st.xw][0]} 주가, 세로 ${esc(L.name)}"></svg><div class="mx-tip" id="mx-tip"></div>`;
   drawChart();
   $('#mx-side').innerHTML = side();
+  const hw = $('#mx-how'); if (hw) hw.innerHTML = howTo();
   bindCtl(); bindChart(); bindSide();
   const tl = $('#mx-tl');
   if (tl) { tl.oninput = e => { if (playing) { playing = false; cancelAnimationFrame(playRaf); } setFrame(+e.target.value); }; $('#mx-play').onclick = play; playUi(); }
@@ -595,7 +597,7 @@ function bindSide() {
   S = U.rows.filter(r => r.k === 'stock');
   $('#app').innerHTML = `<div class="hero"><h1>티커맵</h1><p>주가와 신호가 어긋난 종목을 찾는 지도 · 가로 = 주가, 세로 = 고른 신호, 점 크기 = 시가총액 · <span id="mx-count"></span></p></div>
     <div class="card" id="mx-ctl" style="gap:10px"></div>
-    <div class="mx-wrap"><div class="mx-chart" id="mx-chart"></div><div class="mx-side" id="mx-side"></div></div>
+    <div class="mx-wrap"><div class="mx-left"><div class="mx-chart" id="mx-chart"></div><div id="mx-how"></div></div><div class="mx-side" id="mx-side"></div></div>
     <div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 가로축 범위 밖의 종목은 가장자리에 붙여 그립니다 · 업종 원은 시가총액 가중 평균 · 출처: SEC EDGAR(재무·내부자·13F), FINRA(공매도), yfinance(가격·컨센서스)</div>`;
   render();
   if (st.track.length) ensureTrails();
