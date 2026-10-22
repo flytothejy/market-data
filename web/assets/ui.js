@@ -468,3 +468,53 @@ const GLOSS = {
   g13_chg: '이번 분기 새로 사거나 5% 넘게 늘린 유명 투자자 수 − 다 팔거나 5% 넘게 줄인 수',
 };
 const tip = k => GLOSS[k] ? `<span class="tip" tabindex="0" role="note" aria-label="${esc(GLOSS[k])}" data-tip="${esc(GLOSS[k])}">?</span>` : '';
+
+// ---- 티커에 마우스를 올리면 회사 이름 (화면 어디든: 표·범례·칩·순위 목록)
+// 글자가 티커 모양인 가장 안쪽 요소를 찾아 표시해 두고, 올렸을 때 종목 목록에서 찾아 보여 줌 (없으면 아무것도 안 함)
+(() => {
+  const RE = /^[A-Z][A-Z0-9.\-]{0,6}$/;
+  const SEL = 'b,strong,a,th,td,span,button,small,i,em,div,label';
+  let map = null, loading = null;
+  const load = () => loading || (loading = Data.universe().then(U => { map = new Map(U.rows.map(r => [r.t, r])); }).catch(() => { map = new Map(); }));
+  function tag(root) {
+    if (!root || !root.querySelectorAll) return;
+    const els = root.matches && root.matches(SEL) ? [root, ...root.querySelectorAll(SEL)] : root.querySelectorAll(SEL);
+    for (const el of els) {
+      if (el.dataset.tk || el.closest('svg,input,textarea,select,nav,.tk-tip,[data-notk]')) continue;
+      const t = el.textContent.trim();
+      if (t.length > 7 || !RE.test(t)) continue;
+      if ([...el.children].some(c => c.textContent.trim())) continue;       // 글자를 가진 자식이 있으면 그 자식이 대상
+      if (!map.has(t)) continue;
+      el.dataset.tk = t;
+    }
+  }
+  let pend = [], timer = null;
+  const mo = new MutationObserver(ms => {
+    for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) pend.push(n);
+    clearTimeout(timer); timer = setTimeout(() => { const a = pend; pend = []; a.forEach(tag); }, 120);
+  });
+  const start = () => load().then(() => { tag(document.body); mo.observe(document.body, { childList: true, subtree: true }); });   // 화면 대부분이 이미 받는 목록 (캐시 공유)
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+
+  let tip = null, cur = null;
+  const hide = () => { if (tip) tip.style.display = 'none'; cur = null; };
+  document.addEventListener('mouseover', async e => {
+    const el = e.target.closest && e.target.closest('[data-tk]');
+    if (!el || el === cur) return;
+    cur = el;
+    const r = map && map.get(el.dataset.tk);
+    if (!r) return;
+    if (!tip) { tip = document.createElement('div'); tip.className = 'tk-tip'; document.body.appendChild(tip); }
+    const sub = r.k === 'etf'
+      ? [r.grp, r.aum ? `운용자산 ${fmtUsd(r.aum)}` : '', r.exp != null ? `보수 ${(r.exp * 100).toFixed(2)}%` : ''].filter(Boolean).join(' · ')
+      : [r.sec ? secKo(r.sec) : '', r.mcap ? `시가총액 ${fmtUsd(r.mcap)}` : ''].filter(Boolean).join(' · ');
+    tip.innerHTML = `<div><b>${esc(r.t)}</b> ${esc(r.ko || '')}</div>${r.n && r.n !== r.ko ? `<div class="tk-n">${esc(r.n)}</div>` : ''}${sub ? `<div class="tk-s">${esc(sub)}${r.r1d != null ? ` · 1일 <span class="${cls(r.r1d)}">${fmt(r.r1d, 'pct', { sign: true })}</span>` : ''}</div>` : ''}`;
+    tip.style.display = 'block';
+    const b = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = Math.min(Math.max(8, b.left + b.width / 2 - w / 2), innerWidth - w - 8), y = b.top - h - 8;
+    if (y < 8) y = b.bottom + 8;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  });
+  document.addEventListener('mouseout', e => { const el = e.target.closest && e.target.closest('[data-tk]'); if (el && el === cur && !el.contains(e.relatedTarget)) hide(); });
+  addEventListener('scroll', hide, { passive: true });
+})();

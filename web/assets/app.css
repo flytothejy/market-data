@@ -170,3 +170,8 @@ th .tip:hover::after,th .tip:focus::after{left:auto;right:-8px;transform:none}
 .er-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 .er-h b{font-size:16px}
 .er-after{border-top:1px dashed var(--line);padding-top:8px;display:flex;flex-direction:column;gap:6px}
+.tk-tip{position:fixed;z-index:300;display:none;pointer-events:none;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.14);max-width:300px}
+.tk-tip .tk-n{color:var(--muted);font-size:12px}
+.tk-tip .tk-s{color:var(--muted);font-size:12px;margin-top:2px}
+[data-tk]{cursor:help}
+a[data-tk],button [data-tk],a [data-tk]{cursor:pointer}
