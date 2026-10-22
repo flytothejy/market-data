@@ -283,6 +283,12 @@ def run(limit=0, full=False, **_):
                 for it in u["items"]:
                     it["_sent"] = {k.split("|", 1)[1] for k in mine if k.startswith(it["t"] + "|")}
                 parts, keys = message(U["asof"], u["items"], ev, rows)
+                if not parts and full:                      # 수동 실행(--full)은 새 소식이 없어도 연결 시험 겸 다가오는 실적을 보냄
+                    up = sorted((rows[i["t"]]["c_next"], i["t"]) for i in u["items"] if rows.get(i["t"], {}).get("c_next") and rows[i["t"]]["c_next"] > U["asof"])[:5]
+                    parts = [f"<b>티커맵 알림 시험</b> · 미국 {kday(U['asof'])} 종가 기준\n후보함 {len(u['items'])}종목 · 오늘은 새 소식이 없어요",
+                             "다가오는 실적\n" + ("\n".join(f"📅 <b>{html.escape(t)}</b> {kday(d)}" for d, t in up) if up else "(없음)"),
+                             f'<a href="{SITE_URL}/watch.html">후보함 열기</a> · 매일 아침 새 소식이 있을 때만 보내요']
+                    keys = []
                 if not parts:
                     continue
                 for m in split(parts):
