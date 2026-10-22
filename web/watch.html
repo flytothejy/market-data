@@ -48,8 +48,10 @@ function againLink(rec) {
   const s = rec.src || {}, L = rec.snap && rec.snap.lens || {};
   let lens = s.page === 'matrix' ? s.lens : s.page === 'stock' && s.part === 'cons' ? 'eps' : s.page === 'stock' && s.part === 'doc' ? 'insider' : s.page === 'stock' && s.part === 'fin' ? 'rev' : null;
   if (!lens || !L[lens]) return '';
-  const span = s.span || (lens === 'eps' ? '3m' : '1y'), pat = L[lens].pat;
-  const u = new URLSearchParams({ lens, span }); if (pat) u.set('pat', pat);
+  const span = s.span || (lens === 'eps' ? '3m' : '1y'), lab = L[lens].pat || '';
+  const code = Object.entries({ nw: '↖', n: '↑', ne: '↗', e: '→', se: '↘', s: '↓', sw: '↙', w: '←' }).find(([, a]) => lab.endsWith(a));
+  const pat = lab === '제자리' ? 'st' : lab === '오락가락' ? 'zz' : code ? code[0] : '';
+  const u = new URLSearchParams({ lens, span }); if (pat) u.set('pat', pat); if (lab.startsWith('꾸준히')) u.set('steady', '1');
   return `<a class="btn" href="matrix.html?${u}" style="text-decoration:none" title="담을 때와 같은 렌즈${pat ? '·모양' : ''}인 종목을 티커맵에서">같은 이유로 찾기</a>`;
 }
 function changes(rec, r) {
@@ -61,7 +63,7 @@ function changes(rec, r) {
     if (!a || !b) continue;
     const parts = [];
     if (a.q !== b.q && a.q && b.q) parts.push(`${QUAD_KO[a.q]} → <b>${QUAD_KO[b.q]}</b>`);
-    if (a.pat !== b.pat && a.pat && b.pat) parts.push(`모양 ${PAT_KO[a.pat]} → <b>${PAT_KO[b.pat]}</b>`);
+    if (a.pat !== b.pat && a.pat && b.pat) parts.push(`모양 ${a.pat} → <b>${b.pat}</b>`);
     if (parts.length) lines.push(`<div><span class="mut">${L.name}</span> ${parts.join(' · ')}</div>`);
     if (b.q === 'br' && a.q !== 'br') warn.push(L.name);
   }

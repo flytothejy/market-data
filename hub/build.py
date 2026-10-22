@@ -410,8 +410,8 @@ def trails(t, g, ET, sv, gh, rq, ih, now):
 
 def trail_pattern(pts, xkey, lens, cur):
     """경로 모양 이름표 — 화면 matrix.js의 patternOf와 같은 규칙
-    st 제자리 · n/ne/e/se/s/sw/w/nw 꾸준히 한 방향(8방위, ↑=신호 개선 →=주가 상승) · tn 꺾임(방향 전환) · zz 오락가락(갔다가 돌아옴)
-    점 개수(7~13개)에 덜 휘둘리게 '가장 멀리 간 거리'와 네 점의 큰 흐름으로 판단"""
+    st 제자리 · zz 오락가락(갔다가 돌아옴) · 그 밖에는 [8방위 방향(↑=신호 개선 →=주가 상승), 꾸준함]
+    방향이 있으면 [방향, 꾸준함 0~1] — 화면은 꾸준함 0.7 이상을 '꾸준히'로 표시"""
     xi = {"r1w": 1, "r1m": 2, "r3m": 3, "r6m": 4}[xkey]
     xm, ym = XMAX[xkey], LENS_MAX[lens]
     C = [(max(-1, min(1, p[xi] / xm)), max(-1, min(1, p[5] if lens == "insider" else p[5] / ym))) for p in pts if p[xi] is not None and p[5] is not None]
@@ -430,13 +430,14 @@ def trail_pattern(pts, xkey, lens, cur):
     net = math.hypot(dx, dy)
     if net < 0.4 * ext:
         return "zz"                                             # 멀리 갔다가 출발점 근처로 돌아옴
-    # 처음·1/3·2/3·끝 네 점으로 큰 흐름만 봄: 세 구간이 모두 같은 쪽(전체 방향)으로 가면 '꾸준히'
-    idx = [0, round((len(X) - 1) / 3), round(2 * (len(X) - 1) / 3), len(X) - 1]
+    # 꾸준함 = 한 걸음씩 볼 때 전체 방향으로 간 거리의 비율 (1 = 한 번도 거꾸로 안 감)
     ux, uy = dx / net, dy / net
-    seg = [(X[idx[i + 1]] - X[idx[i]]) * ux + (Y[idx[i + 1]] - Y[idx[i]]) * uy for i in range(3)]
-    if net >= 0.25 and min(seg) > -0.05:
-        return ["e", "ne", "n", "nw", "w", "sw", "s", "se"][int(((math.degrees(math.atan2(dy, dx)) + 22.5) % 360) // 45)]
-    return "tn"
+    sx_, sy_ = np.diff(X), np.diff(Y)
+    path = float(np.hypot(sx_, sy_).sum())
+    steady = float(np.maximum(0, sx_ * ux + sy_ * uy).sum()) / path if path else 0
+    if net < 0.25:
+        return "zz"
+    return [["e", "ne", "n", "nw", "w", "sw", "s", "se"][int(((math.degrees(math.atan2(dy, dx)) + 22.5) % 360) // 45)], round(steady, 2)]
 
 
 # 신호를 평균낼 때 한 종목이 튀어 전체를 끌고 가지 않게 지도 눈금 끝에서 자름 (화면 matrix.js의 max와 같음)
@@ -847,6 +848,7 @@ def run(limit=0, **_):
             ET = et.pivot_table(index="ticker", columns="field", values="value", aggfunc="last")
     log("종목별 지표 계산·저장 중")
     rows, n_files = [], 0
+    asof_s = str(PX.date.max().date())                  # 트레일 끝점(지금 점)의 날짜 = 마지막 거래일
     PAT = {}                                            # 트레일 모양 이름표 {길이: {렌즈: {종목: 코드}}}
     ALL_TR = []                                         # 업종 경로용 (업종, 세부 업종, 시가총액, 종목 경로)
     for r in S.itertuples():
@@ -1033,7 +1035,7 @@ def run(limit=0, **_):
             if ys.get(lens) is None or row.get(xk) is None:
                 continue
             yv = ys[lens] if lens == "insider" else ys[lens] / LENS_MAX[lens]
-            code = trail_pattern(pts, xk, lens, (str(now.date()), max(-1, min(1, row[xk] / XMAX[xk])), max(-1, min(1, yv))))
+            code = trail_pattern(pts, xk, lens, (asof_s, max(-1, min(1, row[xk] / XMAX[xk])), max(-1, min(1, yv))))
             if code:
                 PAT.setdefault(span, {}).setdefault(lens, {})[t] = code
         if detail["trail"] and row.get("mcap"):

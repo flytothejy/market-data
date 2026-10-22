@@ -37,22 +37,22 @@ const LENS = {
 };
 const SPAN = { '3m': ['3개월', 'r1m', '2주 간격'], '1y': ['1년', 'r3m', '1개월 간격'], '3y': ['3년', 'r6m', '분기 간격'] };   // 트레일 길이 → 함께 쓰는 가로축
 const prefSpan = L => L.spans.includes('1y') ? '1y' : L.spans[0];
-const PATN = { nw: ['꾸준히 ↖', '신호↑ 주가↓ — 어긋남이 커지는 중'], n: ['꾸준히 ↑', '신호만 좋아지는 중'], ne: ['꾸준히 ↗', '주가·신호 함께 개선'], e: ['꾸준히 →', '주가만 오르는 중'],
-  se: ['꾸준히 ↘', '주가↑ 신호↓ — 어긋남이 커지는 중'], s: ['꾸준히 ↓', '신호만 나빠지는 중'], sw: ['꾸준히 ↙', '주가·신호 함께 악화'], w: ['꾸준히 ←', '주가만 빠지는 중'],
-  tn: ['꺾임', '가던 방향이 바뀜'], zz: ['오락가락', '갔다가 제자리 근처로 돌아옴'], st: ['제자리', '거의 움직이지 않음'] };
+const PATN = { nw: ['↖', '신호↑ 주가↓ 쪽 (어긋남 커짐)'], n: ['↑', '신호만 좋아짐'], ne: ['↗', '주가·신호 함께 개선'], e: ['→', '주가만 오름'],
+  se: ['↘', '주가↑ 신호↓ 쪽 (어긋남 커짐)'], s: ['↓', '신호만 나빠짐'], sw: ['↙', '주가·신호 함께 악화'], w: ['←', '주가만 빠짐'],
+  zz: ['오락가락', '갔다가 제자리 근처로 돌아옴'], st: ['제자리', '거의 움직이지 않음'] };
 const VIEWS = { stock: '종목', sec: '업종', ind: '세부 업종' };
 const TRACK_COL = ['var(--ink)', '#7c3aed', '#0f766e', '#b45309', '#be185d'];
 const FULL = [-1.04, 1.04, -1.04, 1.04];
 const st = {
-  lens: LENS[qs('lens')] ? qs('lens') : 'eps', xw: 'r1m', span: '3m', pat: PATN[qs('pat')] ? qs('pat') : '', sec: qs('sec') || '', cap: +(qs('cap') || 0),
+  lens: LENS[qs('lens')] ? qs('lens') : 'eps', xw: 'r1m', span: '3m', pat: PATN[qs('pat')] ? qs('pat') : '', steady: qs('steady') === '1', sec: qs('sec') || '', cap: +(qs('cap') || 0),
   only: qs('only') || '', view: VIEWS[qs('view')] ? qs('view') : 'stock', track: (qs('t') || '').split(',').filter(Boolean).slice(0, 5),
-  onlyTrack: qs('focus') === '1', dom: FULL.slice(), trail: {},
+  onlyTrack: qs('focus') === '1', dom: FULL.slice(), trail: {}, moreOpen: window.innerWidth >= 700,
 };
 { const L0 = LENS[st.lens]; st.span = L0.spans.includes(qs('span')) ? qs('span') : prefSpan(L0); st.xw = XW[qs('x')] ? qs('x') : SPAN[st.span][1]; }
 let PATS = null;
 window.watchSrc = () => ({ page: 'matrix', lens: st.lens, span: st.span, xw: st.xw, view: st.view });
 let U, S, W = 900, H = 640, P = [], GT = null, drawQueued = false, sideTimer = null;
-const PAD = { l: 54, r: 18, t: 44, b: 40 };
+const PAD = { l: 12, r: 10, t: 30, b: 40 };   // 세로축 눈금 숫자가 없어 왼쪽 여백은 최소로
 
 const nyToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const addDays = (s, n) => { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -66,7 +66,7 @@ const labelOf = id => id.startsWith('sec:') ? secKo(groupName(id)) : id.startsWi
 function sync() {
   const u = new URL(location.href);
   const set = (k, v, d) => v && v !== d ? u.searchParams.set(k, v) : u.searchParams.delete(k);
-  set('lens', st.lens, 'eps'); set('span', st.span, prefSpan(LENS[st.lens])); set('x', st.xw, SPAN[st.span][1]); set('pat', st.pat); set('sec', st.sec); set('cap', st.cap ? String(st.cap) : ''); set('only', st.only);
+  set('lens', st.lens, 'eps'); set('span', st.span, prefSpan(LENS[st.lens])); set('x', st.xw, SPAN[st.span][1]); set('pat', st.pat); set('steady', st.steady ? '1' : ''); set('sec', st.sec); set('cap', st.cap ? String(st.cap) : ''); set('only', st.only);
   set('view', st.view, 'stock'); set('t', st.track.join(',')); set('focus', st.onlyTrack ? '1' : '');
   u.searchParams.delete('zoom');
   history.replaceState(null, '', u);
@@ -93,7 +93,7 @@ function stockPoints(ignoreFocus) {
       if (st.only === 'watch' && !watch.has(r.t)) continue;
       if (st.only === 'hold' && !hold.has(r.t)) continue;
       if (st.only === 'earn' && !(r.c_next && r.c_next >= w0 && r.c_next <= w1)) continue;
-      if (st.pat) { const m = PATS && PATS[st.span] && PATS[st.span][st.lens]; if (!m || m[r.t] !== st.pat) continue; }
+      if (st.pat) { const e = patEntry(st.span, st.lens, r.t); if (!e || e.code !== st.pat || (st.steady && e.code.length <= 2 && !['st', 'zz'].includes(e.code) && e.steady < STEADY)) continue; }
     }
     const yC = L.raw ? y : clamp(y / L.max, -1, 1);
     out.push(mk(r.t, r.t, r.ko || r.n || '', r.mcap || 0, x, y, yC, L.jitter ? hash(r.t) * 0.14 : 0, r, watch.has(r.t) || hold.has(r.t)));
@@ -170,19 +170,25 @@ function drawChart() {
   if (y0 < 0 && y1 > 0) g += `<line x1="${PAD.l}" x2="${PAD.l + iw()}" y1="${sy(0)}" y2="${sy(0)}" stroke="var(--line)" stroke-width="1.2"/>`;
   for (let i = 0; i <= 4; i++) {
     const v = x0 + (x1 - x0) * i / 4;
-    g += `<text x="${sx(v)}" y="${PAD.t + ih() + 16}" font-size="11" text-anchor="middle" fill="var(--faint)">${sgn(v * xm, span() < 0.5 ? 1 : 0)}</text>`;
+    g += `<text x="${sx(v)}" y="${PAD.t + ih() + 16}" font-size="11" text-anchor="${i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}" fill="var(--faint)">${sgn(v * xm, span() < 0.5 ? 1 : 0)}</text>`;
   }
   g += `<text x="${PAD.l + iw() / 2}" y="${H - 6}" font-size="11.5" text-anchor="middle" fill="var(--muted)">← 최근 ${XW[st.xw][0]} 주가 하락 · 상승 →</text>`;
   g += `<text x="${PAD.l + 6}" y="${PAD.t - 10}" font-size="11.5" fill="var(--muted)">↑ ${esc(L.up)}</text>`;
   g += `<text x="${PAD.l + 6}" y="${PAD.t + ih() + 30}" font-size="11.5" fill="var(--muted)">↓ ${esc(L.dn)}</text>`;
   // 구역 이름 (보이는 영역 안에 충분히 있을 때만)
   const qlab = (q, txt, color) => {
+    // 구역 이름은 해석에 꼭 필요해 늘 표시 — 좁으면 두 줄로, 그래도 넘치면 글자를 줄임
     const box = { tl: [-1.04, 0, 0, 1.04], tr: [0, 1.04, 0, 1.04], bl: [-1.04, 0, -1.04, 0], br: [0, 1.04, -1.04, 0] }[q];
     const ax = Math.max(box[0], x0), bx = Math.min(box[1], x1), cy = Math.max(box[2], y0), dy = Math.min(box[3], y1);
-    if (sx(bx) - sx(ax) < 160 || sy(cy) - sy(dy) < 50) return '';
-    // 구역 이름은 가운데 축 쪽에 — 바깥 모서리는 범위 밖 값이 붙어 그려지는 자리라 이름을 가림
-    const left = q === 'tl' || q === 'bl', top = q === 'bl' || q === 'br';
-    return `<text x="${left ? sx(ax) + 12 : sx(bx) - 12}" y="${top ? sy(dy) + 22 : sy(cy) - 12}" font-size="${W < 600 ? 12 : 14}" font-weight="800" text-anchor="${left ? 'start' : 'end'}" fill="${color}">${esc(txt)}</text>`;
+    const aw = sx(bx) - sx(ax) - 16, ah = sy(cy) - sy(dy);
+    if (aw < 36 || ah < 18) return '';
+    let fs = W < 600 ? 12 : 14, lines = [txt];
+    const wid = (t, f) => t.length * f * 0.92;
+    if (wid(txt, fs) > aw) { const sp = [...txt.matchAll(/ /g)].map(m => m.index); if (sp.length) { const mid = sp.reduce((b, i) => Math.abs(i - txt.length / 2) < Math.abs(b - txt.length / 2) ? i : b); lines = [txt.slice(0, mid), txt.slice(mid + 1)]; } }
+    while (fs > 9.5 && Math.max(...lines.map(l => wid(l, fs))) > aw) fs -= 0.5;
+    const left = q === 'tl' || q === 'bl', top = q === 'bl' || q === 'br', lh = fs * 1.2;
+    const x = left ? sx(ax) + 8 : sx(bx) - 8, y0_ = top ? sy(dy) + fs + 6 : sy(cy) - 8 - lh * (lines.length - 1);
+    return `<text x="${x}" y="${y0_}" font-size="${fs}" font-weight="800" text-anchor="${left ? 'start' : 'end'}" fill="${color}" paint-order="stroke" stroke="var(--card)" stroke-width="3" stroke-linejoin="round">${lines.map((l, i) => `<tspan x="${x}" dy="${i ? lh : 0}">${esc(l)}</tspan>`).join('')}</text>`;
   };
   g += qlab('tl', L.tl, up) + qlab('br', L.br, dn) + qlab('tr', '둘 다 좋음', 'var(--faint)') + qlab('bl', '둘 다 나쁨', 'var(--faint)');
   // 점
@@ -241,19 +247,29 @@ function trailC(id) {
   }
   return C;
 }
-function patternOf(C) {
-  // 모양 이름표 — build.py trail_pattern과 같은 규칙 (점 개수에 덜 휘둘리게 '가장 멀리 간 거리'와 네 점의 큰 흐름으로)
+const DIR8 = ['e', 'ne', 'n', 'nw', 'w', 'sw', 's', 'se'];
+const ARROW = { e: '→', ne: '↗', n: '↑', nw: '↖', w: '←', sw: '↙', s: '↓', se: '↘' };
+const dirOf = (dx, dy) => DIR8[Math.floor((((Math.atan2(dy, dx) * 180 / Math.PI) + 22.5) % 360 + 360) % 360 / 45)];
+function trailShape(C) {
+  // 모양 판정 — build.py trail_pattern과 같은 규칙
+  // 꾸준함 = 한 걸음씩 볼 때 전체 방향으로 간 거리의 비율 (1 = 한 번도 거꾸로 안 감)
   if (!C || C.length < 3) return null;
-  const x0 = C[0].xN, y0 = C[0].yN, n = C.length;
+  const n = C.length, x0 = C[0].xN, y0 = C[0].yN;
   const ext = Math.max(...C.map(c => Math.hypot(c.xN - x0, c.yN - y0)));
-  if (ext < 0.25) return 'st';
   const dx = C[n - 1].xN - x0, dy = C[n - 1].yN - y0, net = Math.hypot(dx, dy);
-  if (net < 0.4 * ext) return 'zz';
-  const idx = [0, Math.round((n - 1) / 3), Math.round(2 * (n - 1) / 3), n - 1], ux = dx / net, uy = dy / net;
-  const seg = [0, 1, 2].map(i => (C[idx[i + 1]].xN - C[idx[i]].xN) * ux + (C[idx[i + 1]].yN - C[idx[i]].yN) * uy);
-  if (net >= 0.25 && Math.min(...seg) > -0.05) return ['e', 'ne', 'n', 'nw', 'w', 'sw', 's', 'se'][Math.floor((((Math.atan2(dy, dx) * 180 / Math.PI) + 22.5) % 360 + 360) % 360 / 45)];
-  return 'tn';
+  const k = Math.max(1, Math.floor((n - 1) / 3)), rx = C[n - 1].xN - C[n - 1 - k].xN, ry = C[n - 1].yN - C[n - 1 - k].yN;
+  const recent = Math.hypot(rx, ry) > 0.08 ? dirOf(rx, ry) : null;
+  if (ext < 0.25) return { code: 'st', recent };
+  if (net < 0.4 * ext || net < 0.25) return { code: 'zz', recent };
+  const ux = dx / net, uy = dy / net;
+  let fwd = 0, path = 0;
+  for (let i = 1; i < n; i++) { const sx_ = C[i].xN - C[i - 1].xN, sy_ = C[i].yN - C[i - 1].yN; path += Math.hypot(sx_, sy_); fwd += Math.max(0, sx_ * ux + sy_ * uy); }
+  const steady = path > 0 ? fwd / path : 0, dir = dirOf(dx, dy);
+  return { code: dir, dir, steady, recent };
 }
+const STEADY = 0.7;                                   // 꾸준함 70% 이상 = '꾸준히'
+const patName = sh => !sh ? null : sh.code === 'st' || sh.code === 'zz' ? PATN[sh.code][0] : `${sh.steady >= STEADY ? '꾸준히' : '들쭉날쭉'} ${ARROW[sh.code]}`;
+const patEntry = (sp, lens, t) => { const m = PATS && PATS[sp] && PATS[sp][lens]; const v = m && m[t]; return v == null ? null : Array.isArray(v) ? { code: v[0], steady: v[1] } : { code: v, steady: 1 }; };
 function trailLayer(id, color) {
   const C = trailC(id), cur = P.find(p => p.id === id);
   if (!C) return '';
@@ -280,9 +296,18 @@ function trailLayer(id, color) {
     if (i === n - 1) return;                  // 끝점은 지도 위 실제 점이 그 자리
     const o = op(i);
     g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="${color}" fill-opacity="${o.toFixed(2)}" stroke="var(--card)" stroke-width="2"/>`;
-    g += `<text x="${(x + 8).toFixed(1)}" y="${(y - 7).toFixed(1)}" font-size="11" font-weight="600" fill="${color}" fill-opacity="${Math.max(0.6, o).toFixed(2)}" paint-order="stroke" stroke="var(--card)" stroke-width="3.5" stroke-linejoin="round">${esc(st.span === '3m' ? C[i].d.slice(5).replace('-', '/') : C[i].d.slice(2, 7).replace('-', '.'))}</text>`;
+    const rt = x > W - 48;                    // 오른쪽 끝 근처면 날짜를 왼쪽에
+    g += `<text x="${(rt ? x - 8 : x + 8).toFixed(1)}" y="${(y - 7).toFixed(1)}" text-anchor="${rt ? 'end' : 'start'}" font-size="11" font-weight="600" fill="${color}" fill-opacity="${Math.max(0.6, o).toFixed(2)}" paint-order="stroke" stroke="var(--card)" stroke-width="3.5" stroke-linejoin="round">${esc(st.span === '3m' ? C[i].d.slice(5).replace('-', '/') : C[i].d.slice(2, 7).replace('-', '.'))}</text>`;
   });
-  return `<g pointer-events="none">${halo}${g}</g>`;
+  // 전체 방향(처음 → 지금)을 옅은 점선 화살표로: 들쭉날쭉한 길이라도 큰 흐름이 보이게
+  const [fx, fy] = XY[0], [lx, ly] = XY[n - 1], L2 = Math.hypot(lx - fx, ly - fy);
+  let net = '';
+  if (L2 > 40) {
+    const ux = (lx - fx) / L2, uy = (ly - fy) / L2, ex = lx - ux * 14, ey = ly - uy * 14, hx = ex - ux * 9, hy = ey - uy * 9;
+    net = `<line x1="${fx.toFixed(1)}" y1="${fy.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${color}" stroke-opacity="0.35" stroke-width="2" stroke-dasharray="5 5"/>`
+      + `<polyline points="${(hx - uy * 5).toFixed(1)},${(hy + ux * 5).toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)} ${(hx + uy * 5).toFixed(1)},${(hy - ux * 5).toFixed(1)}" fill="none" stroke="${color}" stroke-opacity="0.35" stroke-width="2"/>`;
+  }
+  return `<g pointer-events="none">${net}${halo}${g}</g>`;
 }
 
 // ---- 화면 조각
@@ -290,20 +315,24 @@ function controls() {
   const secs = [...new Set(S.map(r => r.sec).filter(Boolean))].sort((a, b) => secKo(a).localeCompare(secKo(b), 'ko'));
   return `<div class="mx-ctl">
     <div class="mx-seg" role="tablist" aria-label="세로축 신호">${Object.entries(LENS).map(([k, l]) => `<button role="tab" aria-selected="${k === st.lens}" class="${k === st.lens ? 'on' : ''}" data-lens="${k}">${l.name}</button>`).join('')}</div>
-    <div class="mx-seg" role="tablist" aria-label="트레일 길이"><span class="s13 mut" style="align-self:center;padding:0 4px 0 8px">트레일</span>${Object.entries(SPAN).map(([k, [l, , step]]) => { const ok = LENS[st.lens].spans.includes(k); return `<button role="tab" aria-selected="${k === st.span}" class="${k === st.span ? 'on' : ''}" data-span="${k}" ${ok ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'} title="${ok ? `${l} · ${step} · 가로축은 ${XW[SPAN[k][1]][0]} 주가로 맞춰짐` : `${esc(LENS[st.lens].name)}은(는) 아직 ${l}치 자료가 없어요`}">${l}</button>`; }).join('')}</div>
-    <div class="mx-seg" role="tablist" aria-label="가로축 주가 기간">${Object.entries(XW).map(([k, [l]]) => `<button role="tab" aria-selected="${k === st.xw}" class="${k === st.xw ? 'on' : ''}" data-xw="${k}">${l}</button>`).join('')}</div>
+    <div class="mx-seg" role="tablist" aria-label="흐름 보기 기간"><span class="s13 mut" style="align-self:center;padding:0 4px 0 8px">기간</span>${Object.entries(SPAN).map(([k, [l, xw, step]]) => `<button role="tab" aria-selected="${k === st.span}" class="${k === st.span ? 'on' : ''}" data-span="${k}" title="가로축 최근 ${XW[xw][0]} 주가 · 트레일 ${l}(${step})">${{ '3m': '단기', '1y': '중기', '3y': '장기' }[k]} <span style="opacity:.6">${l}</span></button>`).join('')}</div>
     <div class="mx-seg" role="tablist" aria-label="보기 단위">${Object.entries(VIEWS).map(([k, l]) => `<button role="tab" aria-selected="${k === st.view}" class="${k === st.view ? 'on' : ''}" data-view="${k}">${l}</button>`).join('')}</div>
   </div>
-  <details class="mx-more" ${window.innerWidth >= 700 || st.track.length ? 'open' : ''}><summary>찾기 · 필터</summary><div class="mx-ctl">
+  <div class="s13 mut" style="margin-top:-2px">가로축 = 최근 <b style="color:var(--ink)">${XW[st.xw][0]}</b> 주가 · 트레일 = <b style="color:var(--ink)">${SPAN[st.span][0]}</b>(${SPAN[st.span][2]})${LENS[st.lens].spans.includes(st.span) ? '' : ` · <span style="color:var(--dn)">${esc(LENS[st.lens].name)}은(는) ${SPAN[st.span][0]} 트레일 자료가 아직 없어요 (${LENS[st.lens].spans.map(x => SPAN[x][0]).join('·')}만)</span>`}</div>
+  <details class="mx-more" id="mx-more" ${st.moreOpen ? 'open' : ''}><summary>찾기 · 필터</summary><div class="mx-ctl">
     <div class="mx-find"><input type="search" class="f" id="mx-q" placeholder="${st.view === 'stock' ? '종목 찾아 트레일 보기 (최대 5개)' : '업종 찾기'}" autocomplete="off" aria-label="지도에서 찾기"><div class="mx-sugg" id="mx-sugg"></div></div>
     <label class="s13 mut">업종 <select class="f" id="f-sec"><option value="">전체</option>${secs.map(s => `<option value="${esc(s)}" ${s === st.sec ? 'selected' : ''}>${esc(secKo(s))}</option>`).join('')}</select></label>
-    <label class="s13 mut">모양 <select class="f" id="f-pat" title="${SPAN[st.span][0]} 트레일의 모양으로 거르기"><option value="">전체</option>${Object.entries(PATN).map(([k, [l, d]]) => { const m = PATS && PATS[st.span] && PATS[st.span][st.lens], n = m ? Object.values(m).filter(v => v === k).length : 0; return `<option value="${k}" ${k === st.pat ? 'selected' : ''} ${m ? '' : 'disabled'}>${l} · ${d} (${n})</option>`; }).join('')}</select></label>
+    <label class="s13 mut">트레일 방향 <select class="f" id="f-pat" title="${SPAN[st.span][0]} 트레일의 처음 → 지금 방향으로 거르기"><option value="">전체</option>${Object.entries(PATN).map(([k, [l, d]]) => { const m = PATS && PATS[st.span] && PATS[st.span][st.lens]; let n = 0, ns = 0; if (m) for (const t in m) { const e = patEntry(st.span, st.lens, t); if (e.code === k) { n++; if (e.steady >= STEADY) ns++; } } return `<option value="${k}" ${k === st.pat ? 'selected' : ''} ${m ? '' : 'disabled'}>${l} ${d} (${n}${['st', 'zz'].includes(k) ? '' : ` · 꾸준히 ${ns}`})</option>`; }).join('')}</select></label>
+    <label class="s13" style="display:flex;align-items:center;gap:5px;cursor:pointer" title="한 걸음씩 볼 때 70% 넘게 그 방향으로 간 것만"><input type="checkbox" id="f-steady" ${st.steady ? 'checked' : ''}> 꾸준히만</label>
+    <label class="s13 mut" title="기간을 고르면 자동으로 맞춰져요. 직접 바꿀 때만">가로축 <select class="f" id="f-xw">${Object.entries(XW).map(([k, [l]]) => `<option value="${k}" ${k === st.xw ? 'selected' : ''}>${l} 주가</option>`).join('')}</select></label>
     <label class="s13 mut">시가총액 <select class="f" id="f-cap">${[[0, '전체'], [1e10, '100억 달러 이상'], [1e11, '1,000억 달러 이상']].map(([v, l]) => `<option value="${v}" ${v === st.cap ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
     <div class="mx-seg" aria-label="보기 범위">${[['', '전체'], ['watch', `후보 ${Watch.list().length}`], ['hold', `보유 ${portfolioTickers().length}`], ['earn', '이번 주 실적']].map(([k, l]) => `<button class="${k === st.only ? 'on' : ''}" data-only="${k}">${l}</button>`).join('')}</div>
-  </div></details>
-  ${st.track.length ? `<div class="mx-ctl"><span class="s13 mut">티커 트레일</span>${st.track.map((id, i) => `<span class="mx-chip"><i style="background:${TRACK_COL[i % TRACK_COL.length]}"></i><b>${esc(labelOf(id))}</b><button data-untrack="${esc(id)}" aria-label="${esc(labelOf(id))} 빼기">×</button></span>`).join('')}
-    <label class="s13" style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="mx-focus" ${st.onlyTrack ? 'checked' : ''}> 이것만 보기</label>
-    <button class="btn" id="mx-clear" style="min-height:30px;padding:2px 10px">모두 지우기</button></div>` : ''}`;
+  </div></details>`;
+}
+function trackBar() {
+  return st.track.length ? `<div class="mx-trk">${st.track.map((id, i) => `<span class="mx-chip"><i style="background:${TRACK_COL[i % TRACK_COL.length]}"></i><b>${esc(labelOf(id))}</b><button data-untrack="${esc(id)}" aria-label="${esc(labelOf(id))} 빼기">×</button></span>`).join('')}
+    <label class="s13" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="mx-focus" ${st.onlyTrack ? 'checked' : ''}> 이것만</label>
+    <button class="btn" id="mx-clear" style="min-height:28px;padding:2px 9px;font-size:12.5px">지우기</button></div>` : '';
 }
 
 function side() {
@@ -313,14 +342,15 @@ function side() {
     return st.track.map((id, i) => {
       const p = P.find(q => q.id === id), color = TRACK_COL[i % TRACK_COL.length], pts = trailPts(id);
       const r = isGroup(id) ? null : S.find(x => x.t === id);
-      const pat = patternOf(trailC(id)), pn = pat && PATN[pat];
+      const sh = trailShape(trailC(id)), pn = sh && [patName(sh), PATN[sh.code][1]];
+      const detail = sh && sh.dir ? `전체 방향 ${ARROW[sh.dir]} · 꾸준함 ${Math.round(sh.steady * 100)}%${sh.recent && sh.recent !== sh.dir ? ` · 최근엔 ${ARROW[sh.recent]}` : ''}` : sh && sh.recent ? `최근엔 ${ARROW[sh.recent]}` : '';
       const note = !L.spans.includes(st.span) ? `${esc(L.name)}은(는) ${SPAN[st.span][0]} 트레일 자료가 없어요.`
         : pts && pts.length ? `${esc(pts[0][0])}부터 지금까지 지나온 길 · 연한 점이 과거, 진한 쪽이 최근`
         : isGroup(id) ? (GT ? '이 묶음은 이 렌즈의 트레일 자료가 없어요.' : '트레일 불러오는 중…') : st.trail[id] ? '이 종목은 이 렌즈의 트레일 자료가 없어요.' : '트레일 불러오는 중…';
       return `<div class="card" style="box-shadow:inset 3px 0 0 ${color}"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><h3 style="font-size:17px">${esc(labelOf(id))}</h3><span class="mut s13">${esc(r ? (r.ko || r.n) : p ? p.sub : '')}</span></div>
         ${p ? `<div class="kv"><div><span>최근 ${XW[st.xw][0]} 주가</span><b>${pctS(p.x)}</b></div><div><span>${esc(L.name)}</span><b>${esc(L.fy(p.y, p.r))}</b></div><div><span>시가총액</span><b>${fmtUsd(p.mcap)}</b></div>${r ? `<div><span>다음 실적</span><b>${esc(r.c_next || '-')}</b></div>` : ''}</div>` : `<div class="mut s13">지금 렌즈·기간에 값이 없어요</div>`}
         ${r && r.s1 ? `<p class="s13" style="margin:0">${esc(r.s1)}</p>` : ''}
-        ${pn ? `<div class="s13"><span class="mut">${SPAN[st.span][0]} 트레일 모양</span> <b>${esc(pn[0])}</b> <span class="mut">· ${esc(pn[1])}</span></div>` : ''}
+        ${pn ? `<div class="s13"><span class="mut">${SPAN[st.span][0]} 트레일 모양</span> <b>${esc(pn[0])}</b> <span class="mut">· ${esc(pn[1])}</span>${detail ? `<div class="small mut">${esc(detail)}</div>` : ''}</div>` : ''}
         <div class="small mut">${note}</div>
         ${r ? `<div style="display:flex;gap:6px;align-items:center"><a class="btn dark" href="${stockUrl(r.t)}" style="flex:1;text-align:center;text-decoration:none">종목 화면 →</a>${starBtn(r.t)}</div>` : ''}</div>`;
     }).join('');
@@ -343,9 +373,9 @@ function render(keepDom) {
   $('#mx-ctl').innerHTML = controls();
   const box = $('#mx-chart');
   W = Math.max(320, box.clientWidth);
-  H = W < 600 ? Math.round(W * 1.05) : Math.min(680, Math.round(W * 0.72));
+  H = W < 600 ? Math.round(W * 0.98) : Math.min(680, Math.round(W * 0.7));
   const L = LENS[st.lens];
-  box.innerHTML = `<div class="mx-bar"><button class="btn" id="mx-zin" aria-label="확대">＋</button><button class="btn" id="mx-zout" aria-label="축소">－</button><button class="btn" id="mx-reset">전체 보기</button></div>
+  box.innerHTML = `${trackBar()}<div class="mx-bar"><button class="btn" id="mx-zin" aria-label="확대">＋</button><button class="btn" id="mx-zout" aria-label="축소">－</button><button class="btn" id="mx-reset">전체 보기</button></div>
     <svg id="mx-svg" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="티커맵: 가로 최근 ${XW[st.xw][0]} 주가, 세로 ${esc(L.name)}"></svg><div class="mx-tip" id="mx-tip"></div>`;
   drawChart();
   $('#mx-side').innerHTML = side();
@@ -367,15 +397,17 @@ function track(id, add) {
 
 // ---- 이벤트
 function bindCtl() {
-  document.querySelectorAll('[data-lens]').forEach(b => b.onclick = () => { st.lens = b.dataset.lens; const L = LENS[st.lens]; if (!L.spans.includes(st.span)) { st.span = prefSpan(L); st.xw = SPAN[st.span][1]; } render(); });
-  document.querySelectorAll('[data-span]').forEach(b => b.onclick = () => { if (b.disabled) return; st.span = b.dataset.span; st.xw = SPAN[st.span][1]; render(); });
-  document.querySelectorAll('[data-xw]').forEach(b => b.onclick = () => { st.xw = b.dataset.xw; render(); });
+  document.querySelectorAll('[data-lens]').forEach(b => b.onclick = () => { st.lens = b.dataset.lens; render(); });
+  document.querySelectorAll('[data-span]').forEach(b => b.onclick = () => { st.span = b.dataset.span; st.xw = SPAN[st.span][1]; render(true); });
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { if (st.view !== b.dataset.view) { st.view = b.dataset.view; st.track = []; st.onlyTrack = false; st.dom = FULL.slice(); } render(); });
   document.querySelectorAll('[data-only]').forEach(b => b.onclick = () => { st.only = b.dataset.only; render(); });
   document.querySelectorAll('[data-untrack]').forEach(b => b.onclick = () => { st.track = st.track.filter(x => x !== b.dataset.untrack); render(true); });
   $('#f-sec').onchange = e => { st.sec = e.target.value; render(); };
   $('#f-cap').onchange = e => { st.cap = +e.target.value; render(); };
   $('#f-pat').onchange = e => { st.pat = e.target.value; render(); };
+  $('#f-steady').onchange = e => { st.steady = e.target.checked; render(); };
+  $('#f-xw').onchange = e => { st.xw = e.target.value; render(); };
+  $('#mx-more').ontoggle = e => { st.moreOpen = e.target.open; };
   const fc = $('#mx-focus'); if (fc) fc.onchange = e => { st.onlyTrack = e.target.checked; render(); };
   const cl = $('#mx-clear'); if (cl) cl.onclick = () => { st.track = []; st.onlyTrack = false; render(); };
   // 지도 안 검색: 종목(또는 업종)을 찾아 트레일 목록에 추가

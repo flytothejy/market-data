@@ -153,7 +153,9 @@ const LENS_SNAP = {
   short: { name: '공매도', max: 0.08, y: r => r.sv_chg60 != null ? -r.sv_chg60 : null },
 };
 const QUAD_KO = { tl: '왼쪽 위', tr: '오른쪽 위', bl: '왼쪽 아래', br: '오른쪽 아래' };
-const PAT_KO = { nw: '꾸준히 ↖', n: '꾸준히 ↑', ne: '꾸준히 ↗', e: '꾸준히 →', se: '꾸준히 ↘', s: '꾸준히 ↓', sw: '꾸준히 ↙', w: '꾸준히 ←', tn: '꺾임', zz: '오락가락', st: '제자리' };
+const ARROW_KO = { nw: '↖', n: '↑', ne: '↗', e: '→', se: '↘', s: '↓', sw: '↙', w: '←' };
+// patterns.json 값: 'st'(제자리) · 'zz'(오락가락) · [방향, 꾸준함 0~1] → '꾸준히 ↖' / '들쭉날쭉 ↖'
+const patLabel = v => v == null ? null : v === 'st' ? '제자리' : v === 'zz' ? '오락가락' : Array.isArray(v) ? `${v[1] >= 0.7 ? '꾸준히' : '들쭉날쭉'} ${ARROW_KO[v[0]] || ''}` : ({ tn: '들쭉날쭉' }[v] || (ARROW_KO[v] ? '꾸준히 ' + ARROW_KO[v] : v));
 function quadOf(x, yC) { return yC > 0.03 && x < -0.003 ? 'tl' : yC < -0.03 && x > 0.003 ? 'br' : yC >= 0 && x >= 0 ? 'tr' : 'bl'; }
 let _pats = null;
 async function patterns() { if (_pats) return _pats; try { _pats = await getJSON('free/patterns.json'); } catch (e) { _pats = {}; } return _pats; }
@@ -165,7 +167,7 @@ function snapOf(r, P) {
     if (y == null) continue;
     const yC = L.raw ? y : Math.max(-1, Math.min(1, y / L.max));
     const span = k === 'eps' ? '3m' : '1y';
-    lens[k] = { v: +y.toFixed(4), q: r.r1m != null ? quadOf(r.r1m, yC) : null, pat: (P && P[span] && P[span][k] && P[span][k][r.t]) || null };
+    lens[k] = { v: +y.toFixed(4), q: r.r1m != null ? quadOf(r.r1m, yC) : null, pat: patLabel(P && P[span] && P[span][k] && P[span][k][r.t]) };
   }
   const pick = ['px', 'mcap', 'r1m', 'r3m', 'pe', 'c_fpe', 'c_upside', 'c_chg90', 'rev_g', 'om', 'sv', 'ib', 'is', 'g13', 'c_next'];
   return { lens, ...Object.fromEntries(pick.filter(k => r[k] != null).map(k => [k, r[k]])) };
@@ -174,14 +176,14 @@ const _p = v => v == null ? '-' : (v > 0 ? '+' : '') + (v * 100).toFixed(Math.ab
 function whyOf(src, r, snap) {
   // 출처마다 한 줄 이유 (사용자가 바꿀 수 있음)
   const L = snap && snap.lens || {};
-  const lensLine = k => { const x = L[k]; if (!x) return ''; const nm = LENS_SNAP[k].name; return `${nm} ${x.pat ? PAT_KO[x.pat] : ''}${x.q ? ` · ${QUAD_KO[x.q]}` : ''}`.trim(); };
+  const lensLine = k => { const x = L[k]; if (!x) return ''; const nm = LENS_SNAP[k].name; return `${nm} ${x.pat || ''}${x.q ? ` · ${QUAD_KO[x.q]}` : ''}`.trim(); };
   switch (src.page) {
     case 'matrix': {                                   // 지도에서 보던 그대로: 고른 가로축 기간 기준 구역, 고른 트레일 길이의 모양
       const Ls = LENS_SNAP[src.lens], y = Ls && Ls.y(r);
       if (y == null) return `티커맵 ${Ls ? Ls.name : ''}`.trim();
       const yC = Ls.raw ? y : Math.max(-1, Math.min(1, y / Ls.max)), x = r[src.xw || 'r1m'];
       const pat = _pats && _pats[src.span] && _pats[src.span][src.lens] && _pats[src.span][src.lens][r.t];
-      return `티커맵 ${Ls.name}${pat ? ' ' + PAT_KO[pat] : ''}${x != null ? ' · ' + QUAD_KO[quadOf(x, yC)] : ''}`;
+      return `티커맵 ${Ls.name}${pat ? ' ' + patLabel(pat) : ''}${x != null ? ' · ' + QUAD_KO[quadOf(x, yC)] : ''}`;
     }
     case 'stock': {
       const part = src.part || 'ov';
