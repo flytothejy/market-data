@@ -139,7 +139,7 @@ def main(site):
             by_sec.setdefault(r["sec"], []).append(r)
     for v in by_sec.values():
         v.sort(key=lambda r: -(r.get("mcap") or 0))
-    urls = [("hub/", "1.0"), ("hub/matrix.html", "0.9"), ("hub/ranking.html", "0.8"), ("hub/earnings.html", "0.8"), ("hub/investors.html", "0.8"), ("hub/screen.html", "0.6"), ("hub/compare.html", "0.5")]
+    urls = [("hub/", "1.0"), ("hub/matrix", "0.9"), ("hub/ranking", "0.8"), ("hub/earnings", "0.8"), ("hub/investors", "0.8"), ("hub/screen", "0.6"), ("hub/compare", "0.5")]   # .html 없는 주소 (Cloudflare Pages가 이쪽으로 보냄)
     n = 0
     for r in rows:
         t = r["t"]
