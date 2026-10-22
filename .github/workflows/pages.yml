@@ -53,6 +53,9 @@ jobs:
           # 예전 컨센서스 페이지: 허브 데이터로 만든 것을 우선 사용
           if [ -f _site/api/v1/free/consensus_page.json ]; then cp _site/api/v1/free/consensus_page.json _site/consensus_data.json; fi
           python -m hub.static_pages _site     # 검색엔진용 종목·투자자 정적 페이지, 사이트맵
+          # 화면 파일이 바뀌면 브라우저가 예전 것을 쓰지 않게 주소에 버전 붙이기 (assets/ui.js → assets/ui.js?v=커밋)
+          V=${GITHUB_SHA::8}
+          find _site/hub -name '*.html' -print0 | xargs -0 sed -i -E "s#(assets/[A-Za-z0-9_.-]+\.(js|css))\"#\1?v=$V\"#g"
           touch _site/.nojekyll
           printf '/  /hub/  302\n' > _site/_redirects            # Cloudflare Pages 전용 (GitHub Pages는 무시)
           du -sh _site; find _site -type f | wc -l
