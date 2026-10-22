@@ -61,6 +61,9 @@ jobs:
           sed -i "s/__V__/$V/" _site/hub/sw.js
           touch _site/.nojekyll
           printf '/  /hub/  301\n' > _site/_redirects            # Cloudflare Pages 전용 (GitHub Pages는 무시)
+          # 네이버 소유 확인 파일: Cloudflare가 .html 주소를 .html 없는 주소로 308 보내서 확인이 실패하지 않게, 같은 주소로 그대로 내용 응답
+          printf '/naver69d79dc06402cfbd09ebfe0ce6673965.html  /naver-site-verification.txt  200\n' >> _site/_redirects
+          cp _site/naver-site-verification.txt _site/naver69d79dc06402cfbd09ebfe0ce6673965.html   # GitHub Pages용
           du -sh _site; find _site -type f | wc -l
       - name: deploy to Cloudflare Pages (tickermap.kr)
         if: env.CF_TOKEN != ''
