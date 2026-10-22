@@ -42,6 +42,9 @@ const PRESETS = [
   ['52주 신고가 부근', { hi52: [-0.03, null], vr: [1.2, null] }, 'tech'],
   ['낙폭 과대', { hi52: [null, -0.3], rsi: [null, 35], mcap: [1e10, null] }, 'tech'],
   ['공매도 비중 높음', { sv: [0.55, null], mcap: [5e9, null] }, 'tech'],
+  ['유명 투자자가 새로 산 종목', { g13_new: [1, null] }, 'tech', 'g13_new'],
+  ['유명 투자자 매수 우위', { g13_chg: [2, null] }, 'tech', 'g13_chg'],
+  ['ETF 편입 늘어난 종목', { etf_add: [1, null] }, 'tech', 'etf_add'],
 ];
 let U, F, kind = qs('kind') === 'etf' ? 'etf' : 'stock', cat = qs('cat') || 'info', sortK = null, sortD = -1, shown = 100;
 const filt = {};           // key → [min,max]
@@ -126,7 +129,7 @@ function render() {
   $('#fk').onchange = () => { const k = $('#fk').value; $('#fu').textContent = unitOf(k) ? `단위: ${unitOf(k)}` : ''; $('#fa').value = toIn(k, (filt[k] || [])[0]); $('#fb').value = toIn(k, (filt[k] || [])[1]); };
   $('#fok').onclick = () => { const k = $('#fk').value, a = toRaw(k, $('#fa').value), b = toRaw(k, $('#fb').value); if (a == null && b == null) delete filt[k]; else filt[k] = [a, b]; cat = F[k].cat === 'info' ? cat : F[k].cat; render(); };
   $('#reset').onclick = () => { Object.keys(filt).forEach(k => delete filt[k]); sector = index = query = ''; $('#sec').value = $('#idx').value = $('#q').value = ''; sortK = null; render(); };
-  $('#presets').querySelectorAll('.btn').forEach(b => b.onclick = () => { const p = PRESETS[+b.dataset.i]; Object.keys(filt).forEach(k => delete filt[k]); Object.assign(filt, JSON.parse(JSON.stringify(p[1]))); cat = p[2]; sortK = null; render(); });
+  $('#presets').querySelectorAll('.btn').forEach(b => b.onclick = () => { const p = PRESETS[+b.dataset.i]; Object.keys(filt).forEach(k => delete filt[k]); Object.assign(filt, JSON.parse(JSON.stringify(p[1]))); cat = p[2]; sortK = p[3] || null; sortD = -1; render(); });
   render();
   footer();
 })();

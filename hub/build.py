@@ -750,6 +750,31 @@ def run(limit=0, **_):
     FLg, INSg, SVg, OPg, NWg, TKg, ACTg = grp(FL, "cik"), grp(INS, "ticker"), grp(SV, "ticker"), grp(OP, "ticker"), grp(NW, "ticker"), grp(TK, "ticker"), grp(ACT, "ticker")
     TSg = grp(TS, "ticker")
 
+    # ETF 편입 변화: 최신 구성 vs 약 30일 전(없으면 가장 오래된) 구성 — 전체 구성을 받는 ETF(종목 50개 이상)끼리만 비교
+    etf_chg, etf_base = {}, None
+    hs = sorted((DATA / "etf" / "holdings").glob("*.parquet"))
+    if len(hs) >= 2 and not EH.empty:
+        d_last = pd.Timestamp(hs[-1].stem)
+        cands = [p for p in hs[:-1] if pd.Timestamp(p.stem) <= d_last - pd.Timedelta(days=30)]
+        bp = cands[-1] if cands else hs[0]
+        etf_base = bp.stem
+        EB = read(bp)
+        def norm(df):
+            df = df[df.holding.notna()].copy()
+            df["holding"] = df.holding.astype(str).str.replace(".", "-", regex=False).str.replace(" ", "-", regex=False)
+            return df
+        a, b = norm(EH), norm(EB)
+        full_a = set(a.groupby("etf").size().pipe(lambda x: x[x >= 50]).index)
+        full_b = set(b.groupby("etf").size().pipe(lambda x: x[x >= 50]).index)
+        both = full_a & full_b
+        a, b = a[a.etf.isin(both)], b[b.etf.isin(both)]
+        wa, wb = a.groupby(["holding", "etf"]).weight.sum(), b.groupby(["holding", "etf"]).weight.sum()
+        sa = a.groupby("holding").etf.apply(set).to_dict()
+        sb = b.groupby("holding").etf.apply(set).to_dict()
+        for t in set(sa) | set(sb):
+            now_, was = sa.get(t, set()), sb.get(t, set())
+            wsum = sum(float(wa.get((t, e), 0) or 0) - float(wb.get((t, e), 0) or 0) for e in now_ | was)
+            etf_chg[t] = {"add": len(now_ - was), "drop": len(was - now_), "wchg": wsum / 100, "added": sorted(now_ - was)[:10]}   # 비중은 % 단위 → 비율로
     # ETF 편입 역조회
     etf_in = {}
     if not EH.empty:
@@ -802,7 +827,8 @@ def run(limit=0, **_):
             sold = sum(1 for m in has_prev if kind.get(m, "guru") == "guru" and (m, t) in prv_sh and m not in set(gu.m))
             up = int(gu.new.sum()) + int((gu.chg.fillna(0) > 0.05).sum())
             dn = int((gu.chg.fillna(0) < -0.05).sum()) + sold
-            g13[t] = {"period": str(max(lpd[m] for m in g.m).date()), "holders": rows_[:40], "n_guru": len(gu), "net": up - dn, "sold": sold}
+            g13[t] = {"period": str(max(lpd[m] for m in g.m).date()), "holders": rows_[:40], "n_guru": len(gu), "net": up - dn, "sold": sold,
+                      "new_guru": int(gu.new.sum()), "up_guru": up, "new_all": int(g.new.sum())}
         # 투자자 화면용
         mrows = []
         for m, lp, pp, filed in mlist:
@@ -1006,8 +1032,11 @@ def run(limit=0, **_):
             row["nw7"] = int((nw.published >= pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=7)).sum())
             row["nw_last"] = nw.title.iloc[-1][:90]
         row["etfn"] = len(etf_in.get(t, []))
+        if t in etf_chg:
+            row["etf_add"], row["etf_drop"], row["etf_wchg"] = etf_chg[t]["add"], etf_chg[t]["drop"], etf_chg[t]["wchg"]
         if t in g13:
             row["g13"], row["g13_chg"] = g13[t]["n_guru"], g13[t]["net"]
+            row["g13_new"], row["g13_up"], row["f13_new"] = g13[t]["new_guru"], g13[t]["up_guru"], g13[t]["new_all"]
         row["s1"] = summary_line(row, now.date())
         if t in KO:
             row["ko"] = KO[t]
@@ -1162,7 +1191,7 @@ def run(limit=0, **_):
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")
-    dump(OUT / "free" / "universe.json", {"asof": PX.date.max(), "consensus_asof": c_asof, "fields": fields, "cats": CATS, "rows": free_rows})
+    dump(OUT / "free" / "universe.json", {"asof": PX.date.max(), "consensus_asof": c_asof, "etf_base": etf_base, "fields": fields, "cats": CATS, "rows": free_rows})
     dump(OUT / "pro" / "universe_pro.json", {"rows": U2[["t"] + [k for k in pro_keys if k in U2.columns]].to_dict("records")})
     st = U2[U2.k == "stock"]
     sec = st.groupby("sec").agg(n=("t", "size"), r1d=("r1d", "median"), r1m=("r1m", "median"), r1y=("r1y", "median"),

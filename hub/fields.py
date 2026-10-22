@@ -43,6 +43,10 @@ F = {
     "pcr": ("풋/콜 거래 비율", "tech", "x", "free"), "skew": ("옵션 왜곡(풋-콜 IV)", "tech", "pct", "free"),
     "etfn": ("편입 ETF 수(추적 대상)", "tech", "int", "free"), "g13": ("유명 투자자 보유 수", "tech", "int", "free"),
     "g13_chg": ("유명 투자자 순증 수(분기)", "tech", "int", "free"),
+    "g13_new": ("유명 투자자 신규 매수 수(분기)", "tech", "int", "free"), "g13_up": ("유명 투자자 매수·늘림 수(분기)", "tech", "int", "free"),
+    "f13_new": ("추적 기관 전체 신규 매수 수(분기)", "tech", "int", "free"),
+    "etf_add": ("ETF 신규 편입 수(약 30일)", "tech", "int", "free"), "etf_drop": ("ETF 편출 수(약 30일)", "tech", "int", "free"),
+    "etf_wchg": ("ETF 내 비중 변화 합(약 30일)", "tech", "pct", "free"),
     # 공시·내부자
     "ib": ("내부자 매수 금액(90일)", "doc", "usd", "free"), "is": ("내부자 매도 금액(90일)", "doc", "usd", "free"),
     "ibn": ("내부자 매수 인원(90일)", "doc", "int", "free"), "ib_last": ("최근 내부자 매수일", "doc", "date", "free"),
