@@ -103,14 +103,16 @@ function alertPanel() {
   if (me && me.linked) {
     el.innerHTML = `<div class="al"><div class="al-t"><b><span class="on-dot"></span>텔레그램 알림 ${me.mode === 'off' ? '꺼짐' : '켜짐'}</b>${me.tg ? ` <span class="mut s13">· ${esc(me.tg)}</span>` : ''}
         <div class="small mut">${me.mode === 'off' ? '다시 켜면 매일 아침 후보함 소식을 모아 보내요' : '매일 아침 8~9시(한국 시간)에 후보함 종목의 새 소식을 한 번에 · 다른 기기는 봇에게 /기기'}</div></div>
-      <button class="btn" data-al="mode">${me.mode === 'off' ? '알림 켜기' : '알림 끄기'}</button><button class="btn" data-al="unlink">연결 끊기</button></div>`;
+      <button class="btn" data-al="mode">${me.mode === 'off' ? '알림 켜기' : '알림 끄기'}</button><button class="btn" data-al="unlink">연결 끊기</button></div>
+      <div class="small faint" style="margin-top:8px">후보함·텔레그램 연결 정보가 서버(Cloudflare)에 저장돼 있어요 · <a href="privacy.html">개인정보처리방침</a> · <a href="#" data-al="wipe">서버에서 내 데이터 지우기</a></div>`;
   } else {
     el.innerHTML = `<div class="al"><div class="al-t"><b>📨 후보함 소식을 텔레그램으로 받기</b>
         <ul><li>실적 발표 하루 전, 발표 뒤 주가 반응</li><li>종목 점검표에 새로 생긴 경고</li><li>임원 장내 매수</li></ul>
-        <div class="small faint" style="margin-top:6px">매일 아침 한 번 모아서 · 로그인 없이 이 브라우저를 텔레그램과 연결해요 (후보함이 서버에도 저장돼 다른 기기에서 이어 쓸 수 있어요)</div></div>
+        <div class="small faint" style="margin-top:6px">매일 아침 한 번 모아서 · 로그인 없이 이 브라우저를 텔레그램과 연결해요. 연결하면 후보함과 텔레그램 대화방 정보가 서버에 저장돼요 (다른 기기에서 이어 쓰기 가능) · <a href="privacy.html">개인정보처리방침</a></div></div>
       <button class="btn dark" data-al="link">${waiting ? '연결 기다리는 중…' : '텔레그램 연결'}</button></div>`;
   }
-  el.querySelectorAll('[data-al]').forEach(b => b.onclick = async () => {
+  el.querySelectorAll('[data-al]').forEach(b => b.onclick = async ev => {
+    ev.preventDefault();
     const a = b.dataset.al;
     b.disabled = true;
     try {
@@ -121,6 +123,7 @@ function alertPanel() {
         waiting = Date.now(); poll();
       } else if (a === 'mode') await Sync.mode(me.mode === 'off' ? 'digest' : 'off');
       else if (a === 'unlink') { if (confirm('텔레그램 연결을 끊을까요? 후보함은 그대로 남아요')) await Sync.unlink(); }
+      else if (a === 'wipe') { if (confirm('서버에 있는 후보함·텔레그램 연결 정보를 모두 지울까요? 되돌릴 수 없어요. 이 브라우저의 후보함은 그대로 남아요')) { await Sync.wipe(); notice('서버에서 모두 지웠어요'); } }
     } catch (e) { notice('실패: ' + e.message); }
     alertPanel();
   });

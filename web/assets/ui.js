@@ -90,7 +90,7 @@ function header(active) {
 async function footer() {
   const f = document.createElement('footer');
   f.className = 'foot';
-  f.innerHTML = '출처: SEC EDGAR(공시·재무·내부자·13F) · FINRA(공매도 거래) · yfinance(가격·컨센서스·개요·옵션) · 공공데이터포털(국내 ETF) · 각 운용사(ETF 구성)<br>정보 제공용이며 투자 권유가 아닙니다';
+  f.innerHTML = '출처: SEC EDGAR(공시·재무·내부자·13F) · FINRA(공매도 거래) · yfinance(가격·컨센서스·개요·옵션) · 공공데이터포털(국내 ETF) · 각 운용사(ETF 구성)<br>정보 제공용이며 투자 권유가 아닙니다 · <a href="terms.html">이용약관·투자 위험 고지</a> · <a href="privacy.html"><b>개인정보처리방침</b></a>';
   $('.wrap').append(f);
   try {
     const m = await Data.meta();
@@ -192,6 +192,7 @@ const Sync = {
   },
   async link() { await this.ensure(); await this.run(); return (await this.call('/api/link', { code: this.st().code })).url; },
   async mode(m) { const j = await this.call('/api/mode', { code: this.st().code, mode: m }); this.set({ me: j.me }); return j.me; },
+  async wipe() { await this.call('/api/delete', { code: this.st().code }); this.set({ code: null, me: null, at: 0 }); },
   async unlink() { const j = await this.call('/api/unlink', { code: this.st().code }); this.set({ me: j.me }); return j.me; },
   async join(token) {                                  // 텔레그램 /기기 링크 → 이 기기를 같은 후보함에 붙임 (이 기기 후보함은 합쳐짐)
     const j = await this.call('/api/join', { token });
