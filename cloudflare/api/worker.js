@@ -80,6 +80,14 @@ async function useToken(env, token, kind) {
   await env.DB.prepare('DELETE FROM tokens WHERE token=?').bind(token).run();
   return r.exp >= Date.now() ? r.uid : null;
 }
+async function wipe(env, uid) {                       // 서버에 있는 이 사용자의 모든 것 (후보함·기기·연결 토큰·텔레그램 연결)
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM watch WHERE uid=?').bind(uid),
+    env.DB.prepare('DELETE FROM devices WHERE uid=?').bind(uid),
+    env.DB.prepare('DELETE FROM tokens WHERE uid=?').bind(uid),
+    env.DB.prepare('DELETE FROM users WHERE uid=?').bind(uid),
+  ]);
+}
 const me = u => ({ linked: !!u.chat_id, tg: u.tg_name || null, mode: u.mode || 'digest' });
 
 // ---- 후보함 병합: 항목마다 u(수정 시각, ms)가 더 큰 쪽이 이김
@@ -133,6 +141,7 @@ async function api(req, env, path) {
     await env.DB.prepare('UPDATE users SET mode=? WHERE uid=?').bind(mode, u.uid).run();
     return json({ me: { ...me(u), mode } });
   }
+  if (path === '/api/delete') { await wipe(env, u.uid); return json({ deleted: true }); }
   if (path === '/api/unlink') {
     await env.DB.prepare('UPDATE users SET chat_id=NULL, tg_name=NULL WHERE uid=?').bind(u.uid).run();
     return json({ me: { ...me(u), linked: false, tg: null } });
@@ -151,8 +160,10 @@ const HELP = s => `<b>티커맵 알림</b>
 /끄기 · /켜기 — 알림 멈춤·다시 받기
 /기기 — 다른 기기(휴대폰·PC)에서 같은 후보함 쓰기
 /해제 — 이 대화방 연결 끊기
+/삭제 — 서버에 있는 내 데이터 모두 지우기
 
 후보함: ${s}/watch.html
+개인정보처리방침: ${s}/privacy.html
 점수나 추천이 아니라 확인할 거리를 알려 드려요.`;
 
 async function webhook(req, env) {
@@ -195,6 +206,9 @@ async function webhook(req, env) {
   } else if (cmd === '/기기' || cmd === '/device') {
     const tok = await newToken(env, user.uid, 'dev');
     await say(env, chat, `다른 기기에서 아래 링크를 열면 같은 후보함이 이어져요 (10분 안에, 한 번만).\n${S}/watch.html#join=${tok}\n\n링크는 다른 사람에게 보내지 마세요.`);
+  } else if (cmd === '/삭제' || cmd === '/delete') {
+    if (arg !== '확인') await say(env, chat, '서버에 있는 후보함·연결 정보를 모두 지워요 (되돌릴 수 없음). 각 브라우저에 저장된 후보함은 그대로 남아요.\n지우려면 <b>/삭제 확인</b> 을 보내 주세요.');
+    else { await wipe(env, user.uid); await say(env, chat, '모두 지웠어요. 이 대화방에 더는 알림을 보내지 않아요.'); }
   } else if (cmd === '/해제' || cmd === '/unlink') {
     await env.DB.prepare('UPDATE users SET chat_id=NULL, tg_name=NULL WHERE uid=?').bind(user.uid).run();
     await say(env, chat, '연결을 끊었어요. 후보함은 사이트에 그대로 있어요.');
@@ -244,6 +258,7 @@ async function setup(req, env) {
       { command: 'on', description: '알림 다시 받기 (/켜기)' },
       { command: 'device', description: '다른 기기에서 같은 후보함 쓰기 (/기기)' },
       { command: 'unlink', description: '이 대화방 연결 끊기 (/해제)' },
+      { command: 'delete', description: '서버에 있는 내 데이터 모두 지우기 (/삭제)' },
       { command: 'help', description: '도움말' },
     ],
   });
