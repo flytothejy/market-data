@@ -50,6 +50,61 @@ const st = {
 };
 { const L0 = LENS[st.lens]; st.span = L0.spans.includes(qs('span')) ? qs('span') : prefSpan(L0); st.xw = XW[qs('x')] ? qs('x') : SPAN[st.span][1]; }
 let PATS = null;
+// ---- 시간 재생: 길이별 공통 날짜마다 모든 종목의 [가로축 수익률, 신호] (free/frames/렌즈@길이.json)
+const FR = {};                                        // 불러온 프레임
+let FRA = null, playing = false, playRaf = 0;         // FRA = 지금 보여주는 프레임 위치 {key, f(소수 = 사이 보간)} · null이면 '지금'
+const frameKey = () => `${LENS[st.lens].trail}@${st.span}`;
+const frameOK = () => st.view === 'stock' && LENS[st.lens].spans.includes(st.span) && st.xw === SPAN[st.span][1];
+function frameVal(t) {
+  if (!FRA || !FR[FRA.key]) return null;
+  const F = FR[FRA.key], a = F.t[t];
+  if (!a) return null;
+  const i0 = Math.floor(FRA.f), i1 = Math.min(a.length - 1, i0 + 1), w = FRA.f - i0, p = a[i0], q = a[i1];
+  if (!p && !q) return null;
+  if (!p || !q || w === 0) return (w < 0.5 ? p : q) || p || q;
+  return [p[0] + (q[0] - p[0]) * w, p[1] + (q[1] - p[1]) * w];
+}
+function frameDate() { if (!FRA || !FR[FRA.key]) return null; const d = FR[FRA.key].d; return d[Math.round(FRA.f)]; }
+async function loadFrames() { const k = frameKey(); if (FR[k] || !frameOK()) return; try { FR[k] = await getJSON(`free/frames/${k}.json`); } catch (e) { FR[k] = { d: [], t: {} }; } if (k === frameKey()) render(true); }
+function setFrame(f) {
+  const F = FR[frameKey()];
+  if (!F || !F.d.length || f == null || f >= F.d.length - 1) FRA = null; else FRA = { key: frameKey(), f };
+  P = points(); queueDraw(); queueSide(); playUi();
+}
+function playUi() {
+  const F = FR[frameKey()], sl = $('#mx-tl'), lab = $('#mx-tld'), pb = $('#mx-play');
+  if (!F || !sl) return;
+  const n = F.d.length;
+  sl.value = FRA ? FRA.f : n - 1;
+  lab.textContent = FRA ? frameDate() : '지금';
+  pb.textContent = playing ? '❚❚' : '▶';
+}
+function play() {
+  const F = FR[frameKey()];
+  if (!F || !F.d.length) return;
+  if (playing) { playing = false; cancelAnimationFrame(playRaf); playUi(); return; }
+  playing = true;
+  let f = FRA ? FRA.f : 0, last = performance.now();
+  if (!FRA) setFrame(0);
+  const step = now => {
+    if (!playing) return;
+    f += (now - last) / 650; last = now;                 // 한 칸에 0.65초
+    if (f >= F.d.length - 1) { playing = false; setFrame(null); return; }
+    setFrame(f);
+    playRaf = requestAnimationFrame(step);
+  };
+  playRaf = requestAnimationFrame(step);
+}
+function playBar() {
+  const F = FR[frameKey()];
+  if (!frameOK()) return st.view === 'stock' && LENS[st.lens].spans.includes(st.span) ? `<div class="mx-tlbar mut s13">가로축을 기간에 맞추면 시간 재생을 쓸 수 있어요</div>` : '';
+  if (!F) return `<div class="mx-tlbar mut s13">시간 재생 불러오는 중…</div>`;
+  if (!F.d.length) return '';
+  const n = F.d.length;
+  return `<div class="mx-tlbar"><button class="btn" id="mx-play" aria-label="재생">▶</button><span class="s13 mut">${esc(F.d[0].slice(2).replace(/-/g, '.'))}</span>
+    <input type="range" id="mx-tl" min="0" max="${n - 1}" step="0.01" value="${FRA ? FRA.f : n - 1}" aria-label="시간 이동">
+    <b class="s13" id="mx-tld" style="min-width:74px;text-align:right">${FRA ? esc(frameDate()) : '지금'}</b></div>`;
+}
 window.watchSrc = () => ({ page: 'matrix', lens: st.lens, span: st.span, xw: st.xw, view: st.view });
 let U, S, W = 900, H = 640, P = [], GT = null, drawQueued = false, sideTimer = null;
 const PAD = { l: 12, r: 10, t: 30, b: 40 };   // 세로축 눈금 숫자가 없어 왼쪽 여백은 최소로
@@ -83,7 +138,7 @@ function stockPoints(ignoreFocus) {
   const watch = new Set(Watch.list()), hold = new Set(portfolioTickers()), [w0, w1] = weekRange(), tr = new Set(st.track);
   const out = [];
   for (const r of S) {
-    const x = r[st.xw], y = L.y(r);
+    const fv = frameVal(r.t), x = fv ? fv[0] : (FRA ? null : r[st.xw]), y = fv ? fv[1] : (FRA ? null : L.y(r));
     if (x == null || y == null) continue;
     const pinned = tr.has(r.t);                  // 트레일을 보고 있는 종목은 필터와 상관없이 항상 표시
     if (!pinned) {
@@ -220,7 +275,7 @@ function drawChart() {
   }
   const trails = st.track.map((id, i) => trailLayer(id, TRACK_COL[i % TRACK_COL.length])).join('');
   svg.innerHTML = g + dots + trails + labs;
-  $('#mx-count').textContent = `${vis.length.toLocaleString()}개 ${st.view === 'stock' ? '종목' : VIEWS[st.view]}${zoomed() ? ' (확대)' : ''} · ${U.asof} 기준`;
+  $('#mx-count').textContent = `${vis.length.toLocaleString()}개 ${st.view === 'stock' ? '종목' : VIEWS[st.view]}${zoomed() ? ' (확대)' : ''} · ${FRA ? frameDate() + ' 시점 (재생 중)' : U.asof + ' 기준'}`;
   const zb = $('#mx-reset'); if (zb) zb.style.visibility = zoomed() ? 'visible' : 'hidden';
   svg.style.touchAction = zoomed() ? 'none' : 'pan-y';   // 확대했을 때만 한 손가락으로 지도 이동 (아니면 페이지 스크롤)
 }
@@ -241,6 +296,11 @@ function trailC(id) {
   const xm = XW[st.xw][1], xi = XI[st.xw], cur = P.find(p => p.id === id);
   const jit = L.jitter && !isGroup(id) ? hash(id) * 0.14 : 0;
   const C = pts.filter(q => q[xi] != null && q[5] != null).map(q => ({ d: q[0], xN: clamp(q[xi] / xm, -1, 1), yN: clamp((L.raw ? q[5] : q[5] / L.max) + jit, -1, 1) }));
+  if (FRA) {                                   // 재생 중: 그 시점까지 지나온 길만, 끝은 지금 움직이는 점
+    const fd = frameDate(), D = C.filter(c => c.d < fd);
+    if (cur) D.push({ d: fd, xN: cur.xN, yN: cur.yN });
+    return D;
+  }
   if (cur) {
     const now = { d: U.asof, xN: cur.xN, yN: cur.yN };
     if (C.length && C[C.length - 1].d >= U.asof) C[C.length - 1] = now; else C.push(now);
@@ -365,6 +425,7 @@ const queueSide = () => { clearTimeout(sideTimer); sideTimer = setTimeout(() => 
 
 // ---- 전체 다시 그리기 (렌즈·필터·트레일 목록이 바뀔 때)
 function render(keepDom) {
+  if (FRA && FRA.key !== frameKey() || !frameOK()) { FRA = null; playing = false; cancelAnimationFrame(playRaf); }
   P = points();
   const prevHome = HOME;
   HOME = home();
@@ -375,11 +436,14 @@ function render(keepDom) {
   W = Math.max(320, box.clientWidth);
   H = W < 600 ? Math.round(W * 0.98) : Math.min(680, Math.round(W * 0.7));
   const L = LENS[st.lens];
-  box.innerHTML = `${trackBar()}<div class="mx-bar"><button class="btn" id="mx-zin" aria-label="확대">＋</button><button class="btn" id="mx-zout" aria-label="축소">－</button><button class="btn" id="mx-reset">전체 보기</button></div>
+  box.innerHTML = `${playBar()}${trackBar()}<div class="mx-bar"><button class="btn" id="mx-zin" aria-label="확대">＋</button><button class="btn" id="mx-zout" aria-label="축소">－</button><button class="btn" id="mx-reset">전체 보기</button></div>
     <svg id="mx-svg" viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="티커맵: 가로 최근 ${XW[st.xw][0]} 주가, 세로 ${esc(L.name)}"></svg><div class="mx-tip" id="mx-tip"></div>`;
   drawChart();
   $('#mx-side').innerHTML = side();
   bindCtl(); bindChart(); bindSide();
+  const tl = $('#mx-tl');
+  if (tl) { tl.oninput = e => { if (playing) { playing = false; cancelAnimationFrame(playRaf); } setFrame(+e.target.value); }; $('#mx-play').onclick = play; playUi(); }
+  loadFrames();
   sync();
 }
 

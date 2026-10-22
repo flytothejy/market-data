@@ -352,7 +352,7 @@ def trails(t, g, ET, sv, gh, rq, ih, now):
     def grid(span):
         step, n, _ = SPANS[span]
         return [last - pd.Timedelta(days=step * k) for k in range(n - 1, -1, -1)]
-    out = {}
+    out, full = {}, {}                                   # full: 렌즈별 전체 이력 (재생용 프레임을 만들 때 씀)
     if not ET.empty and t in ET.index:
         e = ET.loc[t]
         base = e.get("90daysAgo")
@@ -362,6 +362,7 @@ def trails(t, g, ET, sv, gh, rq, ih, now):
                    if e.get(f) is not None and e.get(f) == e.get(f)]
             if len(pts) >= 3:
                 out["eps@3m"] = pts
+                full["eps"] = pts
     if sv is not None and len(sv) >= 130:
         s = sv.sort_values("date")
         m60 = (s.short_vol / s.total_vol).rolling(60, min_periods=45).mean()
@@ -387,6 +388,7 @@ def trails(t, g, ET, sv, gh, rq, ih, now):
                 out[f"insider@{span}"] = pts
     if gh and len(gh) >= 3:
         allp = [pt(gh[i][0], gh[i][1] - gh[i - 1][1]) for i in range(1, len(gh))]
+        full["guru"] = allp
         for span, days in (("1y", 400), ("3y", 1170)):
             pts = [p for p in allp if pd.Timestamp(p[0]) >= last - pd.Timedelta(days=days)]
             if len(pts) >= 2:
@@ -401,10 +403,27 @@ def trails(t, g, ET, sv, gh, rq, ih, now):
             v = [rq[k] for k in q8]
             if all(x and x > 0 for x in v):
                 allp.append(pt(q8[-1], (v[7] / v[3] - 1) - (sum(v[4:8]) / sum(v[0:4]) - 1)))
+        full["rev"] = allp
         for span, days in (("1y", 400), ("3y", 1170)):
             pts = [p for p in allp if pd.Timestamp(p[0]) >= last - pd.Timedelta(days=days)]
             if len(pts) >= 2:
                 out[f"rev@{span}"] = pts
+    # 재생용 프레임: 길이별 공통 날짜(격자)마다 [그 길이의 가로축 수익률, 그때 알려진 신호 값]
+    fr = {}
+    for key in out:
+        lens, span = key.split("@")
+        xi = {"r1m": 1, "r3m": 2, "r6m": 3}[SPANS[span][2]]
+        src = out[key] if lens in ("short", "insider") else full.get(lens, out[key])
+        stale = 200 if lens in ("rev", "guru") else 40
+        vals = []
+        for d in grid(span):
+            ds = str(pd.Timestamp(d).date())
+            prev = [p for p in src if p[0] <= ds]
+            y = prev[-1][5] if prev and (pd.Timestamp(ds) - pd.Timestamp(prev[-1][0])).days <= stale else None
+            x = rets(d)[xi]
+            vals.append([x, y] if x is not None and y is not None else None)
+        fr[key] = ([str(pd.Timestamp(d).date()) for d in grid(span)], vals)
+    out["_frames"] = fr
     return out
 
 
@@ -849,6 +868,7 @@ def run(limit=0, **_):
     log("종목별 지표 계산·저장 중")
     rows, n_files = [], 0
     asof_s = str(PX.date.max().date())                  # 트레일 끝점(지금 점)의 날짜 = 마지막 거래일
+    FRAMES = {}                                         # 시간 재생 프레임 {렌즈@길이: {d: 날짜들, t: {종목: [[x, y]|None, ...]}}}
     PAT = {}                                            # 트레일 모양 이름표 {길이: {렌즈: {종목: 코드}}}
     ALL_TR = []                                         # 업종 경로용 (업종, 세부 업종, 시가총액, 종목 경로)
     for r in S.itertuples():
@@ -1024,6 +1044,9 @@ def run(limit=0, **_):
             detail["news"] = [{"d": x.published, "t": x.title, "s": x.source, "u": x.url, "k": x.kind} for x in nw.sort_values("published", ascending=False).head(25).itertuples()]
         detail["etf_in"] = etf_in.get(t, [])
         detail["trail"] = trails(t, g, ET, SVg.get(t), g13_hist.get(t), revq.get(cik), IHg.get(cik), now)
+        for key, (fd, fv) in (detail["trail"].pop("_frames", None) or {}).items():   # 티커맵 시간 재생용 (종목 파일에는 안 넣음)
+            F_ = FRAMES.setdefault(key, {}).setdefault(tuple(fd), {})       # 날짜 격자가 같은 종목끼리 (마지막 거래일이 다른 종목은 따로)
+            F_[t] = [None if v is None else [round(v[0], 3), round(v[1], 3)] for v in fv]
         # 모양 이름표 (지도 필터용): 지금 점 = 지도 위 점
         ys = {"eps": row.get("c_chg90") if (row.get("c_n") or 0) >= 3 else None,
               "rev": (row["rev_qg"] - row["rev_g"]) if row.get("rev_qg") is not None and row.get("rev_g") is not None else None,
@@ -1161,6 +1184,9 @@ def run(limit=0, **_):
     dump(OUT / "free" / "market.json", mk)
     dump(OUT / "free" / "sector_trails.json", group_trails(ALL_TR))
     dump(OUT / "free" / "patterns.json", PAT)
+    for key, by in FRAMES.items():
+        fd, tt = max(by.items(), key=lambda kv: len(kv[1]))     # 가장 많은 종목이 쓰는 격자
+        dump(OUT / "free" / "frames" / f"{key}.json", {"d": list(fd), "t": tt})
     if f13_page:
         dump(OUT / "free" / "f13.json", f13_page)
     # 예전 S&P 500 컨센서스 페이지 데이터 (Pages 배포 때 /consensus_data.json 으로 복사)
