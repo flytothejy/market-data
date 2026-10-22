@@ -10,6 +10,7 @@
 import csv, html, json, os, re, sys, datetime as dt
 from pathlib import Path
 
+SKEL = '<div class="wrap" id="app"><div class="skel" role="status" aria-label="불러오는 중"><i class="sk sk-h"></i><i class="sk sk-p"></i><div class="sk-grid"><i class="sk sk-c"></i><i class="sk sk-c"></i><i class="sk sk-c"></i></div><i class="sk sk-b"></i></div></div>'   # 화면 파일의 '불러오는 중' 자리 (web/*.html과 같아야 함)
 SITE_URL = os.environ.get("SITE_URL", "https://flytothejy.github.io/market-data").rstrip("/")
 ROOT = Path(__file__).resolve().parent.parent
 SECTOR_KO = {"Technology": "기술", "Healthcare": "헬스케어", "Financial Services": "금융", "Consumer Cyclical": "경기소비재",
@@ -52,7 +53,7 @@ def inject(tpl, *, title, desc, path, var, body, image=None):
     s = re.sub(r'<meta name="description"[^>]*>\n?', "", tpl)              # 템플릿의 설명 메타는 빼고 새로
     s = s.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n' + head, 1) if '<meta charset="utf-8">' in s else s.replace("<head>", "<head>\n" + head, 1)
     s = re.sub(r"<title>.*?</title>", f"<title>{e(title)}</title>", s, count=1, flags=re.S)
-    s = s.replace('<div class="wrap" id="app"><div class="loading">불러오는 중…</div></div>', f'<div class="wrap" id="app">{body}</div>', 1)
+    s = s.replace(SKEL, f'<div class="wrap" id="app">{body}</div>', 1)
     return s
 
 
