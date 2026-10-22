@@ -177,7 +177,29 @@ def main(site):
     sm.append("</urlset>")
     (site / "sitemap.xml").write_text("\n".join(sm), encoding="utf-8")
     (site / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n", encoding="utf-8")
+    canon(site)
     print(f"정적 페이지: 종목·ETF {n}개, 투자자 {ni}개, 사이트맵 {len(urls)}개 주소 ({SITE_URL})")
+
+
+def canon(site):
+    """화면 페이지마다 대표 주소(canonical) — github.io 사본·www 같은 중복 주소가 tickermap.kr로 모이게.
+    주소 뒤 ?t= 로 내용이 바뀌는 stock·investors는 종목·투자자 정적 페이지가 대표라 건너뜀. 오프라인 안내는 검색 제외"""
+    hub = site / "hub"
+    skip = {"stock.html", "investors.html"}
+    for f in hub.glob("*.html"):
+        s = f.read_text(encoding="utf-8")
+        if f.name == "offline.html":
+            s = s.replace("<head>", '<head>\n<meta name="robots" content="noindex">', 1)
+        elif f.name not in skip and 'rel="canonical"' not in s:
+            path = "hub/" if f.name == "index.html" else "hub/" + f.name[:-5]
+            s = s.replace("<title>", f'<link rel="canonical" href="{SITE_URL}/{path}">\n<title>', 1)
+        f.write_text(s, encoding="utf-8")
+    # 없는 주소는 404 (Cloudflare Pages는 404.html이 없으면 첫 화면을 200으로 돌려줌)
+    (site / "404.html").write_text("""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>페이지를 찾을 수 없어요 | 티커맵</title>
+<style>body{margin:0;font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#fafaf8;color:#1c1b19;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px}
+a{display:inline-block;margin-top:14px;padding:10px 16px;border-radius:10px;background:#1c1b19;color:#fff;text-decoration:none}p{color:#6b6a65}</style></head>
+<body><div><h1 style="font-size:22px">페이지를 찾을 수 없어요</h1><p>주소가 바뀌었거나 없는 종목일 수 있어요.</p><a href="/hub/">티커맵 홈으로</a></div></body></html>""", encoding="utf-8")
 
 
 if __name__ == "__main__":
