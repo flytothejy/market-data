@@ -1,7 +1,9 @@
 name: pages
 
 # 사이트 배포 — 기존 대시보드(docs/) + 허브 화면(web/ → /hub/) + 화면용 데이터(R2 site/api → /api/)
-# 저장소 Settings → Pages → Source 를 "GitHub Actions"로 바꿔야 동작
+# 1) GitHub Pages (flytothejy.github.io/market-data) — 예비로 유지
+# 2) Cloudflare Pages (tickermap.kr) — Secrets에 CLOUDFLARE_API_TOKEN이 있으면 같은 결과물을 함께 올림 (프로젝트 tickermap)
+#    도메인 루트(/)는 /hub/로 보냄 (_redirects)
 on:
   workflow_run:
     workflows: ["hub", "update-market-data"]
@@ -32,6 +34,7 @@ jobs:
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}     # 있으면 Cloudflare Pages에도 배포
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -51,7 +54,16 @@ jobs:
           if [ -f _site/api/v1/free/consensus_page.json ]; then cp _site/api/v1/free/consensus_page.json _site/consensus_data.json; fi
           python -m hub.static_pages _site     # 검색엔진용 종목·투자자 정적 페이지, 사이트맵
           touch _site/.nojekyll
+          printf '/  /hub/  302\n' > _site/_redirects            # Cloudflare Pages 전용 (GitHub Pages는 무시)
           du -sh _site; find _site -type f | wc -l
+      - name: deploy to Cloudflare Pages (tickermap.kr)
+        if: env.CF_TOKEN != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          export CLOUDFLARE_ACCOUNT_ID=$(echo "$R2_ACCOUNT_ID" | grep -oE '[0-9a-f]{32}' | head -1)
+          npx -y wrangler@3 pages project create tickermap --production-branch main 2>/dev/null || true
+          npx -y wrangler@3 pages deploy _site --project-name tickermap --branch main --commit-dirty=true
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
