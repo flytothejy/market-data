@@ -114,6 +114,49 @@ async function merge(env, uid, items) {
 }
 const live = a => a.filter(x => !x.del);
 
+// ---- 종목별 이용 집계 (개인 식별 없음: 날짜·종목·종류·횟수만. 기기·IP는 저장하지 않음)
+// 종류: v 종목 화면 조회 · w 후보함 담기 · c 비교에 추가 · a 알림 링크로 들어옴
+// 같은 기기·같은 종목·같은 종류는 하루 한 번만 보내도록 브라우저에서 거름 (부풀리기 방지는 그쪽 + 요청당 개수 제한)
+const EV_KINDS = new Set(['v', 'w', 'c', 'a']);
+const kstDay = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
+const OK_ORIGIN = /^(https:\/\/(([a-z0-9-]+\.)?tickermap\.kr|flytothejy\.github\.io|([a-z0-9-]+\.)?tickermap\.pages\.dev)|http:\/\/localhost(:\d+)?)$/;
+async function events(req, env) {
+  const o = req.headers.get('origin') || '';
+  if (o && !OK_ORIGIN.test(o)) return new Response(null, { status: 204, headers: CORS });
+  const ua = req.headers.get('user-agent') || '';
+  if (/bot|crawl|spider|headless|preview|Yeti/i.test(ua)) return new Response(null, { status: 204, headers: CORS });
+  let b = {};
+  try { b = JSON.parse(await req.text()); } catch (e) { }
+  const d = kstDay(), seen = new Set(), st = [];
+  for (const x of (Array.isArray(b.e) ? b.e : []).slice(0, 20)) {
+    if (!Array.isArray(x) || !EV_KINDS.has(x[0]) || typeof x[1] !== 'string' || !TICK.test(x[1])) continue;
+    const key = x[0] + x[1]; if (seen.has(key)) continue; seen.add(key);
+    st.push(env.DB.prepare('INSERT INTO stats (d, t, k, n) VALUES (?,?,?,1) ON CONFLICT(d, t, k) DO UPDATE SET n = n + 1').bind(d, x[1], x[0]));
+  }
+  if (st.length) await env.DB.batch(st);
+  return new Response(null, { status: 204, headers: CORS });
+}
+async function popular(req, env, ctx) {
+  // 최근 7일·30일 종목별 합계 — 10분 캐시
+  const cache = caches.default, key = new Request(new URL('/api/popular', req.url).href);
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  const out = { asof: kstDay(), d7: {}, d30: {}, tot7: {} };
+  const rows = (await env.DB.prepare('SELECT d, t, k, n FROM stats WHERE d >= ?').bind(kstDay(Date.now() - 29 * 864e5)).all()).results;
+  const c7 = kstDay(Date.now() - 6 * 864e5);
+  for (const r of rows) {
+    for (const [name, ok] of [['d30', true], ['d7', r.d >= c7]]) {
+      if (!ok) continue;
+      const m = out[name][r.t] = out[name][r.t] || {};
+      m[r.k] = (m[r.k] || 0) + r.n;
+    }
+    if (r.d >= c7) out.tot7[r.k] = (out.tot7[r.k] || 0) + r.n;
+  }
+  const res = new Response(JSON.stringify(out), { headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=600' } });
+  ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 // ---- 브라우저용 API
 async function api(req, env, path) {
   const b = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
@@ -269,10 +312,12 @@ async function setup(req, env) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const path = new URL(req.url).pathname.replace(/\/$/, '') || '/';
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     try {
+      if (path === '/api/ev' && req.method === 'POST') return await events(req, env);
+      if (path === '/api/popular' && req.method === 'GET') return await popular(req, env, ctx);
       if (path.startsWith('/api/') && req.method === 'POST') return await api(req, env, path);
       if (path === '/tg' && req.method === 'POST') return await webhook(req, env);
       if (path.startsWith('/internal/')) return await internal(req, env, path);

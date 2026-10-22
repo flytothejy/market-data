@@ -64,7 +64,7 @@ h2{margin:0;font-size:19px;font-weight:750}
 @media (max-width:900px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:600px){.g2,.g3{grid-template-columns:minmax(0,1fr)}}
 .cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
-.c-cons{background:#c2410c}.c-fin{background:#15803d}.c-tech{background:#1d4ed8}.c-doc{background:#7c3aed}.c-news{background:#a16207}.c-who{background:#0f766e}
+.c-cons{background:#c2410c}.c-fin{background:#15803d}.c-tech{background:#1d4ed8}.c-doc{background:#7c3aed}.c-news{background:#a16207}.c-who{background:#0f766e}.c-watch{background:#be185d}
 
 /* 배지 */
 .pro{display:inline-block;font-size:10px;font-weight:750;letter-spacing:.05em;padding:2px 7px;border-radius:99px;background:var(--ink);color:var(--bg);vertical-align:2px}

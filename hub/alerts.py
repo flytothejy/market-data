@@ -227,7 +227,7 @@ def message(asof, items, ev, R):
         for x in sorted(e, key=lambda x: x["ord"]):
             lines.append(f"{icon.get(x['kind'], '·')} {html.escape(x['title'])}\n    <i>{html.escape(x['desc'])}</i>")
             keys.append(f"{it['t']}|{x['k']}")
-        lines.append(f'<a href="{SITE_URL}/s/{it["t"]}/">종목 화면 →</a>')
+        lines.append(f'<a href="{SITE_URL}/s/{it["t"]}/?src=tg">종목 화면 →</a>')
         blocks.append("\n".join(lines))
     if not blocks:
         return None, []

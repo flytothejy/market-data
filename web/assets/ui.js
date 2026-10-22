@@ -307,6 +307,7 @@ function watchSrc(btn) {
 }
 async function captureWatch(t, btn) {
   const src = watchSrc(btn);
+  Stat.hit('w', t);
   Watch.add({ t, at: new Date().toISOString().slice(0, 10), px: null, purpose: '', why: '', note: '', src, snap: null });
   let r = null, P = null;
   try { const [U, pp] = await Promise.all([Data.universe(), patterns()]); r = U.rows.find(x => x.t === t); P = pp; } catch (e) { }
@@ -553,4 +554,33 @@ const tip = k => GLOSS[k] ? `<span class="tip" tabindex="0" role="note" aria-lab
 // ---- 앱처럼 설치(PWA): 서비스 워커 등록 (https에서만)
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   addEventListener('load', () => navigator.serviceWorker.register(new URL('sw.js', document.baseURI).href).catch(() => { }));
+}
+
+// ---- 종목별 이용 집계 (개인 식별 없음 — 종목·종류만 보냄. 같은 기기·종목·종류는 하루 한 번)
+const Stat = {
+  KEY: 'hub.stat.v1', q: [], t: null,
+  hit(k, t) {
+    if (!t || navigator.webdriver || (location.protocol !== 'https:' && !window.HUB_STAT_TEST)) return;
+    const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    let st; try { st = JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch (e) { return; }
+    if (st.d !== day) st = { d: day, k: [] };
+    const key = k + ':' + t;
+    if (st.k.includes(key)) return;
+    st.k.push(key);
+    try { localStorage.setItem(this.KEY, JSON.stringify(st)); } catch (e) { return; }
+    this.q.push([k, t]);
+    clearTimeout(this.t); this.t = setTimeout(() => this.flush(), 1500);
+  },
+  flush() {
+    if (!this.q.length) return;
+    const body = JSON.stringify({ e: this.q.splice(0, 20) });
+    try { if (!(navigator.sendBeacon && navigator.sendBeacon(API_BASE + '/api/ev', body))) fetch(API_BASE + '/api/ev', { method: 'POST', body, keepalive: true }).catch(() => { }); } catch (e) { }
+  },
+};
+addEventListener('pagehide', () => Stat.flush());
+let _pop = null;
+async function popularStats() {   // 최근 7일·30일 종목별 합계 {d7: {T: {v,w,c,a}}, d30, tot7}
+  if (_pop) return _pop;
+  _pop = fetch(API_BASE + '/api/popular').then(r => r.ok ? r.json() : null).catch(() => null);
+  return _pop;
 }

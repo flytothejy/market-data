@@ -113,6 +113,9 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
       : `<div class="mut s13">ETF 구성은 10/19부터 매일 쌓고 있어요. ${eBase ? eBase + ' 이후' : '그동안'} 새로 편입된 종목이 아직 없어요 — 한 달쯤 지나면 의미 있는 숫자가 나와요.</div>`),
   ], 'screen.html?cat=tech');
 
+  // ---- 티커맵 사용자 (종목별 이용 합계 — 서버에서 받아 나중에 채움)
+  h += `<div id="pop-sec"></div>`;
+
   // ---- 뉴스
   const nw = by(S.filter(r => r.nw7 > 0), 'nw7');
   h += `<div class="sec-head"><h2><span class="cat-dot c-news"></span>뉴스</h2><span class="desc">최근 7일 기사·보도자료가 많은 종목</span></div>
@@ -136,6 +139,18 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
   }
   $('#app').innerHTML = h;
   footer();
+  // 티커맵 사용자들이 많이 본·담은·비교한 종목 (최근 7일, 같은 기기는 종목당 하루 한 번만 셈)
+  const P = await popularStats();
+  const el = document.getElementById('pop-sec');
+  if (!el || !P) return;
+  const by7 = k => Object.entries(P.d7 || {}).filter(([, m]) => m[k]).map(([t, m]) => ({ r: U.rows.find(x => x.t === t), n: m[k] })).filter(x => x.r).sort((a, b) => b.n - a.n);
+  const list = (k, unit) => { const xs = by7(k); return xs.length ? rankList(xs.map(x => ({ ...x.r, _n: x.n })), r => `${r._n.toLocaleString()}${unit}`, r => `${secKo(r.sec) || r.grp || ''} · 1주 ${fmt(r.r1w, 'pct', { sign: true })}`) : '<div class="mut s13">아직 없어요</div>'; };
+  const tot = P.tot7 || {}, enough = (tot.v || 0) >= 50;
+  el.innerHTML = section('watch', '티커맵 사용자들은', `최근 7일 · 같은 기기는 종목마다 하루 한 번만 셈 · 개인을 알아볼 수 없는 합계`, enough ? [
+    card('많이 본 종목', '종목 화면 조회', list('v', '회')),
+    card('후보함에 많이 담은 종목', '☆ 담기', list('w', '회')),
+    card('비교에 많이 넣은 종목', '종목 비교에 추가', list('c', '회')),
+  ] : [card('모이는 중', '', `<div class="mut s13">10/22부터 종목별 조회·담기 횟수를 모으고 있어요 (지난 7일 조회 ${(tot.v || 0).toLocaleString()}회). 조금 더 쌓이면 많이 본·담은 종목이 여기에 나와요.</div>`)]);
 })();
 </script>
 </body>

@@ -238,7 +238,7 @@ async function suggest(rows) {
   el.querySelectorAll('[data-lens]').forEach(b => b.onclick = () => { sgSt.lens = b.dataset.lens; sgSt.more = false; suggest(rows); });
   const a = $('#sg-all'); if (a) a.onchange = () => { sgSt.all = a.checked; suggest(rows); };
   const m = $('#sg-more'); if (m) m.onclick = () => { sgSt.more = !sgSt.more; suggest(rows); };
-  el.querySelectorAll('[data-add]').forEach(b => b.onclick = () => { if (tickers.length >= MAX) return; const y = scrollY; tickers.push(b.dataset.add); setUrl(); render(); scrollTo(0, y); });
+  el.querySelectorAll('[data-add]').forEach(b => b.onclick = () => { if (tickers.length >= MAX) return; const y = scrollY; tickers.push(b.dataset.add); Stat.hit('c', b.dataset.add); setUrl(); render(); scrollTo(0, y); });
 }
 function bind() {
   document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { tickers = tickers.filter(t => t !== b.dataset.rm); setUrl(); render(); });
@@ -246,7 +246,7 @@ function bind() {
     const v = ($('#add').value || '').trim().toUpperCase();
     const r = U.rows.find(x => x.t === v) || U.rows.find(x => (x.n || '').toUpperCase().includes(v));
     if (!r) { $('#add').value = ''; $('#add').placeholder = '찾을 수 없어요'; return; }
-    if (!tickers.includes(r.t) && tickers.length < MAX) tickers.push(r.t);
+    if (!tickers.includes(r.t) && tickers.length < MAX) { tickers.push(r.t); Stat.hit('c', r.t); }
     setUrl(); render();
   };
   if ($('#addb')) { $('#addb').onclick = add; $('#add').onkeydown = e => { if (e.key === 'Enter') add(); }; }
