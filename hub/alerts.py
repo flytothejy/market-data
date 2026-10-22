@@ -303,7 +303,8 @@ def run(limit=0, full=False, **_):
         except Exception as e:
             R.warning(f"알림 발송 실패: {e}")
     else:
-        R.set(send="ALERT_API 없음 — 감지만")
+        miss = [k for k in ("ALERT_API", "ALERT_KEY") if not os.environ.get(k)]
+        R.set(send=f"{', '.join(miss)} 없음 — 감지만")
     ST.parent.mkdir(parents=True, exist_ok=True)
     tmp = ST.with_suffix(".tmp")
     tmp.write_text(json.dumps({"asof": U["asof"], "at": now_utc().isoformat(timespec="seconds"), "tickers": state, "sent": sent}, ensure_ascii=False), encoding="utf-8")
