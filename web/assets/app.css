@@ -157,3 +157,10 @@ th .tip:hover::after,th .tip:focus::after{left:auto;right:-8px;transform:none}
 #watch-toast .wt-chips button,.pchip{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:99px;padding:5px 11px;background:var(--bg);color:var(--muted);cursor:pointer}
 #watch-toast .wt-chips button.on,.pchip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 #watch-toast .wt-chips a{margin-left:auto;font-size:12.5px}
+/* 종목 점검표 */
+.ck{display:flex;flex-direction:column;gap:10px}
+.ck-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ck-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px 18px}
+.ck-row{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.45}
+.ck-ic{font-weight:800;min-width:14px;text-align:center}
+.ck-v{font-size:10.5px;font-weight:700;color:var(--accent);border:1px solid currentColor;border-radius:5px;padding:0 4px;vertical-align:1px}

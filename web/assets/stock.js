@@ -120,6 +120,9 @@ async function renderStock(U, d, P) {
       .map(([k, l, a, b]) => `<a class="card" href="#${k}" style="color:inherit;text-decoration:none;gap:2px"><span class="small mut"><span class="cat-dot c-${k}"></span>${l}</span><b>${a}</b><span class="small mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b}</span></a>`).join('')}
   </div>`;
 
+  // 종목 점검표 (경고 먼저)
+  { const ck = checklistHtml(checklist(U.rows.find(x => x.t === m.t), U)); if (ck) h += `<div class="card">${ck}</div>`; }
+
   // 개요 + 차트
   h += sec('ov', '', '개요', `${esc(d.asof || '')} 종가 기준`, chartCard('pc') +
     (d.summary ? card('회사 소개', `${d.web ? `<a href="${esc(d.web)}" target="_blank" rel="noopener">${esc(d.web.replace(/^https?:\/\//, ''))}</a>` : ''}${d.emp ? ` · 직원 ${Math.round(d.emp).toLocaleString()}명` : ''}`, `<p class="clamp" onclick="this.classList.toggle('open')" style="margin:0;font-size:14px;color:var(--muted)">${esc(d.summary)}</p>`) : ''));

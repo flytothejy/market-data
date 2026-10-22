@@ -257,6 +257,78 @@ document.addEventListener('click', e => {
 });
 const starBtn = t => `<button class="star ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" title="후보함에 담기" aria-label="${esc(t)} 후보함">${Watch.has(t) ? '★' : '☆'}</button>`;
 
+// ---- 종목 점검표: 점수가 아니라 '확인할 거리' — 경고를 먼저, 근거 수준을 함께
+// 반환: [{k, s: 'good'|'warn'|'info', t: 제목, d: 근거 한 줄, v: true면 16년 검증으로 뒷받침된 신호}]
+function checklist(r, U) {
+  if (!r) return [];
+  const out = [], P = v => v == null ? '-' : (v > 0 ? '+' : '') + (v * 100).toFixed(Math.abs(v) < 0.1 ? 1 : 0) + '%';
+  const pp = v => (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%p';
+  // 1) 티커맵 오른쪽 아래 (주가↑ 신호↓) — 검증된 경고
+  const br = [];
+  for (const [k, L] of Object.entries(LENS_SNAP)) {
+    const y = L.y(r); if (y == null || r.r1m == null) continue;
+    const yC = L.raw ? y : Math.max(-1, Math.min(1, y / L.max));
+    if (quadOf(r.r1m, yC) === 'br') br.push(L.name);
+  }
+  if (br.length) out.push({ k: 'br', s: 'warn', v: true, t: '주가는 오르는데 신호는 꺾임', d: `티커맵 오른쪽 아래: ${br.join(', ')} (1개월 주가 ${P(r.r1m)})` });
+  // 2) 이익 전망
+  if (r.c_chg90 != null && (r.c_n || 0) >= 3) {
+    const s = r.c_chg90 > 0.03 ? 'good' : r.c_chg90 < -0.03 ? 'warn' : 'info';
+    out.push({ k: 'eps', s, t: s === 'good' ? '이익 전망 상향 중' : s === 'warn' ? '이익 전망 하향 중' : '이익 전망 큰 변화 없음', d: `내년 EPS 전망 90일 ${P(r.c_chg90)} · 30일 상향 ${r.c_up ?? 0} / 하향 ${r.c_dn ?? 0} (애널리스트 ${r.c_n}명)` });
+  }
+  // 3) 매출 성장 속도
+  if (r.rev_qg != null && r.rev_g != null) {
+    const a = r.rev_qg - r.rev_g, s = a > 0.02 ? 'good' : a < -0.05 ? 'warn' : 'info';
+    out.push({ k: 'rev', s, t: s === 'good' ? '매출 성장 빨라지는 중' : s === 'warn' ? '매출 성장 느려지는 중' : '매출 성장 속도 비슷', d: `최근 분기 ${P(r.rev_qg)} vs 4개 분기 ${P(r.rev_g)} (${pp(a)})` });
+  }
+  // 4) 수익성
+  if (r.om_chg != null && r.om != null) {
+    const s = r.om_chg > 0.02 ? 'good' : r.om_chg < -0.03 ? 'warn' : 'info';
+    out.push({ k: 'om', s, t: s === 'good' ? '이익률 개선' : s === 'warn' ? '이익률 악화' : '이익률 비슷', d: `영업이익률 ${(r.om * 100).toFixed(1)}% (1년 전보다 ${pp(r.om_chg)})` });
+  }
+  // 5) 내부자 — 순매수는 검증된 신호, 매도는 세금·계획 매도가 많아 시총 대비 클 때만 경고
+  const net = (r.ib || 0) - (r.is || 0);
+  if (r.ib >= 1e5) out.push({ k: 'ins', s: 'good', v: true, t: '임원 장내 매수', d: `최근 90일 매수 ${fmtUsd(r.ib)}${r.ibn ? ` (${r.ibn}명)` : ''}${r.is ? ` · 매도 ${fmtUsd(r.is)}` : ''}` });
+  else if (r.is && r.mcap && r.is / r.mcap > 0.005) out.push({ k: 'ins', s: 'warn', t: '내부자 매도 많음', d: `최근 90일 매도 ${fmtUsd(r.is)} (시가총액의 ${(r.is / r.mcap * 100).toFixed(1)}%)` });
+  else if (r.is || r.ib) out.push({ k: 'ins', s: 'info', t: '내부자 거래 특이 사항 없음', d: `최근 90일 순${net >= 0 ? '매수' : '매도'} ${fmtUsd(Math.abs(net))}` });
+  // 6) 유명 투자자 (13F, 분기 늦음)
+  if (r.g13_chg != null && (r.g13 || r.g13_chg)) {
+    const s = r.g13_chg >= 2 ? 'good' : r.g13_chg <= -2 ? 'warn' : 'info';
+    out.push({ k: 'guru', s, t: s === 'good' ? '유명 투자자 매수 우위' : s === 'warn' ? '유명 투자자 매도 우위' : '유명 투자자 변화 적음', d: `보유 ${r.g13 ?? 0}곳 · 순증 ${r.g13_chg > 0 ? '+' : ''}${r.g13_chg}${r.g13_new ? ` · 신규 ${r.g13_new}곳` : ''} (13F, 분기 말 기준)` });
+  }
+  // 7) 공매도
+  if (r.sv_chg60 != null) {
+    const s = r.sv_chg60 > 0.03 || (r.si || 0) > 0.15 ? 'warn' : r.sv_chg60 < -0.03 ? 'good' : 'info';
+    out.push({ k: 'short', s, t: s === 'warn' ? '공매도 늘어남' : s === 'good' ? '공매도 줄어듦' : '공매도 변화 적음', d: `거래 비중 60일 ${pp(r.sv_chg60)}${r.si != null ? ` · 공매도 잔고 ${(r.si * 100).toFixed(1)}%` : ''}` });
+  }
+  // 8) 밸류 — 같은 업종 선행 PER 중간값과 비교
+  if (r.c_fpe > 0 && U) {
+    const xs = U.rows.filter(x => x.k === 'stock' && x.sec === r.sec && x.c_fpe > 0).map(x => x.c_fpe).sort((a, b) => a - b);
+    if (xs.length >= 8) {
+      const med = xs[Math.floor(xs.length / 2)], k = r.c_fpe / med, s = k > 1.5 ? 'warn' : k < 0.7 ? 'good' : 'info';
+      out.push({ k: 'val', s, t: s === 'warn' ? '업종보다 비쌈' : s === 'good' ? '업종보다 쌈' : '업종과 비슷한 가격', d: `선행 PER ${r.c_fpe.toFixed(1)}배 · ${secKo(r.sec)} 중간값 ${med.toFixed(1)}배` });
+    }
+  }
+  // 9) 추세
+  if (r.d200 != null) out.push({ k: 'trend', s: r.d200 < -0.1 ? 'warn' : r.d200 > 0 ? 'good' : 'info', t: r.d200 >= 0 ? '200일선 위' : '200일선 아래', d: `200일 평균 대비 ${P(r.d200)} · 52주 고가 대비 ${P(r.hi52)}` });
+  // 10) 실적 일정 (좋고 나쁨이 아니라 변동 위험)
+  if (r.c_next) {
+    const dd = Math.round((new Date(r.c_next + 'T12:00:00Z') - Date.now()) / 864e5);
+    if (dd >= 0 && dd <= 21) out.push({ k: 'er', s: 'info', t: `실적 발표 ${dd === 0 ? '오늘' : dd + '일 뒤'}`, d: `${r.c_next}${r.er_imp ? ` · 옵션 예상 변동 ±${(r.er_imp * 100).toFixed(1)}%` : ''}${r.er_avg ? ` · 최근 8번 평균 ±${(r.er_avg * 100).toFixed(1)}%` : ''}` });
+  }
+  const order = { warn: 0, good: 1, info: 2 };
+  return out.sort((a, b) => order[a.s] - order[b.s] || (b.v ? 1 : 0) - (a.v ? 1 : 0));
+}
+function checklistHtml(items, compact) {
+  if (!items.length) return '';
+  const n = s => items.filter(x => x.s === s).length;
+  const ic = { warn: ['⚠', 'var(--dn)'], good: ['✓', 'var(--up-good,#15803d)'], info: ['·', 'var(--muted)'] };
+  const rows = (compact ? items.filter(x => x.s !== 'info') : items).map(x => `<div class="ck-row"><span class="ck-ic" style="color:${ic[x.s][1]}">${ic[x.s][0]}</span><div><b>${esc(x.t)}</b>${x.v ? ' <span class="ck-v" title="16년 백테스트에서 이후 성과와 관련이 확인된 신호">검증</span>' : ''}<div class="small mut">${esc(x.d)}</div></div></div>`).join('');
+  return `<div class="ck"><div class="ck-head"><b>종목 점검표</b><span class="s13"><span style="color:var(--dn)">경고 ${n('warn')}</span> · <span style="color:#15803d">우호 ${n('good')}</span> · <span class="mut">참고 ${n('info')}</span></span></div>
+    <div class="ck-list">${rows || '<div class="small mut">경고·우호 신호 없음</div>'}</div>
+    <div class="small faint">점수나 추천이 아니라 확인할 거리예요 · '검증' 표시는 16년 백테스트에서 이후 성과와 관련이 확인된 신호(오른쪽 아래 경고·임원 매수)뿐이에요</div></div>`;
+}
+
 // ---- 지표 설명 (라벨 옆 ? 에 마우스를 올리거나 누르면 표시)
 const GLOSS = {
   c_ratio: '최근 30일 동안 내년 EPS 전망을 올린 애널리스트 수에서 내린 수를 빼고, 전체 수로 나눈 값. 플러스면 전망이 좋아지는 중',
