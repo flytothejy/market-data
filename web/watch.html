@@ -88,7 +88,7 @@ function item(rec) {
     <div class="src">${esc(srcLabel(rec.src))}${rec.at ? ` · ${esc(rec.at)} 담음` : ''}</div>
     <div class="wi-kv">${rec.px ? `<div><span>담을 때</span> <b class="num">$${(+rec.px).toFixed(2)}</b></div>` : ''}${r && r.px ? `<div><span>지금</span> <b class="num">$${(+r.px).toFixed(2)}</b></div>` : ''}
       ${ret != null ? `<div><span>담은 뒤</span> ${pctS(ret)}</div>` : ''}${r && r.c_next ? `<div><span>다음 실적</span> <b>${esc(r.c_next)}</b></div>` : ''}</div>
-    ${warn.length ? `<div class="warn">⚠ 오른쪽 아래 진입 (주가↑ 신호↓): ${esc(warn.join(', '))} — 16년 검증에서 이후 성과가 평균보다 낮았던 구역이에요</div>` : ''}
+    ${warn.length ? `<div class="warn">⚠ 오른쪽 아래 진입 (주가↑ 신호↓): ${esc(warn.join(', '))}</div>` : ''}
     ${lines.length ? `<div class="chg"><div class="mut small">담은 뒤 바뀐 것</div>${lines.join('')}</div>` : rec.snap ? '<div class="small faint">담은 뒤 구역·모양 변화 없음</div>' : ''}
     ${r ? `<details class="wi-ck"><summary class="s13">종목 점검표 · ${(() => { const c = checklist(r, U); return `<span style="color:var(--dn)">경고 ${c.filter(x => x.s === 'warn').length}</span> · <span style="color:#15803d">우호 ${c.filter(x => x.s === 'good').length}</span>`; })()}</summary>${checklistHtml(checklist(r, U))}</details>` : ''}
     <textarea data-note placeholder="메모" rows="1">${esc(rec.note || '')}</textarea>

@@ -326,7 +326,7 @@ document.addEventListener('click', e => {
 const starBtn = t => `<button class="star ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" title="후보함에 담기" aria-label="${esc(t)} 후보함">${Watch.has(t) ? '★' : '☆'}</button>`;
 
 // ---- 종목 점검표: 점수가 아니라 '확인할 거리' — 경고를 먼저, 근거 수준을 함께
-// 반환: [{k, s: 'good'|'warn'|'info', t: 제목, d: 근거 한 줄, v: true면 16년 검증으로 뒷받침된 신호}]
+// 반환: [{k, s: 'good'|'warn'|'info', t: 제목, d: 근거 한 줄, v: 내부 백테스트로 뒷받침된 신호(화면에는 표시하지 않고 정렬에만 씀)}]
 function checklist(r, U) {
   if (!r) return [];
   const out = [], P = v => v == null ? '-' : (v > 0 ? '+' : '') + (v * 100).toFixed(Math.abs(v) < 0.1 ? 1 : 0) + '%';
@@ -391,10 +391,10 @@ function checklistHtml(items, compact) {
   if (!items.length) return '';
   const n = s => items.filter(x => x.s === s).length;
   const ic = { warn: ['⚠', 'var(--dn)'], good: ['✓', 'var(--up-good,#15803d)'], info: ['·', 'var(--muted)'] };
-  const rows = (compact ? items.filter(x => x.s !== 'info') : items).map(x => `<div class="ck-row"><span class="ck-ic" style="color:${ic[x.s][1]}">${ic[x.s][0]}</span><div><b>${esc(x.t)}</b>${x.v ? ' <span class="ck-v" title="16년 백테스트에서 이후 성과와 관련이 확인된 신호">검증</span>' : ''}<div class="small mut">${esc(x.d)}</div></div></div>`).join('');
+  const rows = (compact ? items.filter(x => x.s !== 'info') : items).map(x => `<div class="ck-row"><span class="ck-ic" style="color:${ic[x.s][1]}">${ic[x.s][0]}</span><div><b>${esc(x.t)}</b><div class="small mut">${esc(x.d)}</div></div></div>`).join('');
   return `<div class="ck"><div class="ck-head"><b>종목 점검표</b><span class="s13"><span style="color:var(--dn)">경고 ${n('warn')}</span> · <span style="color:#15803d">우호 ${n('good')}</span> · <span class="mut">참고 ${n('info')}</span></span></div>
     <div class="ck-list">${rows || '<div class="small mut">경고·우호 신호 없음</div>'}</div>
-    <div class="small faint">점수나 추천이 아니라 확인할 거리예요 · '검증' 표시는 16년 백테스트에서 이후 성과와 관련이 확인된 신호(오른쪽 아래 경고·임원 매수)뿐이에요</div></div>`;
+    <div class="small faint">점수나 추천이 아니라 확인할 거리예요</div></div>`;
 }
 
 // ---- 최근 실적 결과 (build.py er_result) — 종목 화면·후보함에서 같이 씀

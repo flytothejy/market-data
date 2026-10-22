@@ -225,7 +225,7 @@ def message(asof, items, ev, R):
         lines = [head + (f"  <i>{html.escape(sub)}</i>" if sub else "")]
         icon = {"er": "📅", "ins": "👤", "warn": "⚠️"}
         for x in sorted(e, key=lambda x: x["ord"]):
-            lines.append(f"{icon.get(x['kind'], '·')} {html.escape(x['title'])}{' [검증]' if x.get('v') else ''}\n    <i>{html.escape(x['desc'])}</i>")
+            lines.append(f"{icon.get(x['kind'], '·')} {html.escape(x['title'])}\n    <i>{html.escape(x['desc'])}</i>")
             keys.append(f"{it['t']}|{x['k']}")
         lines.append(f'<a href="{SITE_URL}/s/{it["t"]}/">종목 화면 →</a>')
         blocks.append("\n".join(lines))
@@ -233,7 +233,7 @@ def message(asof, items, ev, R):
         return None, []
     top = f"<b>티커맵 아침 브리핑</b> · 미국 {kday(asof)} 종가 기준\n후보함 {len(items)}종목 중 {len(blocks)}종목에 새 소식"
     foot = (f'<a href="{SITE_URL}/watch.html">후보함 열기</a> · 알림 멈춤 /끄기\n'
-            "점수나 추천이 아니라 확인할 거리예요. [검증] = 16년 백테스트에서 이후 성과와 관련이 확인된 신호")
+            "점수나 추천이 아니라 확인할 거리예요")
     return [top] + blocks + [foot], keys
 
 
