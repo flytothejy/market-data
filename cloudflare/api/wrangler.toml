@@ -1,13 +1,19 @@
-# 대시보드에서 붙여넣기로 만들었다면 이 파일은 기록용 (wrangler deploy로 올릴 때만 사용)
+# GitHub Actions(.github/workflows/api.yml)가 cloudflare/api 변경 때마다 자동 배포 (D1 마이그레이션 → wrangler deploy)
+# 비밀값(BOT_TOKEN, ALERT_KEY, AUTH_SECRET, GOOGLE_/KAKAO_/NAVER_CLIENT_ID·SECRET)은 Cloudflare 대시보드에만 — 배포해도 그대로 유지됨
 name = "tickermap-api"
 main = "worker.js"
 compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+keep_vars = true          # 대시보드에서 넣은 변수를 배포 때 지우지 않음
+
+routes = [{ pattern = "api.tickermap.kr", custom_domain = true }]
+
+[vars]
+SITE = "https://tickermap.kr/hub"
+API_URL = "https://api.tickermap.kr"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "tickermap"
-database_id = "<D1 화면의 Database ID>"
-
-[vars]
-SITE = "https://flytothejy.github.io/market-data/hub"
-# 비밀값(Secret): BOT_TOKEN, ALERT_KEY — 대시보드에서 직접
+database_id = "D1_DATABASE_ID"
+migrations_dir = "migrations"

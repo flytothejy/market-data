@@ -13,6 +13,8 @@
 //   Variable     SITE        → 사이트 주소 (기본 https://flytothejy.github.io/market-data/hub)
 // 처음 한 번:  https://<이 Worker 주소>/setup?key=<ALERT_KEY>  → 텔레그램 웹훅·명령어 등록
 
+import { makeAuth, log, isNoEmail, SITE_ORIGINS } from './auth.js';
+
 const DAY = 864e5;
 const json = (o, s = 200) => new Response(JSON.stringify(o), {
   status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' },
@@ -192,6 +194,80 @@ async function api(req, env, path) {
   return json({ error: 'not found' }, 404);
 }
 
+// ---- 계정 (쿠키 세션이 필요한 요청 — 허용한 사이트 주소에서만, 자격 증명 포함 CORS)
+const credCors = (req, env) => {
+  const o = req.headers.get('origin') || '';
+  const ok = SITE_ORIGINS.includes(o) || (env.AUTH_DEV === '1' && /^http:\/\/localhost(:\d+)?$/.test(o));
+  return ok ? { 'access-control-allow-origin': o, 'access-control-allow-credentials': 'true', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'vary': 'Origin' } : {};
+};
+const withCors = (res, h) => { const r = new Response(res.body, res); for (const [k, v] of Object.entries(h)) r.headers.set(k, v); return r; };
+const cjson = (o, h, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', ...h } });
+
+async function accUser(env, authId) { return await env.DB.prepare('SELECT * FROM users WHERE auth_id=?').bind(authId).first(); }
+
+async function account(req, env, path) {
+  const h = credCors(req, env);
+  const auth = makeAuth(env);
+  const s = await auth.api.getSession({ headers: req.headers, query: { disableCookieCache: true } });   // 계정 일은 늘 DB 기준 (삭제·로그아웃 직후 쿠키 캐시 무시)
+  if (!s) return cjson({ error: 'login required' }, h, 401);
+  const A = s.user, ua = req.headers.get('user-agent') || '';
+  const b = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+  if (path === '/api/account/me') {
+    const u = await accUser(env, A.id);
+    const prov = (await env.DB.prepare('SELECT providerId FROM account WHERE userId=?').bind(A.id).all()).results.map(r => r.providerId);
+    const items = u ? live(await doc(env, u.uid)).length : 0;
+    return cjson({ user: { name: A.name, email: isNoEmail(A.email) ? null : A.email, image: A.image, since: A.createdAt }, providers: prov, linked: !!u, tg: u ? { linked: !!u.chat_id, name: u.tg_name, mode: u.mode } : null, items }, h);
+  }
+  if (path === '/api/account/claim') {
+    // 이 기기(기기코드)를 계정에 묶음. 계정에 이미 다른 기기 데이터가 있으면 후보함을 합침 (항목마다 최근 수정 우선)
+    let acc = await accUser(env, A.id);
+    const dev = b.code ? await userOf(env, b.code) : null;
+    let code = b.code && dev ? b.code : null;
+    if (!acc && dev) {
+      await env.DB.prepare('UPDATE users SET auth_id=? WHERE uid=?').bind(A.id, dev.uid).run();
+      acc = { ...dev, auth_id: A.id };
+    } else if (acc && dev && dev.uid !== acc.uid) {
+      if (dev.auth_id && dev.auth_id !== A.id) return cjson({ error: '이 기기는 다른 계정에 연결돼 있어요. 그 계정에서 로그아웃한 뒤 다시 시도해 주세요' }, h, 409);
+      await merge(env, acc.uid, await doc(env, dev.uid));
+      const st = [env.DB.prepare('UPDATE devices SET uid=? WHERE uid=?').bind(acc.uid, dev.uid)];
+      if (!acc.chat_id && dev.chat_id) st.push(env.DB.prepare('UPDATE users SET chat_id=?, tg_name=?, linked=?, mode=? WHERE uid=?').bind(dev.chat_id, dev.tg_name, dev.linked, dev.mode, acc.uid));
+      st.push(env.DB.prepare('DELETE FROM watch WHERE uid=?').bind(dev.uid), env.DB.prepare('DELETE FROM tokens WHERE uid=?').bind(dev.uid), env.DB.prepare('DELETE FROM users WHERE uid=?').bind(dev.uid));
+      await env.DB.batch(st);
+    } else if (!acc) {
+      const uid = rnd(12);
+      await env.DB.prepare('INSERT INTO users (uid, mode, created, auth_id) VALUES (?,?,?,?)').bind(uid, 'digest', Date.now(), A.id).run();
+      acc = { uid };
+    }
+    if (!code) code = await newDevice(env, acc.uid);
+    await log(env, A.id, 'device_link', ua);
+    return cjson({ code }, h);
+  }
+  if (path === '/api/account/forget-device') {          // 로그아웃할 때: 이 기기코드를 계정에서 떼어 냄 (이 기기에선 더 이상 계정 후보함을 못 받음)
+    if (b.code) await env.DB.prepare('DELETE FROM devices WHERE code_hash=?').bind(await sha(b.code)).run();
+    await log(env, A.id, 'logout', ua);
+    return cjson({ ok: true }, h);
+  }
+  if (path === '/api/account/log') {
+    const rows = (await env.DB.prepare('SELECT ev, ua, at FROM auth_log WHERE auth_id=? ORDER BY at DESC LIMIT 30').bind(A.id).all()).results;
+    return cjson({ log: rows }, h);
+  }
+  if (path === '/api/account/delete') {                 // 계정 탈퇴: 후보함·기기·텔레그램 연결·로그인 계정 모두 삭제
+    const out = await auth.api.signOut({ headers: req.headers, asResponse: true }).catch(() => null);   // 쿠키 지우기
+    const u = await accUser(env, A.id);
+    if (u) await wipe(env, u.uid);
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM session WHERE userId=?').bind(A.id),
+      env.DB.prepare('DELETE FROM account WHERE userId=?').bind(A.id),
+      env.DB.prepare('DELETE FROM "user" WHERE id=?').bind(A.id),
+    ]);
+    await log(env, A.id, 'account_deleted', '');
+    const res = cjson({ deleted: true }, h);
+    if (out) for (const c of out.headers.getSetCookie ? out.headers.getSetCookie() : []) res.headers.append('set-cookie', c);
+    return res;
+  }
+  return cjson({ error: 'not found' }, h, 404);
+}
+
 // ---- 텔레그램 웹훅
 const HELP = s => `<b>티커맵 알림</b>
 후보함 종목에 새 일이 생기면 매일 아침(한국 시간 8~9시) 한 번에 모아 보내요.
@@ -264,7 +340,8 @@ async function webhook(req, env) {
 // ---- Actions(알림 엔진)용 — Authorization: Bearer ALERT_KEY
 async function internal(req, env, path) {
   if (!env.ALERT_KEY || req.headers.get('authorization') !== `Bearer ${env.ALERT_KEY}`) return json({ error: 'forbidden' }, 403);
-  if (path === '/internal/subs') {                    // 알림 받을 사용자와 후보함 (필요한 필드만)
+  if (path === '/internal/subs') {
+    await env.DB.prepare('DELETE FROM auth_log WHERE at < ?').bind(Date.now() - 365 * DAY).run().catch(() => { });   // 보안 기록은 1년 보관 (매일 아침 알림 때 정리)                    // 알림 받을 사용자와 후보함 (필요한 필드만)
     const rows = (await env.DB.prepare("SELECT u.uid, w.data FROM users u JOIN watch w ON w.uid=u.uid WHERE u.chat_id IS NOT NULL AND u.mode<>'off'").all()).results;
     const users = rows.map(r => {
       let a = []; try { a = JSON.parse(r.data); } catch (e) { }
@@ -314,8 +391,11 @@ async function setup(req, env) {
 export default {
   async fetch(req, env, ctx) {
     const path = new URL(req.url).pathname.replace(/\/$/, '') || '/';
-    if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+    const cred = path.startsWith('/api/auth/') || path.startsWith('/api/account/');
+    if (req.method === 'OPTIONS') return new Response(null, { headers: cred ? { ...credCors(req, env), 'access-control-max-age': '86400' } : CORS });
     try {
+      if (path.startsWith('/api/auth/')) return withCors(await makeAuth(env).handler(req), credCors(req, env));
+      if (path.startsWith('/api/account/')) return await account(req, env, path);
       if (path === '/api/ev' && req.method === 'POST') return await events(req, env);
       if (path === '/api/popular' && req.method === 'GET') return await popular(req, env, ctx);
       if (path.startsWith('/api/') && req.method === 'POST') return await api(req, env, path);

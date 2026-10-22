@@ -1,0 +1,35 @@
+name: api
+
+# 티커맵 API Worker(cloudflare/api) 자동 배포 — 바뀔 때마다 D1 마이그레이션 → wrangler deploy
+# 필요: Secrets CLOUDFLARE_API_TOKEN (Workers Scripts·D1·Workers Routes 편집 권한), R2_ACCOUNT_ID(계정 ID로 같이 씀)
+on:
+  push:
+    branches: [main]
+    paths: ["cloudflare/api/**", ".github/workflows/api.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloudflare/api
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - run: npm ci
+      - name: migrate + deploy
+        run: |
+          export CLOUDFLARE_ACCOUNT_ID=$(echo "$R2_ACCOUNT_ID" | grep -oE '[0-9a-f]{32}' | head -1)
+          if grep -q 'D1_DATABASE_ID' wrangler.toml; then echo "::error::wrangler.toml에 D1 database_id를 넣어 주세요"; exit 1; fi
+          npx wrangler d1 migrations apply tickermap --remote
+          npx wrangler deploy

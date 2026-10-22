@@ -251,3 +251,9 @@ a[data-tk],button [data-tk],a [data-tk]{cursor:pointer}
   body{padding-bottom:calc(54px + env(safe-area-inset-bottom))}
   .bsheet-in{bottom:calc(52px + env(safe-area-inset-bottom))}
 }
+.acct{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;border-radius:99px;color:var(--ink);flex-shrink:0}
+.acct:hover{text-decoration:none}
+.acct img{width:30px;height:30px;border-radius:50%;object-fit:cover}
+.acct-i{width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--bg);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.acct-t{font-size:13px;border:1px solid var(--line);border-radius:99px;padding:5px 11px;background:var(--card);white-space:nowrap}
+@media (max-width:760px){.search{margin-left:auto}.search input{width:130px}.acct-t{padding:4px 9px;font-size:12px}}
