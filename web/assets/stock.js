@@ -243,7 +243,9 @@ async function renderStock(U, d, P) {
     e.preventDefault(); const s = document.getElementById(a.getAttribute('href').slice(1)); if (s) s.scrollIntoView({ behavior: 'smooth' }); }));
   document.querySelectorAll('.grid a.card[href^="#"]').forEach(a => a.addEventListener('click', e => {
     e.preventDefault(); const s = document.getElementById(a.getAttribute('href').slice(1)); if (s) s.scrollIntoView({ behavior: 'smooth' }); }));
-  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id)); }), { rootMargin: '-120px 0px -60% 0px' });
+  let part = 'ov';                                    // 후보함에 담을 때 '보던 부분'으로 기록
+  window.watchSrc = () => ({ page: 'stock', part });
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { part = e.target.id; links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id)); } }), { rootMargin: '-120px 0px -60% 0px' });
   document.querySelectorAll('section[id]').forEach(s => io.observe(s));
   footer();
 }

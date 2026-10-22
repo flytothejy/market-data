@@ -70,7 +70,7 @@ function miniMap(P, W, H) {
   // 내 관심 종목
   const Wl = Watch.list().map(t => U.rows.find(r => r.t === t)).filter(Boolean);
   if (Wl.length) {
-    h += `<div class="sec-head"><h2>내 관심 종목</h2><span class="desc">${Wl.length}개 · 이 브라우저에 저장됨</span>
+    h += `<div class="sec-head"><h2>내 후보함</h2><span class="desc">${Wl.length}개 · 이 브라우저에 저장됨 · <a href="watch.html">후보함 →</a></span>
       <a class="more" href="matrix.html?t=${encodeURIComponent(Wl.filter(r => r.k === 'stock').slice(0, 5).map(r => r.t).join(','))}">티커맵에서 보기 →</a></div>
       <div class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>종목</th><th>종가</th><th>1일</th><th>1개월</th><th>다음 실적</th><th class="l">한 줄 요약</th><th></th></tr></thead><tbody>
       ${Wl.map(r => `<tr><td><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.ko || r.n || '').slice(0, 16))}</span></td><td class="num">${fmt(r.px, 'px')}</td><td>${pctS(r.r1d)}</td><td>${pctS(r.r1m)}</td>

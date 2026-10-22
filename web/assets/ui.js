@@ -45,7 +45,7 @@ const pctS = v => `<span class="${cls(v)} num">${fmt(v, 'pct', { sign: true })}<
 
 // ---- 상단
 function header(active) {
-  const items = [['matrix.html', '티커맵'], ['ranking.html', '티커랭킹'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오']];
+  const items = [['matrix.html', '티커맵'], ['ranking.html', '티커랭킹'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['watch.html', '후보함'], ['portfolio.html', '포트폴리오']];
   const el = document.createElement('header');
   el.className = 'top';
   el.innerHTML = `<div class="in"><a class="brand" href="index.html" aria-label="티커맵 홈"><svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true" style="flex-shrink:0"><circle cx="7.8" cy="7.8" r="6.8" fill="#d65014"/><circle cx="20.6" cy="5.4" r="4.4" fill="#2463c4"/><circle cx="21.8" cy="13.2" r="2.4" fill="#d9d6cc"/><circle cx="6.1" cy="20.9" r="4.1" fill="#7ea3dc"/><circle cx="18.2" cy="20.2" r="4.8" fill="#eba27e"/><circle cx="12.9" cy="15.3" r="1.5" fill="#d9d6cc"/></svg><span>티커맵</span></a>
@@ -113,32 +113,147 @@ const qs = k => new URLSearchParams(location.search).get(k);
 // 종목 주소: 검색엔진용 정적 페이지 (/hub/s/NVDA/) — Pages 배포 때 hub/static_pages.py가 만듦
 const stockUrl = t => `s/${encodeURIComponent(t)}/`;
 
-// ---- 관심 종목 (이 브라우저에 저장 — 로그인이 붙으면 서버 저장으로 바꿈)
+// ---- 후보함 (이 브라우저에 저장 — 로그인이 붙으면 서버 저장으로 바꿈)
+// 기록 하나 = 공통 스냅샷(담은 순간의 5개 렌즈 값·구역·트레일 모양·주요 지표) + 출처(어느 화면·어느 부분에서 담았나)
+//   { t, at, px, purpose: 'hold'|'consider'|'watch'|'', why, note, src: {page, part, ...}, snap: {...} }
+const PURPOSE = { hold: '보유 중', consider: '살까 고민', watch: '그냥 관찰' };
 const Watch = {
-  KEY: 'hub.watch.v1',
-  list() { try { return JSON.parse(localStorage.getItem(this.KEY)) || []; } catch (e) { return this._mem || []; } },
+  KEY: 'hub.watch.v2', OLD: 'hub.watch.v1',
+  records() {
+    try {
+      let a = JSON.parse(localStorage.getItem(this.KEY));
+      if (!a) {                                          // 예전 관심 종목(티커만) → 후보함으로 옮김
+        const old = JSON.parse(localStorage.getItem(this.OLD)) || [];
+        a = old.map(t => ({ t, at: null, px: null, purpose: '', why: '예전에 담음', note: '', src: { page: 'legacy' }, snap: null }));
+        localStorage.setItem(this.KEY, JSON.stringify(a));
+      }
+      return a;
+    } catch (e) { return this._mem || []; }
+  },
   save(a) { this._mem = a; try { localStorage.setItem(this.KEY, JSON.stringify(a)); } catch (e) { } },
+  list() { return this.records().map(r => r.t); },
+  get(t) { return this.records().find(r => r.t === t) || null; },
   has(t) { return this.list().includes(t); },
-  toggle(t) { const a = this.list(); const i = a.indexOf(t); i >= 0 ? a.splice(i, 1) : a.unshift(t); this.save(a); return i < 0; },
+  add(rec) { const a = this.records().filter(r => r.t !== rec.t); a.unshift(rec); this.save(a); },
+  update(t, patch) { const a = this.records(); const r = a.find(x => x.t === t); if (r) { Object.assign(r, patch); this.save(a); } return r; },
+  remove(t) { this.save(this.records().filter(r => r.t !== t)); },
+  toggle(t) { if (this.has(t)) { this.remove(t); return false; } this.add({ t, at: null, px: null, purpose: '', why: '', note: '', src: { page: 'unknown' }, snap: null }); return true; },
 };
 // 포트폴리오 보유 종목 (포트폴리오 화면과 같은 저장소)
 function portfolioTickers() {
   try { const p = JSON.parse(localStorage.getItem('hub.portfolio.v1')); return (p && p.items || []).map(x => x.t); } catch (e) { return []; }
 }
-const watchBtn = t => `<button class="btn watch ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" aria-pressed="${Watch.has(t)}">${Watch.has(t) ? '★ 관심 종목' : '☆ 관심 종목에 추가'}</button>`;
+
+// 렌즈 값 (티커맵 matrix.js LENS와 같은 정의) — 스냅샷·이유 문장용
+const LENS_SNAP = {
+  eps: { name: 'EPS 전망', max: 0.3, y: r => (r.c_chg90 != null && (r.c_n || 0) >= 3) ? r.c_chg90 : null },
+  rev: { name: '매출 가속', max: 0.3, y: r => (r.rev_qg != null && r.rev_g != null) ? r.rev_qg - r.rev_g : null },
+  guru: { name: '유명 투자자', max: 5, y: r => r.g13_chg ?? null },
+  insider: { name: '내부자', max: 1, raw: true, y: r => { const n = (r.ib || 0) - (r.is || 0); return n ? Math.sign(n) * Math.max(0.05, Math.min(1, (Math.log10(Math.abs(n)) - 4) / 4.5)) : null; } },
+  short: { name: '공매도', max: 0.08, y: r => r.sv_chg60 != null ? -r.sv_chg60 : null },
+};
+const QUAD_KO = { tl: '왼쪽 위', tr: '오른쪽 위', bl: '왼쪽 아래', br: '오른쪽 아래' };
+const PAT_KO = { nw: '꾸준히 ↖', n: '꾸준히 ↑', ne: '꾸준히 ↗', e: '꾸준히 →', se: '꾸준히 ↘', s: '꾸준히 ↓', sw: '꾸준히 ↙', w: '꾸준히 ←', tn: '꺾임', zz: '오락가락', st: '제자리' };
+function quadOf(x, yC) { return yC > 0.03 && x < -0.003 ? 'tl' : yC < -0.03 && x > 0.003 ? 'br' : yC >= 0 && x >= 0 ? 'tr' : 'bl'; }
+let _pats = null;
+async function patterns() { if (_pats) return _pats; try { _pats = await getJSON('free/patterns.json'); } catch (e) { _pats = {}; } return _pats; }
+function snapOf(r, P) {
+  // 담은 순간의 상태 (가로축은 1개월 주가 기준 구역, 트레일 모양은 1년 — EPS는 3개월)
+  const lens = {};
+  for (const [k, L] of Object.entries(LENS_SNAP)) {
+    const y = L.y(r);
+    if (y == null) continue;
+    const yC = L.raw ? y : Math.max(-1, Math.min(1, y / L.max));
+    const span = k === 'eps' ? '3m' : '1y';
+    lens[k] = { v: +y.toFixed(4), q: r.r1m != null ? quadOf(r.r1m, yC) : null, pat: (P && P[span] && P[span][k] && P[span][k][r.t]) || null };
+  }
+  const pick = ['px', 'mcap', 'r1m', 'r3m', 'pe', 'c_fpe', 'c_upside', 'c_chg90', 'rev_g', 'om', 'sv', 'ib', 'is', 'g13', 'c_next'];
+  return { lens, ...Object.fromEntries(pick.filter(k => r[k] != null).map(k => [k, r[k]])) };
+}
+const _p = v => v == null ? '-' : (v > 0 ? '+' : '') + (v * 100).toFixed(Math.abs(v) < 0.1 ? 1 : 0) + '%';
+function whyOf(src, r, snap) {
+  // 출처마다 한 줄 이유 (사용자가 바꿀 수 있음)
+  const L = snap && snap.lens || {};
+  const lensLine = k => { const x = L[k]; if (!x) return ''; const nm = LENS_SNAP[k].name; return `${nm} ${x.pat ? PAT_KO[x.pat] : ''}${x.q ? ` · ${QUAD_KO[x.q]}` : ''}`.trim(); };
+  switch (src.page) {
+    case 'matrix': {                                   // 지도에서 보던 그대로: 고른 가로축 기간 기준 구역, 고른 트레일 길이의 모양
+      const Ls = LENS_SNAP[src.lens], y = Ls && Ls.y(r);
+      if (y == null) return `티커맵 ${Ls ? Ls.name : ''}`.trim();
+      const yC = Ls.raw ? y : Math.max(-1, Math.min(1, y / Ls.max)), x = r[src.xw || 'r1m'];
+      const pat = _pats && _pats[src.span] && _pats[src.span][src.lens] && _pats[src.span][src.lens][r.t];
+      return `티커맵 ${Ls.name}${pat ? ' ' + PAT_KO[pat] : ''}${x != null ? ' · ' + QUAD_KO[quadOf(x, yC)] : ''}`;
+    }
+    case 'stock': {
+      const part = src.part || 'ov';
+      if (part === 'cons') return `EPS 전망 90일 ${_p(r.c_chg90)} · 목표가 여력 ${_p(r.c_upside)}`;
+      if (part === 'fin') return `매출 성장 ${_p(r.rev_g)} · 영업이익률 ${_p(r.om)}`;
+      if (part === 'tech') return `1개월 주가 ${_p(r.r1m)} · 공매도 비중 ${r.sv != null ? (r.sv * 100).toFixed(0) + '%' : '-'}`;
+      if (part === 'doc') { const n = (r.ib || 0) - (r.is || 0); return n ? `내부자 90일 ${n > 0 ? '순매수' : '순매도'} ${fmtUsd(Math.abs(n))}` : '공시·내부자 확인'; }
+      if (part === 'news') return `최근 7일 뉴스 ${r.nw7 || 0}건`;
+      return r.s1 || '종목 개요';
+    }
+    case 'earnings': return r.c_next ? `${r.c_next.slice(5).replace('-', '/')} 실적 발표 예정` : '실적 달력';
+    default: return src.label ? `${src.label}${src.part ? ' · ' + src.part : ''}` : '';
+  }
+}
+function watchSrc(btn) {
+  // 어디서 눌렀나: 화면이 window.watchSrc를 주면 그걸, 아니면 화면 이름 + 가장 가까운 카드 제목
+  if (window.watchSrc) { try { const s = window.watchSrc(btn); if (s) return s; } catch (e) { } }
+  const page = (location.pathname.split('/').pop() || 'index.html').replace('.html', '') || 'index';
+  const label = { index: '홈', ranking: '티커랭킹', earnings: '실적 달력', compare: '비교', screen: '검색', investors: '유명 투자자', portfolio: '포트폴리오', watch: '후보함' }[page] || page;
+  const h = btn.closest('.card') && btn.closest('.card').querySelector('h3');
+  return { page: page === 'earnings' ? 'earnings' : page, label, part: h ? h.textContent.trim().slice(0, 30) : '' };
+}
+async function captureWatch(t, btn) {
+  const src = watchSrc(btn);
+  Watch.add({ t, at: new Date().toISOString().slice(0, 10), px: null, purpose: '', why: '', note: '', src, snap: null });
+  let r = null, P = null;
+  try { const [U, pp] = await Promise.all([Data.universe(), patterns()]); r = U.rows.find(x => x.t === t); P = pp; } catch (e) { }
+  if (r && Watch.has(t)) {
+    const snap = snapOf(r, P);
+    Watch.update(t, { px: r.px ?? null, snap, why: whyOf(src, r, snap) });
+  }
+  watchToast(t);
+}
+function watchToast(t) {
+  const rec = Watch.get(t);
+  if (!rec) return;
+  let el = document.getElementById('watch-toast');
+  if (!el) { el = document.createElement('div'); el.id = 'watch-toast'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="wt-top"><b>★ ${esc(t)} 후보함에 담음</b>${rec.px ? `<span class="mut">$${(+rec.px).toFixed(2)}</span>` : ''}<button class="wt-x" aria-label="닫기">×</button></div>
+    <label class="wt-why"><span class="mut">담은 이유</span><input value="${esc(rec.why || '')}" maxlength="80" aria-label="담은 이유"></label>
+    <div class="wt-chips">${Object.entries(PURPOSE).map(([k, l]) => `<button data-p="${k}" class="${rec.purpose === k ? 'on' : ''}">${l}</button>`).join('')}<a href="watch.html">후보함 →</a></div>`;
+  el.classList.add('show');
+  let timer;
+  const arm = () => { clearTimeout(timer); timer = setTimeout(() => el.classList.remove('show'), 7000); };
+  const hold = () => clearTimeout(timer);
+  el.onmouseenter = hold; el.onmouseleave = arm; el.onfocusin = hold;
+  el.querySelector('.wt-x').onclick = () => el.classList.remove('show');
+  const inp = el.querySelector('.wt-why input');
+  inp.onchange = () => Watch.update(t, { why: inp.value.trim() });
+  el.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+    const p = rec.purpose === b.dataset.p ? '' : b.dataset.p; rec.purpose = p; Watch.update(t, { purpose: p });
+    el.querySelectorAll('[data-p]').forEach(x => x.classList.toggle('on', x.dataset.p === p));
+    document.dispatchEvent(new CustomEvent('watch-change'));
+  });
+  arm();
+}
+
+const watchBtn = t => `<button class="btn watch ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" aria-pressed="${Watch.has(t)}">${Watch.has(t) ? '★ 후보함' : '☆ 후보함에 담기'}</button>`;
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-watch]');
   if (!b) return;
   e.preventDefault();
-  const on = Watch.toggle(b.dataset.watch);
-  document.querySelectorAll(`[data-watch="${CSS.escape(b.dataset.watch)}"]`).forEach(x => {
+  const t = b.dataset.watch, on = !Watch.has(t);
+  if (on) captureWatch(t, b); else Watch.remove(t);
+  document.querySelectorAll(`[data-watch="${CSS.escape(t)}"]`).forEach(x => {
     x.classList.toggle('on', on); x.setAttribute('aria-pressed', on);
-    if (x.classList.contains('watch')) x.textContent = on ? '★ 관심 종목' : '☆ 관심 종목에 추가';
+    if (x.classList.contains('watch')) x.textContent = on ? '★ 후보함' : '☆ 후보함에 담기';
     else x.textContent = on ? '★' : '☆';
   });
   document.dispatchEvent(new CustomEvent('watch-change'));
 });
-const starBtn = t => `<button class="star ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" title="관심 종목" aria-label="${esc(t)} 관심 종목">${Watch.has(t) ? '★' : '☆'}</button>`;
+const starBtn = t => `<button class="star ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" title="후보함에 담기" aria-label="${esc(t)} 후보함">${Watch.has(t) ? '★' : '☆'}</button>`;
 
 // ---- 지표 설명 (라벨 옆 ? 에 마우스를 올리거나 누르면 표시)
 const GLOSS = {

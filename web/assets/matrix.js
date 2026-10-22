@@ -50,6 +50,7 @@ const st = {
 };
 { const L0 = LENS[st.lens]; st.span = L0.spans.includes(qs('span')) ? qs('span') : prefSpan(L0); st.xw = XW[qs('x')] ? qs('x') : SPAN[st.span][1]; }
 let PATS = null;
+window.watchSrc = () => ({ page: 'matrix', lens: st.lens, span: st.span, xw: st.xw, view: st.view });
 let U, S, W = 900, H = 640, P = [], GT = null, drawQueued = false, sideTimer = null;
 const PAD = { l: 54, r: 18, t: 44, b: 40 };
 
@@ -298,7 +299,7 @@ function controls() {
     <label class="s13 mut">업종 <select class="f" id="f-sec"><option value="">전체</option>${secs.map(s => `<option value="${esc(s)}" ${s === st.sec ? 'selected' : ''}>${esc(secKo(s))}</option>`).join('')}</select></label>
     <label class="s13 mut">모양 <select class="f" id="f-pat" title="${SPAN[st.span][0]} 트레일의 모양으로 거르기"><option value="">전체</option>${Object.entries(PATN).map(([k, [l, d]]) => { const m = PATS && PATS[st.span] && PATS[st.span][st.lens], n = m ? Object.values(m).filter(v => v === k).length : 0; return `<option value="${k}" ${k === st.pat ? 'selected' : ''} ${m ? '' : 'disabled'}>${l} · ${d} (${n})</option>`; }).join('')}</select></label>
     <label class="s13 mut">시가총액 <select class="f" id="f-cap">${[[0, '전체'], [1e10, '100억 달러 이상'], [1e11, '1,000억 달러 이상']].map(([v, l]) => `<option value="${v}" ${v === st.cap ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-    <div class="mx-seg" aria-label="보기 범위">${[['', '전체'], ['watch', `관심 ${Watch.list().length}`], ['hold', `보유 ${portfolioTickers().length}`], ['earn', '이번 주 실적']].map(([k, l]) => `<button class="${k === st.only ? 'on' : ''}" data-only="${k}">${l}</button>`).join('')}</div>
+    <div class="mx-seg" aria-label="보기 범위">${[['', '전체'], ['watch', `후보 ${Watch.list().length}`], ['hold', `보유 ${portfolioTickers().length}`], ['earn', '이번 주 실적']].map(([k, l]) => `<button class="${k === st.only ? 'on' : ''}" data-only="${k}">${l}</button>`).join('')}</div>
   </div></details>
   ${st.track.length ? `<div class="mx-ctl"><span class="s13 mut">티커 트레일</span>${st.track.map((id, i) => `<span class="mx-chip"><i style="background:${TRACK_COL[i % TRACK_COL.length]}"></i><b>${esc(labelOf(id))}</b><button data-untrack="${esc(id)}" aria-label="${esc(labelOf(id))} 빼기">×</button></span>`).join('')}
     <label class="s13" style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="mx-focus" ${st.onlyTrack ? 'checked' : ''}> 이것만 보기</label>

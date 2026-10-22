@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="티커맵 후보함 — 담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었는지 한눈에.">
+<title>후보함 | 티커맵</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/app.css">
+<script src="assets/data.js"></script>
+<script src="assets/ui.js"></script>
+<style>
+.wl{display:flex;flex-direction:column;gap:12px}
+.wi{display:flex;flex-direction:column;gap:10px}
+.wi-top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.wi-top h3{font-size:19px;margin:0}
+.wi-top .x{margin-left:auto;border:0;background:none;color:var(--faint);font-size:18px;cursor:pointer;min-width:30px;min-height:30px}
+.wi-why{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px}
+.wi-why input{flex:1;min-width:200px;font:inherit;font-size:14px;border:1px solid transparent;border-radius:8px;padding:5px 8px;background:var(--soft);color:var(--ink)}
+.wi-why input:hover,.wi-why input:focus{border-color:var(--line);background:var(--bg)}
+.wi-kv{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px}
+.wi-kv span{color:var(--muted)}
+.chg{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.chg div{display:flex;gap:6px;align-items:baseline}
+.warn{background:color-mix(in srgb,var(--dn) 10%,var(--card));color:var(--dn);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
+.wi textarea{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--bg);color:var(--ink);resize:vertical;min-height:34px}
+.src{font-size:12px;color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">불러오는 중…</div></div>
+<script>
+header('후보함');
+const PART_KO = { ov: '개요', cons: '컨센서스', fin: '재무', tech: '차트·수급', doc: '공시·내부자', news: '뉴스' };
+const SPAN_KO = { '3m': '3개월', '1y': '1년', '3y': '3년' };
+const st = { p: qs('p') || '', sort: 'at' };
+let U, P;
+
+function srcLabel(s) {
+  if (!s) return '';
+  if (s.page === 'matrix') return `티커맵 · ${LENS_SNAP[s.lens] ? LENS_SNAP[s.lens].name : ''}${s.span ? ' · ' + SPAN_KO[s.span] + ' 트레일' : ''}`;
+  if (s.page === 'stock') return `종목 화면 · ${PART_KO[s.part] || s.part || ''}`;
+  if (s.page === 'legacy') return '예전 관심 종목에서 옮김';
+  return [s.label, s.part].filter(Boolean).join(' · ');
+}
+function againLink(rec) {
+  // 같은 이유로 다시 찾기: 담을 때의 렌즈·모양으로 티커맵 필터
+  const s = rec.src || {}, L = rec.snap && rec.snap.lens || {};
+  let lens = s.page === 'matrix' ? s.lens : s.page === 'stock' && s.part === 'cons' ? 'eps' : s.page === 'stock' && s.part === 'doc' ? 'insider' : s.page === 'stock' && s.part === 'fin' ? 'rev' : null;
+  if (!lens || !L[lens]) return '';
+  const span = s.span || (lens === 'eps' ? '3m' : '1y'), pat = L[lens].pat;
+  const u = new URLSearchParams({ lens, span }); if (pat) u.set('pat', pat);
+  return `<a class="btn" href="matrix.html?${u}" style="text-decoration:none" title="담을 때와 같은 렌즈${pat ? '·모양' : ''}인 종목을 티커맵에서">같은 이유로 찾기</a>`;
+}
+function changes(rec, r) {
+  // 담은 뒤 바뀐 것: 렌즈별 구역·모양
+  if (!rec.snap || !rec.snap.lens || !r) return { lines: [], warn: [] };
+  const now = snapOf(r, P).lens, lines = [], warn = [];
+  for (const [k, L] of Object.entries(LENS_SNAP)) {
+    const a = rec.snap.lens[k], b = now[k];
+    if (!a || !b) continue;
+    const parts = [];
+    if (a.q !== b.q && a.q && b.q) parts.push(`${QUAD_KO[a.q]} → <b>${QUAD_KO[b.q]}</b>`);
+    if (a.pat !== b.pat && a.pat && b.pat) parts.push(`모양 ${PAT_KO[a.pat]} → <b>${PAT_KO[b.pat]}</b>`);
+    if (parts.length) lines.push(`<div><span class="mut">${L.name}</span> ${parts.join(' · ')}</div>`);
+    if (b.q === 'br' && a.q !== 'br') warn.push(L.name);
+  }
+  return { lines, warn };
+}
+function item(rec) {
+  const r = U.rows.find(x => x.t === rec.t);
+  const ret = rec.px && r && r.px ? r.px / rec.px - 1 : null;
+  const { lines, warn } = changes(rec, r);
+  return `<div class="card wi" data-t="${esc(rec.t)}">
+    <div class="wi-top"><h3><a href="${stockUrl(rec.t)}">${esc(rec.t)}</a></h3><span class="mut s13">${esc(r ? (r.ko || r.n) : '')}</span>
+      <span style="display:flex;gap:6px;flex-wrap:wrap">${Object.entries(PURPOSE).map(([k, l]) => `<button class="pchip ${rec.purpose === k ? 'on' : ''}" data-p="${k}">${l}</button>`).join('')}</span>
+      <button class="x" data-del aria-label="${esc(rec.t)} 빼기" title="후보함에서 빼기">×</button></div>
+    <div class="wi-why"><span class="mut">담은 이유</span><input value="${esc(rec.why || '')}" maxlength="80" placeholder="왜 담았는지 한 줄" data-why></div>
+    <div class="src">${esc(srcLabel(rec.src))}${rec.at ? ` · ${esc(rec.at)} 담음` : ''}</div>
+    <div class="wi-kv">${rec.px ? `<div><span>담을 때</span> <b class="num">$${(+rec.px).toFixed(2)}</b></div>` : ''}${r && r.px ? `<div><span>지금</span> <b class="num">$${(+r.px).toFixed(2)}</b></div>` : ''}
+      ${ret != null ? `<div><span>담은 뒤</span> ${pctS(ret)}</div>` : ''}${r && r.c_next ? `<div><span>다음 실적</span> <b>${esc(r.c_next)}</b></div>` : ''}</div>
+    ${warn.length ? `<div class="warn">⚠ 오른쪽 아래 진입 (주가↑ 신호↓): ${esc(warn.join(', '))} — 16년 검증에서 이후 성과가 평균보다 낮았던 구역이에요</div>` : ''}
+    ${lines.length ? `<div class="chg"><div class="mut small">담은 뒤 바뀐 것</div>${lines.join('')}</div>` : rec.snap ? '<div class="small faint">담은 뒤 구역·모양 변화 없음</div>' : ''}
+    <textarea data-note placeholder="메모" rows="1">${esc(rec.note || '')}</textarea>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="${stockUrl(rec.t)}" style="text-decoration:none">종목 화면 →</a>${againLink(rec)}</div>
+  </div>`;
+}
+function render() {
+  const all = Watch.records();
+  let rs = all.filter(r => !st.p || (st.p === 'none' ? !r.purpose : r.purpose === st.p));
+  const ret = rec => { const r = U.rows.find(x => x.t === rec.t); return rec.px && r && r.px ? r.px / rec.px - 1 : null; };
+  if (st.sort === 'ret') rs = rs.slice().sort((a, b) => (ret(b) ?? -9) - (ret(a) ?? -9));
+  const rets = all.map(ret).filter(v => v != null), avg = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
+  const nwarn = all.filter(rec => changes(rec, U.rows.find(x => x.t === rec.t)).warn.length).length;
+  const cnt = k => all.filter(r => k === 'none' ? !r.purpose : r.purpose === k).length;
+  $('#app').innerHTML = `<div class="hero"><h1>후보함</h1><p>담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었나 · 이 브라우저에 저장됨 · 어느 화면에서든 ☆를 누르면 그때의 상태가 함께 기록돼요</p></div>
+    ${all.length ? `<div class="card"><div class="kv"><div><span>담은 종목</span><b>${all.length}개</b></div>${avg != null ? `<div><span>담은 뒤 평균</span><b>${pctS(avg)}</b></div>` : ''}<div><span>오른쪽 아래로 들어간 종목</span><b>${nwarn}개</b></div></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="mx-seg seg">${[['', `전체 ${all.length}`], ['hold', `${PURPOSE.hold} ${cnt('hold')}`], ['consider', `${PURPOSE.consider} ${cnt('consider')}`], ['watch', `${PURPOSE.watch} ${cnt('watch')}`], ['none', `목적 미정 ${cnt('none')}`]].map(([k, l]) => `<button class="btn ${st.p === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')}</div>
+      <label class="s13 mut" style="margin-left:auto">정렬 <select class="f" id="sort"><option value="at">담은 순</option><option value="ret" ${st.sort === 'ret' ? 'selected' : ''}>담은 뒤 수익률</option></select></label></div>
+    <div class="wl">${rs.map(item).join('') || '<div class="card mut s13">해당하는 종목이 없어요</div>'}</div>`
+    : `<div class="card"><p class="s13" style="margin:0">아직 담은 종목이 없어요. <a href="matrix.html">티커맵</a>·종목 화면·<a href="ranking.html">티커랭킹</a>·<a href="earnings.html">실적 달력</a>에서 ☆를 누르면, 그때의 렌즈 위치·트레일 모양·가격이 담은 이유와 함께 여기에 모여요.</p></div>`}
+    <div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 담은 뒤 수익률은 담을 때 화면 데이터의 종가 기준</div>`;
+  document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { st.p = b.dataset.f; render(); });
+  const so = $('#sort'); if (so) so.onchange = e => { st.sort = e.target.value; render(); };
+  document.querySelectorAll('.wi').forEach(c => {
+    const t = c.dataset.t;
+    c.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const rec = Watch.get(t); Watch.update(t, { purpose: rec.purpose === b.dataset.p ? '' : b.dataset.p }); render(); });
+    c.querySelector('[data-del]').onclick = () => { Watch.remove(t); render(); };
+    c.querySelector('[data-why]').onchange = e => Watch.update(t, { why: e.target.value.trim() });
+    c.querySelector('[data-note]').onchange = e => Watch.update(t, { note: e.target.value });
+  });
+}
+(async () => {
+  try { [U, P] = await Promise.all([Data.universe(), patterns()]); }
+  catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
+  // 예전 관심 종목에서 옮긴 것: 지금 상태를 스냅샷으로 채워 둠 (담은 날·가격은 모름)
+  for (const rec of Watch.records()) if (!rec.snap) { const r = U.rows.find(x => x.t === rec.t); if (r) Watch.update(rec.t, { snap: snapOf(r, P) }); }
+  render();
+  footer();
+})();
+</script>
+</body>
+</html>
