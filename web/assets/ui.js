@@ -44,6 +44,34 @@ const cls = v => v == null ? '' : v > 0 ? 'up' : v < 0 ? 'dn' : '';
 const pctS = v => `<span class="${cls(v)} num">${fmt(v, 'pct', { sign: true })}</span>`;
 
 // ---- 상단
+// ---- 모바일 하단 탭 (760px 이하에서만 보임 — 위쪽 메뉴 줄 대신)
+const ICON = {
+  home: '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',
+  map: '<circle cx="8" cy="8" r="4"/><circle cx="17" cy="7" r="2.5"/><circle cx="7" cy="17" r="2.5"/><circle cx="16.5" cy="16.5" r="3.5"/>',
+  rank: '<path d="M5 20V11M12 20V5M19 20v-6"/>',
+  star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/>',
+  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+};
+function bottomNav(active) {
+  const page = (location.pathname.split('/').pop() || 'index.html');
+  const tabs = [['index.html', '홈', 'home'], ['matrix.html', '티커맵', 'map'], ['ranking.html', '랭킹', 'rank'], ['watch.html', '후보함', 'star']];
+  const more = [['screen.html', '검색'], ['stock.html', '종목'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['portfolio.html', '포트폴리오'], ['terms.html', '이용약관'], ['privacy.html', '개인정보처리방침']];
+  const inMore = more.some(([h]) => h === page) || /\/s\/|\/i\//.test(location.pathname);
+  const svg = k => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${ICON[k]}</svg>`;
+  const nav = document.createElement('nav');
+  nav.className = 'bnav';
+  nav.setAttribute('aria-label', '아래 메뉴');
+  nav.innerHTML = tabs.map(([h, l, k]) => `<a href="${h}" class="${h === page ? 'on' : ''}">${svg(k)}<span>${l}</span></a>`).join('')
+    + `<button class="${inMore ? 'on' : ''}" aria-expanded="false">${svg('more')}<span>더보기</span></button>`;
+  const sheet = document.createElement('div');
+  sheet.className = 'bsheet';
+  sheet.innerHTML = `<div class="bsheet-in">${more.map(([h, l]) => `<a href="${h}" class="${h === page ? 'on' : ''}">${l}</a>`).join('')}</div>`;
+  document.body.append(sheet, nav);
+  const btn = nav.querySelector('button');
+  const set = open => { sheet.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); };
+  btn.onclick = e => { e.stopPropagation(); set(!sheet.classList.contains('open')); };
+  sheet.onclick = e => { if (e.target === sheet) set(false); };
+}
 function header(active) {
   const items = [['matrix.html', '티커맵'], ['ranking.html', '티커랭킹'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['watch.html', '후보함'], ['portfolio.html', '포트폴리오']];
   const el = document.createElement('header');
@@ -52,6 +80,9 @@ function header(active) {
   <nav class="main">${items.map(([h, l]) => `<a href="${h}" class="${l === active ? 'on' : ''}">${l}</a>`).join('')}</nav>
   <div class="search"><input type="search" placeholder="티커·회사명 (한글 가능)" aria-label="종목 검색" autocomplete="off"><div class="sugg"></div></div></div>`;
   document.body.prepend(el);
+  bottomNav(active);
+  const hh = () => document.documentElement.style.setProperty('--hdr-h', el.offsetHeight + 'px');   // 따라오는 탭 줄이 헤더 바로 밑에 붙게
+  hh(); addEventListener('resize', hh);
   if (Plan.isPro()) {                                  // 로그인 전 확인용 프로 미리보기 표시
     const bar = document.createElement('div');
     bar.style.cssText = 'background:var(--ink);color:var(--bg);font-size:12.5px;text-align:center;padding:6px 12px';
@@ -518,3 +549,8 @@ const tip = k => GLOSS[k] ? `<span class="tip" tabindex="0" role="note" aria-lab
   document.addEventListener('mouseout', e => { const el = e.target.closest && e.target.closest('[data-tk]'); if (el && el === cur && !el.contains(e.relatedTarget)) hide(); });
   addEventListener('scroll', hide, { passive: true });
 })();
+
+// ---- 앱처럼 설치(PWA): 서비스 워커 등록 (https에서만)
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  addEventListener('load', () => navigator.serviceWorker.register(new URL('sw.js', document.baseURI).href).catch(() => { }));
+}

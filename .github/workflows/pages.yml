@@ -56,6 +56,9 @@ jobs:
           # 화면 파일이 바뀌면 브라우저가 예전 것을 쓰지 않게 주소에 버전 붙이기 (assets/ui.js → assets/ui.js?v=커밋)
           V=${GITHUB_SHA::8}
           find _site/hub -name '*.html' -print0 | xargs -0 sed -i -E "s#(assets/[A-Za-z0-9_.-]+\.(js|css))\"#\1?v=$V\"#g"
+          # 앱처럼 설치(PWA): 모든 화면에 manifest·테마 색·아이콘, 서비스 워커 버전
+          find _site/hub -name '*.html' -print0 | xargs -0 sed -i 's#<link rel="icon" href="assets/icon.svg" type="image/svg+xml">#&\n<link rel="manifest" href="manifest.webmanifest">\n<meta name="theme-color" content="\#fafaf8">\n<link rel="apple-touch-icon" href="assets/app/apple-180.png">\n<meta name="apple-mobile-web-app-title" content="티커맵">#'
+          sed -i "s/__V__/$V/" _site/hub/sw.js
           touch _site/.nojekyll
           printf '/  /hub/  302\n' > _site/_redirects            # Cloudflare Pages 전용 (GitHub Pages는 무시)
           du -sh _site; find _site -type f | wc -l
