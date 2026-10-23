@@ -214,8 +214,9 @@ def stock_page(tpl, r, d, ko, aliases, peers, is_etf, ck=None, etfs=None):
         nxt = f" 다음 실적 발표 {mmdd(cn)}({wday(cn)}){when}{' 예정' if r.get('c_est') else ''}." if cn else ""
         tpt = f" 평균 목표주가 ${tp:,.2f}({pct(r['c_upside'])})." if tp else ""
         title = f"{name} 주가·실적 발표일{' ' + mmdd(cn) if cn else ''}·목표주가 | 티커맵"
+        s1c = " ".join(x for x in re.split(r"(?<=\.) ", r.get("s1") or "") if "실적 발표" not in x)
         desc = (f"{name} 주가 ${r.get('px') or 0:,.2f}({pct(r.get('r1d'))}), 시가총액 {usd(r.get('mcap'))}.{nxt}{tpt} "
-                f"{' '.join(x for x in re.split(r'(?<=\.) ', r.get('s1') or '') if '실적 발표' not in x)} 실적·애널리스트 전망·재무·내부자 거래·유명 투자자 보유를 한국어로.")
+                f"{s1c} 실적·애널리스트 전망·재무·내부자 거래·유명 투자자 보유를 한국어로.")
         items = [("종가", f"${r.get('px') or 0:,.2f}"), ("시가총액", usd(r.get("mcap"))), ("업종", SECTOR_KO.get(r.get("sec"), r.get("sec"))),
                  ("다음 실적 발표", r.get("c_next")), ("PER", f"{r['pe']:.1f}배" if r.get("pe") else None),
                  ("매출 성장(최근 4분기)", pct(r.get("rev_g")) if r.get("rev_g") is not None else None),
