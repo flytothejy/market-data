@@ -1138,6 +1138,16 @@ def run(limit=0, **_):
             except Exception as e:
                 R.warning(f"실적 결과 {t}: {str(e)[:60]}")
             if er_last:
+                # 발표 전날 종가 → 지금: '다음 날 반응' 뒤로도 크게 움직였을 수 있어서 함께 보여 줌
+                try:
+                    pxa_ = g.set_index("date").adj_close
+                    i0 = pxa_.index.searchsorted(pd.Timestamp(er_d))
+                    if i0 >= 1:
+                        er_last["since"] = round(float(pxa_.iloc[-1] / pxa_.iloc[i0 - 1] - 1), 4)
+                        er_last["since_d"] = str(pxa_.index[-1].date())
+                except Exception:
+                    pass
+                er_last["n_hist"] = len(er_hist)
                 row.update(er_d=er_last["d"], er_eps_s=(er_last["eps"] or {}).get("s"), er_rev_s=(er_last["rev"] or {}).get("s"),
                            er_mv=er_last["mv"], er_nq=(er_last["nq"] or {}).get("rev"))
         er_exp = None

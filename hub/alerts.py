@@ -162,10 +162,15 @@ def detect(U, prev, init):
                     bits.append(f"EPS {eps_s(eps['a'])} (예상 {eps_s(eps['e'])}, {pct(eps['s'])})")
                 if rev:
                     bits.append(f"매출 {usd(rev['a'])} (예상 {usd(rev['e'])}, {pct(rev['s'])})")
-                mvt = f"주가 {pct(mv)}" + (f" (평소 ±{avg * 100:.1f}%{', 평소보다 큼' if avg and abs(mv) > 1.5 * avg else ''})" if avg else "") if mv is not None else ""
+                nh = L.get("n_hist") or 0
+                mvt = (f"다음 날 주가 {pct(mv)}" + (f" (평소 ±{avg * 100:.1f}%{f', 발표 {nh}번 평균' if nh and nh < 4 else ''}{', 평소보다 큼' if avg and abs(mv) > 1.5 * avg else ''})" if avg else "")) if mv is not None else ""
+                sc = L.get("since")
+                if sc is not None and mv is not None and abs(sc - mv) >= 0.02 and L.get("since_d"):   # 그 뒤로도 크게 움직였으면
+                    mvt += f" · 지금까지 {pct(sc)} ({kday(L['since_d'])} 종가)"
+
                 if fresh and eps:
                     out.append({"k": f"er_res:{L['d']}", "kind": "er", "ord": 0,
-                                "title": f"실적 결과: {L.get('verdict') or '발표'}" + (f" · {mvt.split(' (')[0]}" if mvt else ""),
+                                "title": f"실적 결과: {L.get('verdict') or '발표'}",
                                 "desc": " · ".join(bits + ([mvt] if mvt else []))})
                 elif fresh and mv is not None and L.get("days", 0) >= 2:      # 컨센서스가 없는 종목: 주가 반응만
                     out.append({"k": f"er_mv:{L['d']}", "kind": "er", "ord": 0, "title": f"실적 발표 뒤 {mvt.split(' (')[0]}",

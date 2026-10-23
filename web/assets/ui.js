@@ -488,7 +488,8 @@ function erResultHtml(L, opt = {}) {
     <div class="kv">
       <div><span>EPS</span>${vs(L.eps, '집계 중 (보통 발표 다음 날)')}</div>
       <div><span>매출</span>${vs(L.rev, '집계 중 (분기 보고서 제출 뒤)')}</div>
-      <div><span>주가 반응</span>${L.mv != null ? `${pb(L.mv)}<span class="mut s13">평소 ±${fmt(L.avg, 'pct')}${big ? ' · 평소보다 큼' : ''}</span>` : '<span class="mut s13">다음 거래일 종가 뒤</span>'}</div>
+      <div><span>다음 날 주가</span>${L.mv != null ? `${pb(L.mv)}<span class="mut s13">평소 ±${fmt(L.avg, 'pct')}${L.n_hist && L.n_hist < 4 ? ` (발표 ${L.n_hist}번)` : ''}${big ? ' · 평소보다 큼' : ''}</span>` : '<span class="mut s13">다음 거래일 종가 뒤</span>'}</div>
+      ${L.since != null && L.mv != null && Math.abs(L.since - L.mv) >= 0.02 ? `<div><span>발표 전날 → 지금</span>${pb(L.since)}<span class="mut s13">${esc((L.since_d || '').slice(5).replace('-', '/'))} 종가</span></div>` : ''}
     </div>
     ${after ? `<div class="er-after"><div class="small mut">발표 뒤 애널리스트 전망 변화 (발표 전 대비 · ${L.days}거래일째)</div>
       <div class="kv">${L.nq && L.nq.rev != null ? `<div><span>다음 분기 매출 전망</span>${pb(L.nq.rev)}</div>` : ''}${L.nq && L.nq.eps != null ? `<div><span>다음 분기 EPS 전망</span>${pb(L.nq.eps)}</div>` : ''}${L.fy != null ? `<div><span>올해 EPS 전망</span>${pb(L.fy)}</div>` : ''}${L.pt != null ? `<div><span>평균 목표가</span>${pb(L.pt)}</div>` : ''}${L.up7 != null || L.dn7 != null ? `<div><span>최근 7일 상향·하향</span><b class="num">${L.up7 ?? 0} · ${L.dn7 ?? 0}</b></div>` : ''}</div></div>`
