@@ -149,7 +149,8 @@ function header(active) {
       c = u.rows.filter(r => !r.t.startsWith(q) && ((r.n || '').toLowerCase().includes(ql) || (r.ko || '').includes(inp.value.trim())));
     list = [...a, ...b.sort((x, y) => (y.mcap || y.aum || 0) - (x.mcap || x.aum || 0)), ...c.sort((x, y) => (y.mcap || y.aum || 0) - (x.mcap || x.aum || 0))].slice(0, 8);
     sel = -1;
-    box.innerHTML = list.map((r, i) => `<a href="${stockUrl(r.t)}" data-i="${i}"><b>${esc(r.t)}</b><span>${r.ko ? esc(r.ko) + ' · ' : ''}${esc(r.n)}${r.k === 'etf' ? ' · ETF' : ''}</span></a>`).join('') || '<a><span>결과 없음</span></a>';
+    // 행마다 ☆ — 보유 종목을 한꺼번에 담을 때 종목 화면에 들어가지 않고 바로
+    box.innerHTML = list.map((r, i) => `<div class="sg-r"><a href="${stockUrl(r.t)}" data-i="${i}"><b>${esc(r.t)}</b><span>${r.ko ? esc(r.ko) + ' · ' : ''}${esc(r.n)}${r.k === 'etf' ? ' · ETF' : ''}</span></a>${starBtn(r.t)}</div>`).join('') || '<a><span>결과 없음</span></a>';
     box.style.display = 'block';
   });
   inp.addEventListener('keydown', e => {
@@ -355,6 +356,7 @@ function whyOf(src, r, snap) {
 }
 function watchSrc(btn) {
   // 어디서 눌렀나: 화면이 window.watchSrc를 주면 그걸, 아니면 화면 이름 + 가장 가까운 카드 제목
+  if (btn && btn.closest && btn.closest('.sugg')) return { page: 'search', label: '검색창' };
   if (window.watchSrc) { try { const s = window.watchSrc(btn); if (s) return s; } catch (e) { } }
   const page = (location.pathname.split('/').pop() || 'index.html').replace('.html', '') || 'index';
   const label = { index: '홈', ranking: '티커랭킹', earnings: '실적 달력', compare: '비교', screen: '검색', investors: '유명 투자자', portfolio: '포트폴리오', watch: '후보함' }[page] || page;
@@ -380,13 +382,21 @@ function watchToast(t) {
   if (!el) { el = document.createElement('div'); el.id = 'watch-toast'; document.body.appendChild(el); }
   el.innerHTML = `<div class="wt-top"><b>★ ${esc(t)} 후보함에 담음</b>${rec.px ? `<span class="mut">$${(+rec.px).toFixed(2)}</span>` : ''}<button class="wt-x" aria-label="닫기">×</button></div>
     <label class="wt-why"><span class="mut">담은 이유</span><input value="${esc(rec.why || '')}" maxlength="80" aria-label="담은 이유"></label>
-    <div class="wt-chips">${Object.entries(PURPOSE).map(([k, l]) => `<button data-p="${k}" class="${rec.purpose === k ? 'on' : ''}">${l}</button>`).join('')}<a href="watch.html">후보함 →</a></div>`;
+    <div class="wt-chips">${Object.entries(PURPOSE).map(([k, l]) => `<button data-p="${k}" class="${rec.purpose === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="wt-act"><button class="wt-undo">담기 취소</button><a href="watch.html">후보함 보기</a><button class="wt-ok">완료</button></div>`;
   el.classList.add('show');
   let timer;
   const arm = () => { clearTimeout(timer); timer = setTimeout(() => el.classList.remove('show'), 7000); };
   const hold = () => clearTimeout(timer);
   el.onmouseenter = hold; el.onmouseleave = arm; el.onfocusin = hold;
-  el.querySelector('.wt-x').onclick = () => el.classList.remove('show');
+  const close = () => { clearTimeout(timer); el.classList.remove('show'); };
+  el.querySelector('.wt-x').onclick = close;                      // × = 담은 채로 닫기 (완료와 같음)
+  el.querySelector('.wt-ok').onclick = close;
+  el.querySelector('.wt-undo').onclick = () => {                  // 방금 담은 것 되돌리기
+    Watch.remove(t); close();
+    document.querySelectorAll(`[data-watch="${CSS.escape(t)}"]`).forEach(x => { x.classList.remove('on'); x.setAttribute('aria-pressed', false); x.textContent = x.classList.contains('watch') ? '☆ 후보함에 담기' : '☆'; });
+    document.dispatchEvent(new CustomEvent('watch-change'));
+  };
   const inp = el.querySelector('.wt-why input');
   inp.onchange = () => Watch.update(t, { why: inp.value.trim() });
   el.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {

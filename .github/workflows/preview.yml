@@ -1,0 +1,38 @@
+name: preview
+
+# 화면 미리보기 — main이 아닌 브랜치(예: design)에 화면 파일을 올리면 Cloudflare Pages 미리보기 주소에만 배포
+#   https://<브랜치>.tickermap.pages.dev  (검색엔진 제외 — Cloudflare가 미리보기에 noindex를 붙임)
+# 실제 사이트(tickermap.kr)는 main에 합칠 때만 바뀜
+on:
+  push:
+    branches-ignore: [main]
+    paths: ["web/**", "docs/**", "hub/static_pages.py", "scripts/assemble_site.sh", ".github/workflows/preview.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: preview-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+      SITE_URL: ${{ vars.SITE_URL || 'https://flytothejy.github.io/market-data' }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pip install -q boto3 pandas requests
+      - run: python -m hub sync pull --only site/
+      - run: bash scripts/assemble_site.sh
+      - name: deploy preview
+        run: |
+          export CLOUDFLARE_ACCOUNT_ID=$(echo "$R2_ACCOUNT_ID" | grep -oE '[0-9a-f]{32}' | head -1)
+          npx -y wrangler@3 pages deploy _site --project-name tickermap --branch "${GITHUB_REF_NAME}" --commit-dirty=true
+          echo "### 미리보기: https://${GITHUB_REF_NAME}.tickermap.pages.dev/hub/" >> $GITHUB_STEP_SUMMARY

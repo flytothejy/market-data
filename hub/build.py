@@ -16,6 +16,7 @@ import numpy as np, pandas as pd
 from .core import DATA, ROOT, Run, log, read, load_status
 from .fields import F as FIELDS, CATS
 from . import universe as uni
+from .tone import tone
 
 OUT = DATA / "site" / "api" / "v1"
 ITEMS_8K = {"1.01": "중요 계약", "1.02": "계약 해지", "1.03": "파산", "1.05": "사이버 사고", "2.01": "인수·매각 완료", "2.02": "실적 발표",
@@ -887,7 +888,7 @@ def run(limit=0, **_):
     TSg = grp(TS, "ticker")
 
     # ETF 편입 변화: 최신 구성 vs 약 30일 전(없으면 가장 오래된) 구성 — 전체 구성을 받는 ETF(종목 50개 이상)끼리만 비교
-    etf_chg, etf_base = {}, None
+    etf_chg, etf_base, etf_wb = {}, None, {}
     hs = sorted((DATA / "etf" / "holdings").glob("*.parquet"))
     if len(hs) >= 2 and not EH.empty:
         d_last = pd.Timestamp(hs[-1].stem)
@@ -900,6 +901,7 @@ def run(limit=0, **_):
             df["holding"] = df.holding.astype(str).str.replace(".", "-", regex=False).str.replace(" ", "-", regex=False)
             return df
         a, b = norm(EH), norm(EB)
+        etf_wb = b.groupby(["holding", "etf"]).weight.sum().to_dict()       # 종목 화면 'ETF 비중 변화'용 (모든 ETF)
         full_a = set(a.groupby("etf").size().pipe(lambda x: x[x >= 50]).index)
         full_b = set(b.groupby("etf").size().pipe(lambda x: x[x >= 50]).index)
         both = full_a & full_b
@@ -917,7 +919,9 @@ def run(limit=0, **_):
         eh = EH[EH.holding.notna()].copy()
         eh["holding"] = eh.holding.astype(str).str.replace(".", "-", regex=False).str.replace(" ", "-", regex=False)
         for t, g in eh.groupby("holding"):
-            etf_in[t] = g.sort_values("weight", ascending=False)[["etf", "weight"]].head(15).values.tolist()
+            top = g.groupby("etf").weight.sum().sort_values(ascending=False).head(15)
+            # [ETF, 지금 비중(%), 약 30일 전 대비 비중 변화(%p, 그때 없었으면 None)]
+            etf_in[t] = [[e, round(float(w), 4), (round(float(w) - float(etf_wb[(t, e)]), 4) if (t, e) in etf_wb else None)] for e, w in top.items()]
     # 13F — 기관마다 가장 최근 분기와 그 직전 분기를 비교 (기관마다 제출 시점이 달라 분기를 하나로 맞추지 않음)
     g13, f13_page, g13_hist = {}, None, {}
     if not F13.empty:
@@ -1230,7 +1234,7 @@ def run(limit=0, **_):
             if len(op):
                 detail["opt"] = {"d": op.date.dt.strftime("%Y-%m-%d").tolist(), "iv": op.iv_atm30.round(4).tolist(), "pcr": op.pc_vol.round(3).tolist()}
         if len(nw):
-            detail["news"] = [{"d": x.published, "t": x.title, "s": x.source, "u": x.url, "k": x.kind} for x in nw.sort_values("published", ascending=False).head(25).itertuples()]
+            detail["news"] = [{"d": x.published, "t": x.title, "s": x.source, "u": x.url, "k": x.kind, "tn": tone(x.title)} for x in nw.sort_values("published", ascending=False).head(25).itertuples()]
         detail["etf_in"] = etf_in.get(t, [])
         detail["trail"] = trails(t, g, ET, SVg.get(t), g13_hist.get(t), revq.get(cik), IHg.get(cik), now)
         for key, (fd, fv) in (detail["trail"].pop("_frames", None) or {}).items():   # 티커맵 시간 재생용 (종목 파일에는 안 넣음)

@@ -66,14 +66,33 @@ function bars(rows, keys, labels, colors) {
   <div style="display:flex;font-size:11px;color:var(--faint)">${rows.map(r => `<span style="width:${W}%;text-align:center">${r.end.slice(2, 7).replace('-', '.')}</span>`).join('')}</div>`;
 }
 
+// 같은 세부 업종(8종목 미만이면 업종) 안에서 이 값이 몇 번째로 큰지 — 표의 숫자를 '상대 위치'로 읽게
+function peerGroup(m) {
+  const U = window._U; if (!U) return null;
+  const S = U.rows.filter(r => r.k === 'stock');
+  const ind = m.ind ? S.filter(r => r.ind === m.ind) : [];
+  if (ind.length >= 8) return { name: m.ind, rows: ind };
+  const sec = m.sec ? S.filter(r => r.sec === m.sec) : [];
+  return sec.length >= 8 ? { name: secKo(m.sec), rows: sec } : null;
+}
+const NO_RANK = new Set(['c_next', 'fq', 'gc', 'k8_last', 'nw_last', 'ib_last', 'cur', 'c_n']);
+function rankOf(G, m, k) {
+  const v = m[k];
+  if (!G || v == null || typeof v !== 'number' || !isFinite(v) || NO_RANK.has(k)) return '';
+  const xs = G.rows.map(r => r[k]).filter(x => typeof x === 'number' && isFinite(x));
+  if (xs.length < 8) return '';
+  const rk = 1 + xs.filter(x => x > v).length;
+  return `<small class="rk" title="${esc(G.name)} ${xs.length}종목 중 값이 큰 순서">${rk}/${xs.length}</small>`;
+}
 function kvGrid(m, keys, F) {
+  const G = peerGroup(m);
   return `<div class="kv">${keys.filter(k => F[k] && (F[k].tier !== 'pro' || Plan.isPro())).map(k => {
     const f = F[k]; let v = m[k];
     let txt = f.fmt === 'pct' && ['r1d', 'r1w', 'r1m', 'r3m', 'r6m', 'r1y', 'rytd', 'r12_1', 'd50', 'd200', 'hi52', 'lo52', 'rev_g', 'rev_qg', 'ni_g', 'c_chg90', 'c_upside', 'c_eps_g', 'c_rev_g', 'c_surp', 'c_ratio'].includes(k) ? pctS(v)
       : k === 'om_chg' || k === 'sv_chg' ? (v == null ? '-' : `<span class="${cls(v)}">${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%p</span>`) : fmt(v, f.fmt);
     if (f.tier === 'pro' && !Plan.isPro()) txt = '<span class="pro">PRO</span>';
-    return `<div><span>${esc(f.label)}${tip(k)}</span><b>${txt}</b></div>`;
-  }).join('')}</div>`;
+    return `<div><span>${esc(f.label)}${tip(k)}</span><b>${txt}${rankOf(G, m, k)}</b></div>`;
+  }).join('')}</div>${G ? `<div class="small faint">작은 숫자 = ${esc(G.name)} ${G.rows.length}종목 안에서 값이 큰 순서 (PER·부채비율처럼 낮을수록 좋은 지표도 '큰 순서')</div>` : ''}`;
 }
 
 const sec = (id, key, title, desc, body) => `<section id="${id}" style="display:flex;flex-direction:column;gap:12px;scroll-margin-top:110px">
@@ -103,6 +122,7 @@ function headBlock(m, extraTags) {
 
 // ================================================================ 종목
 async function renderStock(U, d, P) {
+  window._U = U;
   const isPro = !!P;
   const F = U.fields, m = d.m;
   const tabs = [['ov', '개요'], ['cons', '컨센서스'], ['fin', '재무'], ['tech', '차트·수급'], ['doc', '공시·내부자'], ['news', '뉴스']];
@@ -183,21 +203,28 @@ async function renderStock(U, d, P) {
   let techBody = card('', '', kvGrid(m, ['r1w', 'r1m', 'r3m', 'r6m', 'r1y', 'rytd', 'r12_1', 'd50', 'd200', 'rsi', 'hi52', 'lo52', 'vr', 'vol', 'gc', 'sv', 'sv_chg', 'si', 'iv', 'pcr', 'skew'], F));
   techBody += `<div class="grid g2">${card('공매도 거래 비중', 'FINRA 일별 공매도 거래량 / 전체 거래량 (최근 120거래일)', d.short ? '<div class="chart sm" id="sv-c"></div>' : '<div class="mut s13">자료 없음</div>')}
     ${card('내재변동성 (30일 등가격)', '옵션 가격이 말하는 앞으로의 연간 변동성', d.opt && d.opt.d.length > 1 ? '<div class="chart sm" id="iv-c"></div>' : d.opt ? `<div style="font-size:22px;font-weight:700">${fmt(d.opt.iv[0], 'pct')}</div><div class="mut s13">쌓이는 중 — 매일 한 점씩 추가됩니다</div>` : '<div class="mut s13">시가총액 상위 200개 종목만 수집합니다</div>')}</div>`;
+  const G13 = d.g13 ? d.g13.holders : [];
+  const g13Sum = G13.length ? `<div class="small mut" style="margin-bottom:6px">직전 분기 대비 <span class="up">신규 ${G13.filter(x => x.new).length}</span> · <span class="up">늘림 ${G13.filter(x => !x.new && x.chg > 0.05).length}</span> · <span class="dn">줄임 ${G13.filter(x => x.chg != null && x.chg < -0.05).length}</span>${d.g13.sold ? ` · <span class="dn">전량 매도(유명 투자자) ${d.g13.sold}</span>` : ''}</div>` : '';
   const etfIn = d.etf_in || [];
-  techBody += `<div class="grid g2">${card(`이 종목을 담은 ETF <span class="faint small">${etfIn.length}개</span>`, '추적 ETF 159개 중 비중 순', etfIn.length ? `<div class="rank">${etfIn.slice(0, 10).map(([e, w], i) => `<a class="r" href="${stockUrl(e)}"><span class="i">${i + 1}</span><span class="nm"><b>${e}</b></span><span class="v num">${(+w).toFixed(2)}%</span></a>`).join('')}</div>` : '<div class="mut s13">추적 ETF에 편입되어 있지 않습니다</div>')}
-    ${card('유명 투자자·기관 보유 (13F) <a class="small" href="investors.html" style="font-weight:400">전체 →</a>', d.g13 ? `분기 말 기준 · 분기 종료 후 45일 안에 공개 · 포트폴리오 비중 = 그 기관 전체 보유액 중 이 종목` : '', d.g13 ? `<div class="tbl-wrap" style="max-height:420px;overflow-y:auto"><table class="t"><thead><tr><th>투자자</th><th>기준</th><th>평가액</th><th>포트폴리오 비중</th><th>주식 수 변화</th></tr></thead><tbody>${d.g13.holders.map(x => `<tr><td class="nm">${esc(x.m)}${x.k !== 'guru' ? ` <span class="tag">${x.k === 'fund' ? '헤지펀드·퀀트' : '대형 운용사'}</span>` : ''}</td><td class="mut">${esc((x.p || '').slice(2, 7).replace('-', '.'))}</td><td class="num">${fmtUsd(x.v)}</td><td class="num">${x.w != null ? (x.w * 100).toFixed(x.w < 0.01 ? 2 : 1) + '%' : '-'}</td><td>${x.new ? '<span class="up">신규</span>' : pctS(x.chg)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="mut s13">추적 중인 유명 투자자·기관이 보유하지 않았습니다</div>')}</div>`;
+  const uBy = t => U.rows.find(r => r.t === t);
+  const dwS = dw => dw == null ? '<span class="up small">새로 담음</span>' : Math.abs(dw) < 0.005 ? '<span class="faint small">변화 없음</span>' : `<span class="${dw > 0 ? 'up' : 'dn'} small">${dw > 0 ? '▲' : '▼'} ${Math.abs(dw).toFixed(2)}%p</span>`;
+  const hasDw = etfIn.some(x => x.length > 2), etfUp = etfIn.filter(x => x.length > 2 && (x[2] == null || x[2] > 0.005)).length, etfDn = etfIn.filter(x => x[2] != null && x[2] < -0.005).length;
+  const etfSum = hasDw && U.etf_base ? `<div class="small mut" style="margin-bottom:6px">약 30일 전(${esc(U.etf_base.slice(5).replace('-', '/'))}) 대비 비중 <span class="up">늘린 곳 ${etfUp}</span> · <span class="dn">줄인 곳 ${etfDn}</span></div>` : '';
+  techBody += `<div class="grid g2">${card(`이 종목을 담은 ETF <span class="faint small">${etfIn.length}개</span>`, '추적 ETF 159개 중 비중 순 · 오른쪽은 ETF 자체 수익률(1개월 / 1년)', etfIn.length ? `${etfSum}<div class="tbl-wrap"><table class="t etf-t"><thead><tr><th class="l">ETF</th><th>이 종목 비중</th><th>ETF 1개월</th><th>ETF 1년</th></tr></thead><tbody>${etfIn.slice(0, 10).map(([e, w, dw]) => { const r = uBy(e) || {}; return `<tr><td class="l nm"><a href="${stockUrl(e)}"><b>${e}</b></a>${r.ko || r.n ? `<div class="sub">${esc(r.ko || r.n)}</div>` : ''}</td><td class="num">${(+w).toFixed(2)}%<div>${U.etf_base && dw !== undefined ? dwS(dw) : ''}</div></td><td class="num">${pctS(r.r1m)}</td><td class="num">${pctS(r.r1y)}</td></tr>`; }).join('')}</tbody></table></div>` : '<div class="mut s13">추적 ETF에 편입되어 있지 않습니다</div>')}
+    ${card('유명 투자자·기관 보유 (13F) <a class="small" href="investors.html" style="font-weight:400">전체 →</a>', d.g13 ? `분기 말 기준 · 분기 종료 후 45일 안에 공개 · 비중 = 그 기관 전체 보유액 중 이 종목` : '', d.g13 ? `<div class="tbl-wrap" style="max-height:420px;overflow-y:auto">${g13Sum}<table class="t f13-t"><thead><tr><th class="l">투자자</th><th>평가액</th><th>비중</th><th>주식 수 변화</th></tr></thead><tbody>${d.g13.holders.map(x => `<tr><td class="l nm">${esc(x.m)}<div class="sub">${x.k === 'fund' ? '헤지펀드·퀀트 · ' : x.k === 'inst' ? '대형 운용사 · ' : ''}${esc((x.p || '').slice(2, 7).replace('-', '.'))} 기준</div></td><td class="num">${fmtUsd(x.v)}</td><td class="num">${x.w != null ? (x.w * 100).toFixed(x.w < 0.01 ? 2 : 1) + '%' : '-'}</td><td>${x.new ? '<span class="up">신규</span>' : pctS(x.chg)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="mut s13">추적 중인 유명 투자자·기관이 보유하지 않았습니다</div>')}</div>`;
   h += sec('tech', 'tech', '차트·수급', '가격·거래량·공매도·옵션·기관 보유', techBody);
 
   // 공시·내부자
   let docBody = card('', '', kvGrid(m, ['ib', 'is', 'ibn', 'ib_last', 'k8', 'k8_last', 'k10', 'f144', 'g13d', 'rf_new', 'rf_sim', 'md_unc'], F));
   const codeKo = { P: '장내 매수', S: '장내 매도', A: '보상 취득', M: '옵션 행사', F: '세금 납부', G: '증여', D: '회사에 처분', C: '전환', X: '옵션 행사' };
   const ins = d.insider || [];
+  const xpMore = n => n > 8 ? `<button class="btn xp-more" type="button">${n - 8}건 더 보기</button>` : '';
   docBody += card('내부자 거래', 'Form 4 · 최근 40건 · 10b5-1 = 미리 정해둔 매매 계획에 따른 거래', ins.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>거래일</th><th class="l">이름</th><th class="l">직위</th><th class="l">구분</th><th>주식 수</th><th>가격</th><th>금액</th></tr></thead><tbody>
-    ${ins.map(x => `<tr><td>${fmt(x.d, 'date')}</td><td class="l nm">${esc(x.who)}</td><td class="l nm mut">${esc(x.title)}</td><td class="l"><span class="${x.code === 'P' ? 'up' : x.code === 'S' ? 'dn' : 'mut'}">${codeKo[x.code] || x.code}</span>${x.plan ? ' <span class="tag">10b5-1</span>' : ''}</td>
-      <td class="num">${fmt(x.sh, 'int')}</td><td class="num">${x.px ? fmt(x.px, 'px') : '-'}</td><td class="num">${x.v ? fmtUsd(x.v) : '-'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="mut s13">최근 내부자 거래가 없습니다</div>');
+    ${ins.map((x, i) => `<tr${i >= 8 ? ' class="xr"' : ''}><td>${fmt(x.d, 'date')}</td><td class="l nm">${esc(x.who)}</td><td class="l nm mut">${esc(x.title)}</td><td class="l"><span class="${x.code === 'P' ? 'up' : x.code === 'S' ? 'dn' : 'mut'}">${codeKo[x.code] || x.code}</span>${x.plan ? ' <span class="tag">10b5-1</span>' : ''}</td>
+      <td class="num">${fmt(x.sh, 'int')}</td><td class="num">${x.px ? fmt(x.px, 'px') : '-'}</td><td class="num">${x.v ? fmtUsd(x.v) : '-'}</td></tr>`).join('')}</tbody></table></div>${xpMore(ins.length)}` : '<div class="mut s13">최근 내부자 거래가 없습니다</div>');
   const formKo = { '10-K': '연간 보고서', '10-Q': '분기 보고서', '8-K': '수시 공시', '144': '매도 예정 신고', 'DEF 14A': '주총 안내', 'SC 13G': '대주주 지분', 'SC 13D': '대주주 지분(경영 참여)', '20-F': '연간 보고서(해외)', '6-K': '수시 공시(해외)', 'S-8': '임직원 주식 등록', '424B2': '증권 발행' };
   docBody += card('공시 목록', 'SEC EDGAR · 최근 40건 (내부자 거래 제외)', (d.filings || []).length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>제출일</th><th class="l">양식</th><th class="l">내용</th></tr></thead><tbody>
-    ${d.filings.map(x => `<tr><td>${fmt(x.d, 'date')}</td><td class="l"><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.f)}</a></td><td class="l nm mut">${esc(x.items || formKo[x.f] || '')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="mut s13">공시 없음</div>');
+    ${d.filings.map((x, i) => `<tr${i >= 8 ? ' class="xr"' : ''}><td>${fmt(x.d, 'date')}</td><td class="l"><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.f)}</a></td><td class="l nm mut">${esc(x.items || formKo[x.f] || '')}</td></tr>`).join('')}</tbody></table></div>${xpMore(d.filings.length)}` : '<div class="mut s13">공시 없음</div>');
   const TK = (d.tenk || []).slice().reverse();
   const tkTable = TK.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th>10-K 제출일</th><th>비교 대상</th><th>새 위험 문장 비율</th><th>위험요인 유사도</th><th>경영진 논의 유사도</th><th>불확실성 단어</th></tr></thead><tbody>
     ${TK.map(x => `<tr><td>${fmt(x.filed, 'date')}</td><td class="mut">${x.prev_filed ? fmt(x.prev_filed, 'date') : '-'}</td><td class="num">${fmt(x.rf_new, 'pct')}</td><td class="num">${x.sim_rf != null ? x.sim_rf.toFixed(3) : '-'}</td><td class="num">${x.sim_md != null ? x.sim_md.toFixed(3) : '-'}</td><td class="num">${x.md_unc != null ? (x.md_unc * 100).toFixed(2) + '%' : '-'}</td></tr>`).join('')}</tbody></table></div>
@@ -212,7 +239,11 @@ async function renderStock(U, d, P) {
 
   // 뉴스
   const nws = d.news || [];
-  h += sec('news', 'news', '뉴스', '최근 기사·보도자료 (영문 원문)', card('', '', nws.length ? nws.map(x => `<div class="news-i"><a href="${esc(x.u)}" target="_blank" rel="noopener">${esc(x.t)}</a><span class="m">${fmt(x.d, 'date')} · ${esc(x.s || '')}${x.k === 'pr' ? ' · 보도자료' : ''}</span></div>`).join('') : '<div class="mut s13">최근 뉴스가 없습니다</div>'));
+  const tnK = { 1: ['pos', '긍정'], 0: ['neu', '중립'], '-1': ['neg', '부정'] };
+  const hasTn = nws.some(x => x.tn != null);
+  const n7 = nws.filter(x => x.tn != null && (Date.now() - new Date(x.d)) < 7 * 864e5);
+  const tnSum = hasTn && n7.length ? `<div class="tn-sum"><b>최근 7일 제목 톤</b> <span class="tn pos">긍정 ${n7.filter(x => x.tn > 0).length}</span><span class="tn neu">중립 ${n7.filter(x => x.tn === 0).length}</span><span class="tn neg">부정 ${n7.filter(x => x.tn < 0).length}</span><div class="small faint">기사 제목의 금융 단어(상승·하락·상향·소송 등)를 세어 자동 분류 — 내용까지 읽은 판단은 아니에요</div></div>` : '';
+  h += sec('news', 'news', '뉴스', '최근 기사·보도자료 (영문 원문)', card('', '', nws.length ? tnSum + nws.map(x => `<div class="news-i"><div>${x.tn ? `<span class="tn ${tnK[x.tn][0]}">${tnK[x.tn][1]}</span>` : ''}<a href="${esc(x.u)}" target="_blank" rel="noopener">${esc(x.t)}</a></div><span class="m">${fmt(x.d, 'date')} · ${esc(x.s || '')}${x.k === 'pr' ? ' · 보도자료' : ''}</span></div>`).join('') : '<div class="mut s13">최근 뉴스가 없습니다</div>'));
 
   $('#app').innerHTML = h;
   document.title = `${m.ko ? `${m.ko}(${m.t})` : `${m.n} (${m.t})`} 주가·실적 발표일·컨센서스 | 티커맵`;
@@ -220,14 +251,47 @@ async function renderStock(U, d, P) {
   if (d.short) miniLine($('#sv-c'), d.short.d, d.short.r, css('--dn'), v => (v * 100).toFixed(0) + '%');
   if (d.opt && d.opt.d.length > 1) miniLine($('#iv-c'), d.opt.d, d.opt.iv, css('--up'), v => (v * 100).toFixed(0) + '%');
   if (fin.annual && fin.annual.length) {
+    // 표의 줄을 누르면 그 지표가 매출 옆에 같이 그려짐 (금액은 같은 눈금 막대, 비율·EPS는 오른쪽 눈금 꺾은선)
+    const MET = [['매출', 'usd', r => r.rev], ['매출총이익률', 'pct', r => r.gp != null && r.rev ? r.gp / r.rev : null], ['영업이익', 'usd', r => r.opi], ['영업이익률', 'pct', r => r.opi != null && r.rev ? r.opi / r.rev : null],
+      ['순이익', 'usd', r => r.ni], ['EPS', 'eps', r => r.eps], ['영업현금흐름', 'usd', r => r.cfo], ['설비투자', 'usd', r => r.capex],
+      ['연구개발비', 'usd', r => r.rnd], ['자사주 매입', 'usd', r => r.buyback], ['배당 지급', 'usd', r => r.divpaid]];
+    const show = (v, t) => v == null ? '-' : t === 'pct' ? fmt(v, 'pct') : t === 'eps' ? '$' + v.toFixed(2) : fmtUsd(v);
+    let curK = 'annual', selM = 4;
+    const chart = rows => {
+      const [lab, typ, get] = MET[selM], W = 100 / rows.length;
+      const rev = rows.map(r => r.rev || 0), sv = rows.map(get);
+      const sameAxis = typ === 'usd';
+      const mx = Math.max(...rev.map(Math.abs), ...(sameAxis ? sv.map(v => Math.abs(v || 0)) : [0])) || 1;
+      const neg = sameAxis && sv.some(v => (v || 0) < 0), base = neg ? 70 : 100, sc = neg ? 68 : 96;
+      const bar = (v, j, i, n, col) => { const h = Math.abs(v) / mx * sc, bw = W * 0.7 / n, x = j * W + W * 0.15 + i * bw; return `<rect x="${x}" y="${v >= 0 ? base - h : base}" width="${bw * 0.9}" height="${h}" fill="${col}" rx="0.4"></rect>`; };
+      let g = '';
+      if (selM === 0) g = rev.map((v, j) => bar(v, j, 0, 1, css('--accent'))).join('');
+      else if (sameAxis) g = rows.map((r, j) => bar(rev[j], j, 0, 2, css('--line')) + (sv[j] != null ? bar(sv[j], j, 1, 2, css('--accent')) : '')).join('');
+      else {
+        g = rev.map((v, j) => bar(v, j, 0, 1, css('--line'))).join('');
+        const ok = sv.map((v, j) => [v, j]).filter(([v]) => v != null);
+        if (ok.length) {
+          const lo = Math.min(...ok.map(x => x[0]), 0), hi = Math.max(...ok.map(x => x[0])), rg = (hi - lo) || 1;
+          const pt = ([v, j]) => `${j * W + W / 2},${96 - (v - lo) / rg * 86}`;
+          g += `<polyline points="${ok.map(pt).join(' ')}" fill="none" stroke="${css('--accent')}" stroke-width="0.8" vector-effect="non-scaling-stroke" style="stroke-width:2px"/>` +
+            ok.map(x => `<circle cx="${x[1] * W + W / 2}" cy="${96 - (x[0] - lo) / rg * 86}" r="1" fill="${css('--accent')}"/>`).join('');
+        }
+      }
+      return `<div style="display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap">${selM ? `<span><span class="cat-dot" style="background:${css('--line')}"></span>매출</span>` : ''}<span><span class="cat-dot" style="background:${css('--accent')}"></span>${lab}${sameAxis || !selM ? '' : ' (오른쪽 눈금 없이 추세만)'}</span><span class="faint" style="margin-left:auto">아래 표에서 줄을 누르면 바뀌어요</span></div>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:160px">${g}<line x1="0" x2="100" y1="${base}" y2="${base}" stroke="var(--line)" stroke-width="0.3"/></svg>
+        <div style="display:flex;font-size:11px;color:var(--faint)">${rows.map((r, j) => `<span style="width:${W}%;text-align:center">${r.end.slice(2, 7).replace('-', '.')}${selM ? `<br><b style="color:var(--ink);font-weight:600">${show(sv[j], typ)}</b>` : ''}</span>`).join('')}</div>`;
+    };
     const draw = k => {
+      curK = k;
       const rows = fin[k] || [];
-      const tbl = `<div class="tbl-wrap"><table class="t"><thead><tr><th>기준일</th>${rows.map(r => `<th>${r.end.slice(0, 7)}</th>`).join('')}</tr></thead><tbody>
-        ${[['매출', r => fmtUsd(r.rev)], ['매출총이익률', r => fmt(r.gp != null && r.rev ? r.gp / r.rev : null, 'pct')], ['영업이익', r => fmtUsd(r.opi)], ['영업이익률', r => fmt(r.opi != null && r.rev ? r.opi / r.rev : null, 'pct')],
-           ['순이익', r => fmtUsd(r.ni)], ['EPS', r => r.eps != null ? '$' + r.eps.toFixed(2) : '-'], ['영업현금흐름', r => fmtUsd(r.cfo)], ['설비투자', r => fmtUsd(r.capex)],
-           ['연구개발비', r => fmtUsd(r.rnd)], ['자사주 매입', r => fmtUsd(r.buyback)], ['배당 지급', r => fmtUsd(r.divpaid)]]
-          .map(([l, f]) => `<tr><td>${l}</td>${rows.map(r => `<td class="num">${f(r)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-      $('#fin-box').innerHTML = (rows.length ? bars(rows, ['rev', 'ni'], ['매출', '순이익'], [css('--line'), css('--accent')]) : '') + tbl;
+      const tbl = `<div class="tbl-wrap"><table class="t fin-t"><thead><tr><th>기준일</th>${rows.map(r => `<th>${r.end.slice(0, 7)}</th>`).join('')}</tr></thead><tbody>
+        ${MET.map(([l, t, f], i) => `<tr data-m="${i}" class="${i === selM ? 'sel' : ''}"><td>${l}</td>${rows.map(r => `<td class="num">${show(f(r), t)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      $('#fin-box').innerHTML = `<div id="fin-chart">${rows.length ? chart(rows) : ''}</div>` + tbl;
+      $('#fin-box').querySelectorAll('tr[data-m]').forEach(tr => tr.onclick = () => {
+        selM = +tr.dataset.m;
+        $('#fin-box').querySelectorAll('tr[data-m]').forEach(x => x.classList.toggle('sel', x === tr));
+        $('#fin-chart').innerHTML = chart(fin[curK] || []);
+      });
     };
     $('#fin-seg').querySelectorAll('.btn[data-k]').forEach(b => b.onclick = () => { $('#fin-seg').querySelectorAll('.btn').forEach(x => x.classList.remove('on')); b.classList.add('on'); draw(b.dataset.k); });
     draw('annual');
@@ -244,6 +308,7 @@ async function renderStock(U, d, P) {
     dn.setData(h2.d.map((t, i) => ({ time: t, value: -(h2.dn[i] ?? 0) })));
     c.timeScale().fitContent();
   }
+  document.querySelectorAll('.xp-more').forEach(b => b.onclick = () => { b.previousElementSibling.querySelectorAll('tr.xr').forEach(tr => tr.classList.remove('xr')); b.remove(); });
   const nm = $('#ns-more');
   if (nm) nm.onclick = () => { document.querySelectorAll('#ns-list li.more').forEach(li => li.style.display = ''); nm.remove(); };
   // 탭 강조

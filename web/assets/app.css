@@ -34,7 +34,7 @@ nav.main a{color:var(--muted);padding:16px 0 14px;border-bottom:2px solid transp
 nav.main a.on{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
 nav.main a:hover{text-decoration:none;color:var(--ink)}
 .search{margin-left:auto;position:relative}
-.search input{font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);width:240px;min-height:38px}
+.search input{font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);width:320px;min-height:38px}
 .sugg{position:absolute;right:0;top:44px;width:320px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden;display:none;z-index:30}
 .sugg a{display:flex;gap:10px;padding:8px 12px;color:var(--ink);align-items:baseline}
 .sugg a:hover,.sugg a.sel{background:var(--soft);text-decoration:none}
@@ -164,6 +164,7 @@ th .tip:hover::after,th .tip:focus::after{left:auto;right:-8px;transform:none}
 .kv{overflow:visible}
 /* 후보함에 담은 직후 알림창 */
 #watch-toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,140%);width:min(440px,calc(100vw - 32px));background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:12px 14px;display:flex;flex-direction:column;gap:8px;z-index:60;transition:transform .25s ease;font-size:13.5px}
+#watch-toast:not(.show){visibility:hidden;transition:transform .25s ease,visibility 0s .25s}
 #watch-toast.show{transform:translate(-50%,0)}
 #watch-toast .wt-top{display:flex;gap:8px;align-items:baseline}
 #watch-toast .wt-x{margin-left:auto;border:0;background:none;color:var(--faint);font-size:18px;cursor:pointer;min-width:28px;min-height:28px}
@@ -172,7 +173,14 @@ th .tip:hover::after,th .tip:focus::after{left:auto;right:-8px;transform:none}
 #watch-toast .wt-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 #watch-toast .wt-chips button,.pchip{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:99px;padding:5px 11px;background:var(--bg);color:var(--muted);cursor:pointer}
 #watch-toast .wt-chips button.on,.pchip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-#watch-toast .wt-chips a{margin-left:auto;font-size:12.5px}
+#watch-toast .wt-act{display:flex;gap:8px;align-items:center;border-top:1px solid var(--line2);padding-top:8px}
+#watch-toast .wt-act a{font-size:12.5px;margin-left:auto}
+#watch-toast .wt-act button{font:inherit;font-size:13px;border-radius:9px;padding:6px 12px;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--muted)}
+#watch-toast .wt-act .wt-ok{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+/* 검색 드롭다운: 행마다 담기 ☆ */
+.sugg .sg-r{display:flex;align-items:center}
+.sugg .sg-r a{flex:1;min-width:0}
+.sugg .sg-r .star{margin-right:6px}
 /* 종목 점검표 */
 .ck{display:flex;flex-direction:column;gap:10px}
 .ck-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -256,4 +264,22 @@ a[data-tk],button [data-tk],a [data-tk]{cursor:pointer}
 .acct img{width:30px;height:30px;border-radius:50%;object-fit:cover}
 .acct-i{width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--bg);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
 .acct-t{font-size:13px;border:1px solid var(--line);border-radius:99px;padding:5px 11px;background:var(--card);white-space:nowrap}
-@media (max-width:760px){.search{margin-left:auto}.search input{width:130px}.acct-t{padding:4px 9px;font-size:12px}}
+@media (max-width:760px){header.top .in{flex-wrap:nowrap}.brand span{display:none}.search{margin-left:0;flex:1;min-width:0}.search input{width:100%}.sugg{position:fixed;left:12px;right:12px;top:52px;width:auto}.acct-t{padding:4px 9px;font-size:12px}}
+
+.kv .rk{font-size:10.5px;font-weight:500;color:var(--faint);margin-left:5px;vertical-align:1px}
+table.fin-t tbody tr{cursor:pointer}
+table.fin-t tbody tr:hover td{background:var(--soft)}
+table.fin-t tbody tr.sel td{background:color-mix(in srgb,var(--accent) 9%,var(--card))}
+table.fin-t tbody tr.sel td:first-child{font-weight:700;color:var(--accent)}
+/* 종목: ETF·13F 표, 접기, 뉴스 톤 */
+table.t .sub{font-size:11.5px;color:var(--faint);font-weight:400;margin-top:2px;white-space:normal;line-height:1.3}
+table.etf-t td.nm,table.f13-t td.nm{max-width:none;min-width:120px;white-space:normal}
+tr.xr{display:none}
+.xp-more{margin-top:8px;width:100%}
+.tn{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:5px;margin-right:6px;vertical-align:1px;white-space:nowrap}
+.tn.pos{background:color-mix(in srgb,var(--good) 14%,transparent);color:var(--good)}
+.tn.neg{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn)}
+.tn.neu{background:var(--line2);color:var(--muted)}
+.tn-sum{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2px;padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--line2);font-size:13px}
+.tn-sum b{margin-right:8px}
+.tn-sum .small{flex-basis:100%;margin-top:4px}
