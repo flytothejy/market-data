@@ -119,7 +119,7 @@ const live = a => a.filter(x => !x.del);
 // ---- 종목별 이용 집계 (개인 식별 없음: 날짜·종목·종류·횟수만. 기기·IP는 저장하지 않음)
 // 종류: v 종목 화면 조회 · w 후보함 담기 · c 비교에 추가 · a 알림 링크로 들어옴
 // 같은 기기·같은 종목·같은 종류는 하루 한 번만 보내도록 브라우저에서 거름 (부풀리기 방지는 그쪽 + 요청당 개수 제한)
-const EV_KINDS = new Set(['v', 'w', 'c', 'a']);
+const EV_KINDS = new Set(['v', 'w', 'c', 'a', 'u', 'p']);   // u 방문(기기·하루 한 번, t=SITE) · p 화면별 방문(t=화면 이름)
 const kstDay = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
 const OK_ORIGIN = /^(https:\/\/(([a-z0-9-]+\.)?tickermap\.kr|flytothejy\.github\.io|([a-z0-9-]+\.)?tickermap\.pages\.dev)|http:\/\/localhost(:\d+)?)$/;
 async function events(req, env) {
@@ -147,6 +147,7 @@ async function popular(req, env, ctx) {
   const rows = (await env.DB.prepare('SELECT d, t, k, n FROM stats WHERE d >= ?').bind(kstDay(Date.now() - 29 * 864e5)).all()).results;
   const c7 = kstDay(Date.now() - 6 * 864e5);
   for (const r of rows) {
+    if (r.k === 'u' || r.k === 'p') { if (r.d >= c7) out.tot7[r.k] = (out.tot7[r.k] || 0) + r.n; continue; }   // 방문 수는 종목 목록에 넣지 않음
     for (const [name, ok] of [['d30', true], ['d7', r.d >= c7]]) {
       if (!ok) continue;
       const m = out[name][r.t] = out[name][r.t] || {};
@@ -348,6 +349,27 @@ async function internal(req, env, path) {
       return { uid: r.uid, items: live(a).map(d => ({ t: d.t, purpose: d.purpose || '', at: d.at || null, px: d.px ?? null })) };
     }).filter(u => u.items.length);
     return json({ users });
+  }
+  if (path === '/internal/ops') {                       // 운영 지표 (매일 아침 운영 알림용) — 사람별이 아니라 합계만
+    const day = kstDay(), yd = kstDay(Date.now() - 864e5), d7 = kstDay(Date.now() - 6 * 864e5);
+    const one = async (q, ...b) => (await env.DB.prepare(q).bind(...b).first()) || {};
+    const sinceMs = Date.parse(yd + 'T00:00:00+09:00');
+    const acc = await one('SELECT COUNT(*) n FROM "user"').catch(() => ({}));
+    const accNew = await one('SELECT COUNT(*) n FROM "user" WHERE createdAt >= ?', new Date(sinceMs).toISOString()).catch(() => ({}));
+    const prov = (await env.DB.prepare('SELECT providerId p, COUNT(*) n FROM account GROUP BY providerId').all().catch(() => ({ results: [] }))).results;
+    const us = await one("SELECT COUNT(*) n, SUM(chat_id IS NOT NULL) tg, SUM(chat_id IS NOT NULL AND mode='off') tg_off, SUM(auth_id IS NOT NULL) linked FROM users");
+    const wl = (await env.DB.prepare('SELECT data FROM watch').all()).results.map(r => { try { return JSON.parse(r.data).filter(x => !x.del).length; } catch (e) { return 0; } }).filter(n => n > 0);
+    const st = (await env.DB.prepare('SELECT d, k, SUM(n) n FROM stats WHERE d >= ? GROUP BY d, k').bind(d7).all()).results;
+    const sum = (d, k) => st.filter(r => (d === '7' ? true : r.d === d) && r.k === k).reduce((a, r) => a + r.n, 0);
+    const logins = await one('SELECT COUNT(*) n FROM auth_log WHERE ev=? AND at >= ?', 'login', sinceMs).catch(() => ({}));
+    return json({
+      day, yesterday: yd,
+      accounts: acc.n || 0, accounts_new: accNew.n || 0, providers: Object.fromEntries(prov.map(r => [r.p, r.n])),
+      users: us.n || 0, telegram: us.tg || 0, telegram_off: us.tg_off || 0, linked: us.linked || 0,
+      watch_users: wl.length, watch_avg: wl.length ? +(wl.reduce((a, b) => a + b, 0) / wl.length).toFixed(1) : 0,
+      visits_y: sum(yd, 'u'), visits_7: sum('7', 'u'), views_y: sum(yd, 'v'), adds_y: sum(yd, 'w'), logins_y: logins.n || 0,
+      pages_y: Object.fromEntries((await env.DB.prepare("SELECT t, n FROM stats WHERE d=? AND k='p' ORDER BY n DESC").bind(yd).all()).results.map(r => [r.t, r.n])),
+    });
   }
   if (path === '/internal/send') {                    // { msgs: [{uid, text}] } — 한 번에 15개까지 (무료 요금제 요청당 외부 호출 50개 제한)
     const b = await req.json().catch(() => ({}));

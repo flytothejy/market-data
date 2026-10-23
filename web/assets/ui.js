@@ -89,8 +89,11 @@ const Auth = {
   },
   async me() { const j = await this.call('/api/account/me'); if (j) this.setHint({ name: j.user.name, image: j.user.image }); return j; },
   async signIn(provider) {
-    const back = location.origin + '/hub/account';
-    const j = await this.call('/api/auth/sign-in/social', { provider, callbackURL: back + '?login=1', newUserCallbackURL: back + '?login=1&new=1', errorCallbackURL: back + '?error=1' });
+    // 로그인한 뒤엔 로그인을 누르기 전 화면으로 (없으면 홈)
+    let back = location.origin + '/hub/';
+    try { const r = sessionStorage.getItem('hub.auth.back'); if (r && r.startsWith(location.origin) && !/account/.test(r)) back = r; } catch (e) { }
+    const add = (u, p) => u + (u.includes('?') ? '&' : '?') + p;
+    const j = await this.call('/api/auth/sign-in/social', { provider, callbackURL: add(back, 'login=1'), newUserCallbackURL: add(back, 'login=1&new=1'), errorCallbackURL: location.origin + '/hub/account?error=1' });
     if (j && j.url) location.href = j.url; else throw new Error('로그인 주소를 받지 못했어요');
   },
   async claim() {                                        // 로그인 직후: 이 기기를 계정에 묶고 후보함을 합침
@@ -123,6 +126,8 @@ function header(active) {
   <div class="search"><input type="search" placeholder="티커·회사명 (한글 가능)" aria-label="종목 검색" autocomplete="off"><div class="sugg"></div></div>${acctBtn()}</div>`;
   document.body.prepend(el);
   bottomNav(active);
+  // 방문 집계(기기·하루 한 번, 개인 식별 없음): 사이트 전체 + 화면별
+  try { Stat.hit('u', 'SITE'); Stat.hit('p', (((location.pathname.split('/').pop() || 'index').replace(/\.html$/, '')) || 'index').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'INDEX'); } catch (e) { }
   const hh = () => document.documentElement.style.setProperty('--hdr-h', el.offsetHeight + 'px');   // 따라오는 탭 줄이 헤더 바로 밑에 붙게
   hh(); addEventListener('resize', hh);
   if (Plan.isPro()) {                                  // 로그인 전 확인용 프로 미리보기 표시
@@ -629,3 +634,19 @@ async function popularStats() {   // 최근 7일·30일 종목별 합계 {d7: {T
   _pop = fetch(API_BASE + '/api/popular').then(r => r.ok ? r.json() : null).catch(() => null);
   return _pop;
 }
+
+// ---- 로그인하고 돌아왔을 때 (어느 화면이든): 이 기기를 계정에 묶고 알림만 띄움
+(() => {
+  const q = new URLSearchParams(location.search);
+  if (!q.has('login') && !q.has('login_error')) return;
+  const isNew = q.get('new'), err = q.get('login_error');
+  ['login', 'new', 'login_error', 'error'].forEach(k => q.delete(k));
+  history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash);
+  if (err) { setTimeout(() => notice('로그인하지 못했어요. 다시 시도해 주세요'), 300); return; }
+  if (/account(\.html)?$/.test(location.pathname)) return;              // 계정 화면은 스스로 처리
+  Auth.claim().then(() => Auth.me()).then(me => {
+    document.querySelectorAll('header .acct').forEach(a => a.outerHTML = acctBtn());
+    notice(isNew ? `가입을 환영해요${me && me.user.name ? ', ' + me.user.name + '님' : ''}! 이 브라우저의 후보함도 계정에 담았어요` : `로그인했어요${me && me.user.name ? ' · ' + me.user.name : ''}`);
+    document.dispatchEvent(new CustomEvent('watch-change'));
+  }).catch(e => notice('로그인 마무리 중 문제가 생겼어요: ' + e.message));
+})();

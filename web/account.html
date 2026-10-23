@@ -99,6 +99,8 @@ async function loadSessions() {
 }
 
 (async () => {
+  // 어디서 왔는지 기억 → 로그인 뒤 그 화면으로
+  try { if (document.referrer && document.referrer.startsWith(location.origin) && !/account/.test(document.referrer)) sessionStorage.setItem('hub.auth.back', document.referrer); } catch (e) { }
   if (P.get('deleted')) { history.replaceState(null, '', 'account.html'); loginView('계정을 삭제했어요. 그동안 이용해 주셔서 고마워요.'); footer(); return; }
   if (P.get('error')) { history.replaceState(null, '', 'account.html'); loginView(`로그인하지 못했어요${P.get('error') !== '1' ? ` (${esc(P.get('error'))})` : ''}. 다시 시도해 주세요.`); footer(); return; }
   let me = null, note = '';

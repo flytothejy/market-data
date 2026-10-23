@@ -271,6 +271,29 @@ def _api(path, body=None):
     return r.json()
 
 
+PAGE_KO = {"INDEX": "홈", "MATRIX": "티커맵", "RANKING": "랭킹", "STOCK": "종목", "SCREEN": "검색", "COMPARE": "비교", "EARNINGS": "실적 달력",
+           "INVESTORS": "유명 투자자", "WATCH": "후보함", "PORTFOLIO": "포트폴리오", "ACCOUNT": "계정"}
+
+
+def ops_report(m):
+    """운영자에게 매일 아침 지표 한 통 (운영 알림 봇 — TELEGRAM_TOKEN·TELEGRAM_CHAT_ID). 기록은 _ops/에 날짜별로"""
+    d = DATA / "_ops"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{m.get('yesterday')}.json").write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+    tok, chat = os.environ.get("TELEGRAM_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+    if not (tok and chat):
+        return
+    import requests
+    prov = " · ".join(f"{ {'google': '구글', 'kakao': '카카오', 'naver': '네이버'}.get(k, k)} {v}" for k, v in (m.get("providers") or {}).items())
+    pages = " · ".join(f"{PAGE_KO.get(k, k)} {v}" for k, v in list((m.get("pages_y") or {}).items())[:6])
+    txt = (f"<b>티커맵 운영 지표</b> · {m.get('yesterday', '')} (한국 날짜)\n"
+           f"방문 기기 {m.get('visits_y', 0):,} (7일 {m.get('visits_7', 0):,}) · 종목 조회 {m.get('views_y', 0):,} · 담기 {m.get('adds_y', 0):,}\n"
+           f"계정 {m.get('accounts', 0):,} (+{m.get('accounts_new', 0)}){f' — {prov}' if prov else ''} · 로그인 {m.get('logins_y', 0)}\n"
+           f"텔레그램 연결 {m.get('telegram', 0)} (끔 {m.get('telegram_off', 0)}) · 후보함 쓰는 사람 {m.get('watch_users', 0)} (평균 {m.get('watch_avg', 0)}종목)"
+           + (f"\n화면별 방문: {pages}" if pages else ""))
+    requests.post(f"https://api.telegram.org/bot{tok}/sendMessage", json={"chat_id": chat, "text": txt, "parse_mode": "HTML"}, timeout=20)
+
+
 def run(limit=0, full=False, **_):
     R = Run("alerts")
     p = SITE / "free" / "universe.json"
@@ -332,6 +355,10 @@ def run(limit=0, full=False, **_):
             R.set(subscribers=len(subs), sent_users=n_user, sent_msgs=n_msg)
         except Exception as e:
             R.warning(f"알림 발송 실패: {e}")
+        try:
+            ops_report(_api("/internal/ops"))
+        except Exception as e:
+            R.warning(f"운영 지표 실패: {e}")
     else:
         miss = [k for k in ("ALERT_API", "ALERT_KEY") if not os.environ.get(k)]
         R.set(send=f"{', '.join(miss)} 없음 — 감지만")
