@@ -1145,6 +1145,8 @@ def run(limit=0, **_):
                     if i0 >= 1:
                         er_last["since"] = round(float(pxa_.iloc[-1] / pxa_.iloc[i0 - 1] - 1), 4)
                         er_last["since_d"] = str(pxa_.index[-1].date())
+                    if i0 + 1 < len(pxa_) and er_last.get("mv") is not None:
+                        er_last["mv_d"] = str(pxa_.index[i0 + 1].date())          # '다음 날 반응'을 잰 날
                 except Exception:
                     pass
                 er_last["n_hist"] = len(er_hist)

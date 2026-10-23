@@ -162,19 +162,25 @@ def detect(U, prev, init):
                     bits.append(f"EPS {eps_s(eps['a'])} (예상 {eps_s(eps['e'])}, {pct(eps['s'])})")
                 if rev:
                     bits.append(f"매출 {usd(rev['a'])} (예상 {usd(rev['e'])}, {pct(rev['s'])})")
+                # 주가는 조심스럽게: 다음 날 반응은 그날까지의 값이고, 지금 주가와 다를 수 있음을 함께 적음. 아직 다음 날 종가가 없으면 주가는 빼고 실적만
                 nh = L.get("n_hist") or 0
-                mvt = (f"다음 날 주가 {pct(mv)}" + (f" (평소 ±{avg * 100:.1f}%{f', 발표 {nh}번 평균' if nh and nh < 4 else ''}{', 평소보다 큼' if avg and abs(mv) > 1.5 * avg else ''})" if avg else "")) if mv is not None else ""
-                sc = L.get("since")
-                if sc is not None and mv is not None and abs(sc - mv) >= 0.02 and L.get("since_d"):   # 그 뒤로도 크게 움직였으면
-                    mvt += f" · 지금까지 {pct(sc)} ({kday(L['since_d'])} 종가)"
-
+                mvt = ""
+                if mv is not None:
+                    kd = lambda x: kday(x).replace("(", " ").replace(")", "")           # 10/20 화
+                    when = f"실적 발표({kd(L['d'])}) 다음 날" + (f"({kd(L['mv_d'])})" if L.get("mv_d") else "")
+                    mvt = f"주가: {when} {pct(mv)} {'상승' if mv > 0 else '하락' if mv < 0 else ''}".rstrip()
+                    if avg:
+                        mvt += f" (평소 ±{avg * 100:.1f}%{f', 발표 {nh}번 평균' if nh and nh < 4 else ''})"
+                    sc, sd = L.get("since"), L.get("since_d")
+                    if sc is not None and sd and sd != L.get("mv_d"):
+                        mvt += f"\n    ※ 지금({kd(sd)} 종가)은 발표 전보다 {pct(sc)} — 다음 날 반응과 다를 수 있어요"
                 if fresh and eps:
                     out.append({"k": f"er_res:{L['d']}", "kind": "er", "ord": 0,
                                 "title": f"실적 결과: {L.get('verdict') or '발표'}",
-                                "desc": " · ".join(bits + ([mvt] if mvt else []))})
+                                "desc": " · ".join(bits) + (("\n    " + mvt) if mvt else "")})
                 elif fresh and mv is not None and L.get("days", 0) >= 2:      # 컨센서스가 없는 종목: 주가 반응만
-                    out.append({"k": f"er_mv:{L['d']}", "kind": "er", "ord": 0, "title": f"실적 발표 뒤 {mvt.split(' (')[0]}",
-                                "desc": f"{kday(L['d'])} 발표 · " + mvt})
+                    out.append({"k": f"er_mv:{L['d']}", "kind": "er", "ord": 0, "title": "실적 발표 뒤 주가",
+                                "desc": mvt})
                 if L.get("days", 0) >= 3 and L.get("guide"):
                     nq = L.get("nq") or {}
                     g = [f"다음 분기 매출 전망 {pct(nq['rev'])}" if nq.get("rev") is not None else "",
