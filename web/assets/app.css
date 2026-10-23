@@ -283,3 +283,6 @@ tr.xr{display:none}
 .tn-sum{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2px;padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--line2);font-size:13px}
 .tn-sum b{margin-right:8px}
 .tn-sum .small{flex-basis:100%;margin-top:4px}
+.tk-tip .tk-sp svg{display:block;margin-top:6px}
+.tk-tip .tk-sl{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--faint)}
+.tk-tip .tk-sl b{font-weight:650}

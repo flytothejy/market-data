@@ -607,13 +607,33 @@ const tip = k => GLOSS[k] ? `<span class="tip" tabindex="0" role="note" aria-lab
     const sub = r.k === 'etf'
       ? [r.grp, r.aum ? `운용자산 ${fmtUsd(r.aum)}` : '', r.exp != null ? `보수 ${(r.exp * 100).toFixed(2)}%` : ''].filter(Boolean).join(' · ')
       : [r.sec ? secKo(r.sec) : '', r.mcap ? `시가총액 ${fmtUsd(r.mcap)}` : ''].filter(Boolean).join(' · ');
-    tip.innerHTML = `<div><b>${esc(r.t)}</b> ${esc(r.ko || '')}</div>${r.n && r.n !== r.ko ? `<div class="tk-n">${esc(r.n)}</div>` : ''}${sub ? `<div class="tk-s">${esc(sub)}${r.r1d != null ? ` · 1일 <span class="${cls(r.r1d)}">${fmt(r.r1d, 'pct', { sign: true })}</span>` : ''}</div>` : ''}`;
+    tip.innerHTML = `<div><b>${esc(r.t)}</b> ${esc(r.ko || '')}</div>${r.n && r.n !== r.ko ? `<div class="tk-n">${esc(r.n)}</div>` : ''}${sub ? `<div class="tk-s">${esc(sub)}${r.r1d != null ? ` · 1일 <span class="${cls(r.r1d)}">${fmt(r.r1d, 'pct', { sign: true })}</span>` : ''}</div>` : ''}<div class="tk-sp"></div>`;
     tip.style.display = 'block';
-    const b = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
-    let x = Math.min(Math.max(8, b.left + b.width / 2 - w / 2), innerWidth - w - 8), y = b.top - h - 8;
-    if (y < 8) y = b.bottom + 8;
-    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    const place = () => {
+      const b = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+      let x = Math.min(Math.max(8, b.left + b.width / 2 - w / 2), innerWidth - w - 8), y = b.top - h - 8;
+      if (y < 8) y = b.bottom + 8;
+      tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    };
+    place();
+    // 최근 1개월 미니 차트 (전 종목 가격 파일은 처음 올렸을 때 한 번만 받음)
+    const P = await Data.px3m().catch(() => null);
+    if (cur !== el || !P || !P.t[r.t]) return;
+    const sp = tip.querySelector('.tk-sp'); if (!sp) return;
+    sp.innerHTML = spark(P.d, P.t[r.t], 22);
+    place();
   });
+  function spark(D, C, n) {
+    const pts = C.map((v, i) => [D[i], v]).slice(-n).filter(p => p[1] != null);
+    if (pts.length < 5) return '';
+    const v = pts.map(p => p[1]), lo = Math.min(...v), hi = Math.max(...v), W = 220, H = 48, pad = 3;
+    const x = i => pad + i * (W - 2 * pad) / (pts.length - 1), y = c => hi === lo ? H / 2 : pad + (H - 2 * pad) * (1 - (c - lo) / (hi - lo));
+    const chg = v[v.length - 1] / v[0] - 1, col = chg >= 0 ? 'var(--up)' : 'var(--dn)';
+    const line = v.map((c, i) => `${x(i).toFixed(1)},${y(c).toFixed(1)}`).join(' ');
+    const md = s => `${+s.slice(5, 7)}/${+s.slice(8, 10)}`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><polygon points="${pad},${H} ${line} ${W - pad},${H}" fill="${col}" opacity=".08"/><polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round"/><circle cx="${x(v.length - 1)}" cy="${y(v[v.length - 1])}" r="2.4" fill="${col}"/></svg>
+      <div class="tk-sl"><span>${md(pts[0][0])}</span><span>1개월 <b class="${cls(chg)}">${fmt(chg, 'pct', { sign: true })}</b></span><span>${md(pts[pts.length - 1][0])}</span></div>`;
+  }
   document.addEventListener('mouseout', e => { const el = e.target.closest && e.target.closest('[data-tk]'); if (el && el === cur && !el.contains(e.relatedTarget)) hide(); });
   addEventListener('scroll', hide, { passive: true });
 })();

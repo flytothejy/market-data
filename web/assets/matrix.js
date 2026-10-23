@@ -595,14 +595,35 @@ function bindSide() {
   try { U = await Data.universe(); }
   catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   S = U.rows.filter(r => r.k === 'stock');
-  $('#app').innerHTML = `<div class="hero"><h1>티커맵</h1><p>주가와 신호가 어긋난 종목을 찾는 지도 · 가로 = 주가, 세로 = 고른 신호, 점 크기 = 시가총액 · <span id="mx-count"></span></p></div>
-    <div class="card" id="mx-ctl" style="gap:10px"></div>
-    <div class="mx-wrap"><div class="mx-left"><div class="mx-chart" id="mx-chart"></div><div id="mx-how"></div></div><div class="mx-side" id="mx-side"></div></div>
-    <div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 가로축 범위 밖의 종목은 가장자리에 붙여 그립니다 · 업종 원은 시가총액 가중 평균 · 출처: SEC EDGAR(재무·내부자·13F), FINRA(공매도), yfinance(가격·컨센서스)</div>`;
-  render();
-  if (st.track.length) ensureTrails();
-  getJSON('free/patterns.json').then(j => { PATS = j; render(true); }).catch(() => { PATS = {}; });
-  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => render(true), 150); });
-  document.addEventListener('watch-change', () => render(true));
+  let mode = new URLSearchParams(location.search).get('mode') === 'heat' ? 'heat' : 'bubble', inited = false;
+  const DESC = { bubble: '주가와 신호가 어긋난 종목을 찾는 지도 · 가로 = 주가, 세로 = 고른 신호, 점 크기 = 시가총액 · <span id="mx-count"></span>', heat: '업종별 한눈에 · 사각형 크기 = 시가총액, 색 = 주가 변화나 신호 · ▶로 최근 3개월을 다시 보기' };
+  $('#app').innerHTML = `<div class="hero mx-hero"><div><h1>티커맵</h1><p id="mx-desc"></p></div>
+      <div class="mx-seg mx-mode" role="tablist" aria-label="지도 모양"><button role="tab" data-mode="bubble">● 버블</button><button role="tab" data-mode="heat">▦ 히트맵</button></div></div>
+    <div id="mx-body"></div>
+    <div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 버블: 가로축 범위 밖의 종목은 가장자리에 붙여 그리고, 업종 원은 시가총액 가중 평균 · 출처: SEC EDGAR(재무·내부자·13F), FINRA(공매도), yfinance(가격·컨센서스)</div>`;
+  const show = () => {
+    document.querySelectorAll('.mx-mode button').forEach(b => { b.classList.toggle('on', b.dataset.mode === mode); b.setAttribute('aria-selected', b.dataset.mode === mode); });
+    $('#mx-desc').innerHTML = DESC[mode];
+    const body = $('#mx-body');
+    if (mode === 'heat') { Heat.mount(body, U); return; }
+    Heat.unmount();
+    body.innerHTML = `<div class="card" id="mx-ctl" style="gap:10px"></div>
+      <div class="mx-wrap"><div class="mx-left"><div class="mx-chart" id="mx-chart"></div><div id="mx-how"></div></div><div class="mx-side" id="mx-side"></div></div>`;
+    render();
+    if (!inited) {
+      inited = true;
+      if (st.track.length) ensureTrails();
+      getJSON('free/patterns.json').then(j => { PATS = j; if (mode === 'bubble') render(true); }).catch(() => { PATS = {}; });
+    }
+  };
+  $('.mx-mode').onclick = e => {
+    const b = e.target.closest('[data-mode]'); if (!b || b.dataset.mode === mode) return;
+    mode = b.dataset.mode;
+    const u = new URL(location.href); mode === 'heat' ? u.searchParams.set('mode', 'heat') : u.searchParams.delete('mode'); history.replaceState(null, '', u);
+    show();
+  };
+  show();
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (mode === 'bubble' && $('#mx-chart')) render(true); }, 150); });
+  document.addEventListener('watch-change', () => { if (mode === 'bubble' && $('#mx-chart')) render(true); });
   footer();
 })();

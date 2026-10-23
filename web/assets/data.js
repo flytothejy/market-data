@@ -30,6 +30,7 @@ const Plan = {
 const Data = {
   meta: () => getJSON('meta.json'),
   universe: () => getJSON('free/universe.json'),
+  px3m: () => getJSON('free/px3m.json'),          // 최근 약 3개월 일별 수정종가 (말풍선 미니 차트·히트맵 재생)
   market: () => getJSON('free/market.json'),
   stock: t => getJSON(`free/stock/${encodeURIComponent(t)}.json`),
   stockPro: t => Plan.isPro() ? getJSON(`pro/stock/${encodeURIComponent(t)}.json`) : Promise.resolve(null),
