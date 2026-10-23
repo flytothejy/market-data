@@ -13,12 +13,9 @@
 <div class="wrap" id="app"><div class="skel" role="status" aria-label="불러오는 중"><i class="sk sk-h"></i><i class="sk sk-p"></i><div class="sk-grid"><i class="sk sk-c"></i><i class="sk sk-c"></i><i class="sk sk-c"></i></div><i class="sk sk-b"></i></div></div>
 <script>
 header('포트폴리오');
-const KEY = 'hub.portfolio.v1';
-// 저장: 지금은 이 브라우저에만 (로그인이 붙으면 계정 저장으로 옮김)
-const store = {
-  load() { try { return JSON.parse(localStorage.getItem(KEY)) || { name: '내 포트폴리오', items: [] }; } catch (e) { return { name: '내 포트폴리오', items: [] }; } },
-  save(p) { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch (e) { } },
-};
+// 저장: 이 브라우저 + 로그인하면 계정에도 (ui.js PF — 다른 기기에서 로그인하면 같은 포트폴리오)
+const store = PF;
+document.addEventListener('portfolio-change', () => { P = store.load(); if (U) render(); });
 let P = store.load(), U, byT;
 const money = v => v == null ? '-' : (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: Math.abs(v) < 1000 ? 2 : 0 });
 
@@ -32,7 +29,7 @@ function render() {
   });
   const costed = rows.filter(x => x.c != null), pnlAmt = costed.reduce((s, x) => s + x.v - x.c, 0), pnlBase = costed.reduce((s, x) => s + x.c, 0);
   const left = Plan.PORTFOLIO_MAX - P.items.length;
-  let h = `<div class="hero"><h1>${esc(P.name)}</h1><p>보유 종목을 넣으면 다섯 카테고리에서 생긴 변화를 한 곳에 모아 보여줘요. 무료는 포트폴리오 1개 · 종목 ${Plan.PORTFOLIO_MAX}개까지 · 이 브라우저에 저장됩니다.</p></div>`;
+  let h = `<div class="hero"><h1>${esc(P.name)}</h1><p>보유 종목을 넣으면 다섯 카테고리에서 생긴 변화를 한 곳에 모아 보여줘요 · 종목 ${Plan.PORTFOLIO_MAX}개까지 · ${Auth.hint() ? '계정에 저장돼 다른 기기에서도 같아요' : '이 브라우저에 저장돼요 · <a href="account.html">로그인</a>하면 다른 기기에서도 같은 포트폴리오'}</p></div>`;
   h += `<div class="grid g4">
     <div class="card"><span class="mut s13">평가액</span><b style="font-size:22px" class="num">${money(val)}</b></div>
     <div class="card"><span class="mut s13">오늘 변동</span><b style="font-size:22px" class="num ${cls(day)}">${day >= 0 ? '+' : ''}${money(day)}</b><span class="small">${pctS(val ? day / (val - day) : null)}</span></div>

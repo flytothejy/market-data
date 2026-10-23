@@ -85,6 +85,7 @@ async function useToken(env, token, kind) {
 async function wipe(env, uid) {                       // 서버에 있는 이 사용자의 모든 것 (후보함·기기·연결 토큰·텔레그램 연결)
   await env.DB.batch([
     env.DB.prepare('DELETE FROM watch WHERE uid=?').bind(uid),
+    env.DB.prepare('DELETE FROM portfolio WHERE uid=?').bind(uid),
     env.DB.prepare('DELETE FROM devices WHERE uid=?').bind(uid),
     env.DB.prepare('DELETE FROM tokens WHERE uid=?').bind(uid),
     env.DB.prepare('DELETE FROM users WHERE uid=?').bind(uid),
@@ -160,6 +161,17 @@ async function popular(req, env, ctx) {
   return res;
 }
 
+// ---- 포트폴리오: 문서 통째로 (보유 종목·수량·평균단가), 수정 시각이 더 최근인 쪽이 이김
+async function syncPf(env, uid, pf) {
+  const cur = await env.DB.prepare('SELECT data, u FROM portfolio WHERE uid=?').bind(uid).first();
+  if (pf && Array.isArray(pf.items) && (+pf.u || 0) > (cur ? cur.u : -1)) {
+    const doc = { name: String(pf.name || '내 포트폴리오').slice(0, 40), items: pf.items.slice(0, 200).filter(x => x && TICK.test(x.t)).map(x => ({ t: x.t, sh: +x.sh || 0, cost: x.cost == null ? null : +x.cost })), u: Math.floor(+pf.u) };
+    await env.DB.prepare('INSERT INTO portfolio (uid, data, u) VALUES (?,?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data, u=excluded.u').bind(uid, JSON.stringify(doc), doc.u).run();
+    return doc;
+  }
+  return cur ? JSON.parse(cur.data) : null;
+}
+
 // ---- 브라우저용 API
 async function api(req, env, path) {
   const b = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
@@ -175,7 +187,11 @@ async function api(req, env, path) {
   }
   const u = await userOf(env, b.code);
   if (!u) return json({ error: 'unknown device' }, 401);
-  if (path === '/api/sync') return json({ items: await merge(env, u.uid, b.items), me: me(u) });
+  if (path === '/api/sync') {
+    const out = { items: await merge(env, u.uid, b.items), me: me(u) };
+    if (u.auth_id) out.pf = await syncPf(env, u.uid, b.pf);          // 포트폴리오는 로그인한 계정만
+    return json(out);
+  }
   if (path === '/api/me') return json({ me: me(u) });
   if (path === '/api/link') {                         // 텔레그램 연결 링크 (10분)
     const bot = await botName(env);
@@ -232,6 +248,9 @@ async function account(req, env, path) {
       await merge(env, acc.uid, await doc(env, dev.uid));
       const st = [env.DB.prepare('UPDATE devices SET uid=? WHERE uid=?').bind(acc.uid, dev.uid)];
       if (!acc.chat_id && dev.chat_id) st.push(env.DB.prepare('UPDATE users SET chat_id=?, tg_name=?, linked=?, mode=? WHERE uid=?').bind(dev.chat_id, dev.tg_name, dev.linked, dev.mode, acc.uid));
+      const dpf = await env.DB.prepare('SELECT data, u FROM portfolio WHERE uid=?').bind(dev.uid).first();
+      if (dpf) await syncPf(env, acc.uid, { ...JSON.parse(dpf.data), u: dpf.u });
+      st.push(env.DB.prepare('DELETE FROM portfolio WHERE uid=?').bind(dev.uid));
       st.push(env.DB.prepare('DELETE FROM watch WHERE uid=?').bind(dev.uid), env.DB.prepare('DELETE FROM tokens WHERE uid=?').bind(dev.uid), env.DB.prepare('DELETE FROM users WHERE uid=?').bind(dev.uid));
       await env.DB.batch(st);
     } else if (!acc) {

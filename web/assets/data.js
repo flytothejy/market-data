@@ -24,7 +24,7 @@ const Plan = {
       return localStorage.getItem('hub.preview.pro') === '1';
     } catch (e) { return new URLSearchParams(location.search).get('pro') === '1'; }
   },
-  PORTFOLIO_MAX: 10,
+  PORTFOLIO_MAX: 50,
 };
 
 const Data = {

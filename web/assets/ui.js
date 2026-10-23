@@ -251,7 +251,10 @@ const Sync = {
     const code = this.st().code; if (!code) return null;
     const recs = Watch.records(), dels = Watch.dels();
     const items = [...recs.map(r => ({ ...r, u: r.u || (r.at ? Date.parse(r.at) : 1) })), ...Object.entries(dels).map(([t, u]) => ({ t, u, del: 1 }))];
-    const j = await this.call('/api/sync', { code, items });
+    const body = { code, items };
+    if (Auth.hint() && PF.has()) { const p = PF.load(); body.pf = { ...p, u: p.u || 1 }; }   // 로그인한 경우만 포트폴리오도
+    const j = await this.call('/api/sync', body);
+    if (j.pf && (j.pf.u || 0) > (PF.load().u || 0)) { PF.save(j.pf, true); document.dispatchEvent(new CustomEvent('portfolio-change')); }
     // 서버 결과 반영: 서버 쪽이 더 최근이면 받아옴
     const by = Object.fromEntries(recs.map(r => [r.t, r]));
     let changed = false;
@@ -287,10 +290,14 @@ const Sync = {
     Sync.join(m[1]).then(() => notice('이 기기에 후보함을 이어 붙였어요')).catch(e => notice('기기 추가 실패: ' + e.message));
   } else if (Sync.on() && Date.now() - (Sync.st().at || 0) > 60e3) setTimeout(() => Sync.run().catch(() => { }), 300);
 })();
-// 포트폴리오 보유 종목 (포트폴리오 화면과 같은 저장소)
-function portfolioTickers() {
-  try { const p = JSON.parse(localStorage.getItem('hub.portfolio.v1')); return (p && p.items || []).map(x => x.t); } catch (e) { return []; }
-}
+// 포트폴리오 (이 브라우저 저장 + 로그인하면 계정에도 저장해 다른 기기와 같게)
+const PF = {
+  KEY: 'hub.portfolio.v1',
+  load() { try { return JSON.parse(localStorage.getItem(this.KEY)) || { name: '내 포트폴리오', items: [] }; } catch (e) { return { name: '내 포트폴리오', items: [] }; } },
+  save(p, quiet) { if (!quiet) p.u = Date.now(); try { localStorage.setItem(this.KEY, JSON.stringify(p)); } catch (e) { } if (!quiet) Sync.soon(); },
+  has() { try { return !!localStorage.getItem(this.KEY); } catch (e) { return false; } },
+};
+function portfolioTickers() { return (PF.load().items || []).map(x => x.t); }
 
 // 렌즈 값 (티커맵 matrix.js LENS와 같은 정의) — 스냅샷·이유 문장용
 const LENS_SNAP = {
@@ -647,6 +654,6 @@ async function popularStats() {   // 최근 7일·30일 종목별 합계 {d7: {T
   Auth.claim().then(() => Auth.me()).then(me => {
     document.querySelectorAll('header .acct').forEach(a => a.outerHTML = acctBtn());
     notice(isNew ? `가입을 환영해요${me && me.user.name ? ', ' + me.user.name + '님' : ''}! 이 브라우저의 후보함도 계정에 담았어요` : `로그인했어요${me && me.user.name ? ' · ' + me.user.name : ''}`);
-    document.dispatchEvent(new CustomEvent('watch-change'));
+    document.dispatchEvent(new CustomEvent('watch-change')); document.dispatchEvent(new CustomEvent('portfolio-change')); document.dispatchEvent(new CustomEvent('sync-change'));
   }).catch(e => notice('로그인 마무리 중 문제가 생겼어요: ' + e.message));
 })();
