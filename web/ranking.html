@@ -52,7 +52,7 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
   // 내 관심 종목 (이 브라우저에 저장된 것)
   const W = Watch.list().map(t => U.rows.find(r => r.t === t)).filter(Boolean);
   if (W.length) {
-    h += `<div class="sec-head"><h2>내 후보함</h2><span class="desc">${W.length}개 · 이 브라우저에 저장됨</span>
+    h += `<div class="sec-head"><h2>내 후보함</h2><span class="desc">${W.length}개</span>
       <a class="more" href="compare.html?t=${encodeURIComponent(W.slice(0, 5).map(r => r.t).join(','))}">비교하기 →</a></div>
       <div class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>종목</th><th>종가</th><th>1일</th><th>1개월</th><th>1년</th><th>다음 실적</th><th class="l">한 줄 요약</th><th></th></tr></thead><tbody>
       ${W.map(r => `<tr><td><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 18))}</span></td><td class="num">${fmt(r.px, 'px')}</td><td>${pctS(r.r1d)}</td><td>${pctS(r.r1m)}</td><td>${pctS(r.r1y)}</td>
@@ -75,7 +75,7 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
   const today = new Date().toISOString().slice(0, 10);
   const wk = new Date(Date.now() + 8 * 864e5).toISOString().slice(0, 10);
   const earn = S.filter(r => r.c_next && r.c_next >= today && r.c_next <= wk).sort((a, b) => a.c_next < b.c_next ? -1 : a.c_next > b.c_next ? 1 : (b.mcap || 0) - (a.mcap || 0));
-  h += section('cons', '컨센서스', `애널리스트 전망 변화 · ${esc(U.consensus_asof || '')} 기준 (S&P 500부터, 확대 예정)`, [
+  h += section('cons', '컨센서스', `애널리스트 전망 변화 · ${esc(U.consensus_asof || '')} 기준`, [
     card('전망 상향이 많은 종목', '최근 30일 내년 EPS 상향−하향 / 애널리스트 수 (5명 이상)', rankList(consN.filter(r => r.c_ratio != null).sort((a, b) => b.c_ratio - a.c_ratio || (b.c_up || 0) - (a.c_up || 0)), r => pctS(r.c_ratio), r => `상향 ${r.c_up ?? 0} · 하향 ${r.c_dn ?? 0}`)),
     card('목표가 상승여력', '평균 목표가 / 현재가 − 1 (5명 이상)', rankList(by(consN, 'c_upside'), r => pctS(r.c_upside), sub)),
     card('다가오는 실적 발표 <a class="small" href="earnings.html" style="font-weight:400">달력 →</a>', '앞으로 일주일', rankList(earn, r => `<span class="mut">${esc(r.c_next.slice(5))}</span>`, sub, 10)),
@@ -110,7 +110,7 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
     card('유명 투자자가 새로 산 종목 <a class="small" href="investors.html" style="font-weight:400">투자자 →</a>', '이번 분기 13F에서 처음 담은 유명 투자자 수', rankList(gNew, r => `${r.g13_new}곳`, r => `보유 ${r.g13 ?? 0}곳 · 순증 ${r.g13_chg > 0 ? '+' : ''}${r.g13_chg ?? 0}`)),
     card('유명 투자자 매수 우위', '새로 사거나 늘린 곳 − 팔거나 줄인 곳', rankList(by(S.filter(r => r.g13_chg > 0), 'g13_chg'), r => `<span class="up">+${r.g13_chg}곳</span>`, r => `보유 ${r.g13 ?? 0}곳 · ${secKo(r.sec)}`)),
     card('ETF 편입이 늘어난 종목', `전체 구성을 받는 ETF 기준, ${eBase ? eBase + ' 대비' : '약 30일 전 대비'}`, eAdd.length ? rankList(eAdd, r => `+${r.etf_add}개`, r => `편출 ${r.etf_drop ?? 0} · 비중 변화 ${fmt(r.etf_wchg, 'pct', { sign: true })}`)
-      : `<div class="mut s13">ETF 구성은 10/19부터 매일 쌓고 있어요. ${eBase ? eBase + ' 이후' : '그동안'} 새로 편입된 종목이 아직 없어요 — 한 달쯤 지나면 의미 있는 숫자가 나와요.</div>`),
+      : '<div class="mut s13">새로 편입된 종목이 없어요</div>'),
   ], 'screen.html?cat=tech');
 
   // ---- 티커맵 사용자 (종목별 이용 합계 — 서버에서 받아 나중에 채움)
@@ -119,7 +119,7 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
   // ---- 뉴스
   const nw = by(S.filter(r => r.nw7 > 0), 'nw7');
   h += `<div class="sec-head"><h2><span class="cat-dot c-news"></span>뉴스</h2><span class="desc">최근 7일 기사·보도자료가 많은 종목</span></div>
-    <div class="card">${nw.length ? rankList(nw, r => `${r.nw7}건`, r => r.nw_last || '', 10) : '<div class="mut s13">뉴스 수집 중입니다</div>'}</div>`;
+    <div class="card">${nw.length ? rankList(nw, r => `${r.nw7}건`, r => r.nw_last || '', 10) : '<div class="mut s13">해당 종목이 없습니다</div>'}</div>`;
 
   // ---- ETF
   const grp = {};
@@ -144,13 +144,14 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
   const el = document.getElementById('pop-sec');
   if (!el || !P) return;
   const by7 = k => Object.entries(P.d7 || {}).filter(([, m]) => m[k]).map(([t, m]) => ({ r: U.rows.find(x => x.t === t), n: m[k] })).filter(x => x.r).sort((a, b) => b.n - a.n);
-  const list = (k, unit) => { const xs = by7(k); return xs.length ? rankList(xs.map(x => ({ ...x.r, _n: x.n })), r => `${r._n.toLocaleString()}${unit}`, r => `${secKo(r.sec) || r.grp || ''} · 1주 ${fmt(r.r1w, 'pct', { sign: true })}`) : '<div class="mut s13">아직 없어요</div>'; };
+  const list = (k, unit) => { const xs = by7(k); return xs.length ? rankList(xs.map(x => ({ ...x.r, _n: x.n })), r => `${r._n.toLocaleString()}${unit}`, r => `${secKo(r.sec) || r.grp || ''} · 1주 ${fmt(r.r1w, 'pct', { sign: true })}`) : '<div class="mut s13">해당 종목이 없습니다</div>'; };
   const tot = P.tot7 || {}, enough = (tot.v || 0) >= 50;
-  el.innerHTML = section('watch', '티커맵 사용자들은', `최근 7일 · 같은 기기는 종목마다 하루 한 번만 셈 · 개인을 알아볼 수 없는 합계`, enough ? [
+  if (!enough) return;                                  // 숫자가 적을 땐 칸을 아예 안 보여 줌
+  el.innerHTML = section('watch', '티커맵 사용자들은', '최근 7일 합계', [
     card('많이 본 종목', '종목 화면 조회', list('v', '회')),
     card('후보함에 많이 담은 종목', '☆ 담기', list('w', '회')),
     card('비교에 많이 넣은 종목', '종목 비교에 추가', list('c', '회')),
-  ] : [card('모이는 중', '', `<div class="mut s13">10/22부터 종목별 조회·담기 횟수를 모으고 있어요 (지난 7일 조회 ${(tot.v || 0).toLocaleString()}회). 조금 더 쌓이면 많이 본·담은 종목이 여기에 나와요.</div>`)]);
+  ]);
 })();
 </script>
 </body>

@@ -286,3 +286,10 @@ tr.xr{display:none}
 .tk-tip .tk-sp svg{display:block;margin-top:6px}
 .tk-tip .tk-sl{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--faint)}
 .tk-tip .tk-sl b{font-weight:650}
+
+/* 순위 목록: 티커 · 회사명(넘치면 …) · 부가 정보 */
+.rank .nm{display:flex;align-items:baseline;gap:6px;min-width:0}
+.rank .nm b{flex-shrink:0}
+.rank .nm .cn{color:var(--ink);opacity:.8;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 3 auto}
+.rank .nm small{margin-left:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
+@media (max-width:600px){table.t td.sc-n{max-width:96px}.rank .nm .cn{max-width:42%}}

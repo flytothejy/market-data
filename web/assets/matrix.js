@@ -599,8 +599,7 @@ function bindSide() {
   const DESC = { bubble: '주가와 신호가 어긋난 종목을 찾는 지도 · 가로 = 주가, 세로 = 고른 신호, 점 크기 = 시가총액 · <span id="mx-count"></span>', heat: '업종별 한눈에 · 사각형 크기 = 시가총액, 색 = 주가 변화나 신호 · ▶로 최근 3개월을 다시 보기' };
   $('#app').innerHTML = `<div class="hero mx-hero"><div><h1>티커맵</h1><p id="mx-desc"></p></div>
       <div class="mx-seg mx-mode" role="tablist" aria-label="지도 모양"><button role="tab" data-mode="bubble">● 버블</button><button role="tab" data-mode="heat">▦ 히트맵</button></div></div>
-    <div id="mx-body"></div>
-    <div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 버블: 가로축 범위 밖의 종목은 가장자리에 붙여 그리고, 업종 원은 시가총액 가중 평균 · 출처: SEC EDGAR(재무·내부자·13F), FINRA(공매도), yfinance(가격·컨센서스)</div>`;
+    <div id="mx-body"></div>`;
   const show = () => {
     document.querySelectorAll('.mx-mode button').forEach(b => { b.classList.toggle('on', b.dataset.mode === mode); b.setAttribute('aria-selected', b.dataset.mode === mode); });
     $('#mx-desc').innerHTML = DESC[mode];

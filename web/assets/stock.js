@@ -134,7 +134,7 @@ async function renderStock(U, d, P) {
   // 다섯 카테고리 요약
   const pick = (k) => m[k];
   h += `<div class="grid g4 sum5" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
-    ${[['cons', '컨센서스', m.c_n ? `순상향률 ${fmt(m.c_ratio, 'pct', { sign: true })}` : '준비 중', m.c_next ? `다음 실적 ${m.c_next}` : m.c_n ? `애널리스트 ${m.c_n}명` : 'S&P 500부터 제공'],
+    ${[['cons', '컨센서스', m.c_n ? `순상향률 ${fmt(m.c_ratio, 'pct', { sign: true })}` : '-', m.c_next ? `다음 실적 ${m.c_next}` : m.c_n ? `애널리스트 ${m.c_n}명` : '컨센서스 없음'],
        ['fin', '재무', `매출 성장 ${fmt(m.rev_g, 'pct', { sign: true })}`, `영업이익률 ${fmt(m.om, 'pct')} · PER ${fmt(m.pe, 'x')}`],
        ['tech', '차트·수급', `1년 ${fmt(m.r1y, 'pct', { sign: true })}`, `200일선 대비 ${fmt(m.d200, 'pct', { sign: true })} · 공매도 ${fmt(m.sv, 'pct')}`],
        ['doc', '공시·내부자', `내부자 매수 ${fmtUsd(m.ib || 0)}`, m.k8_last ? `최근 8-K ${m.k8_last}` : `매도 ${fmtUsd(m.is || 0)}`],
@@ -181,7 +181,7 @@ async function renderStock(U, d, P) {
   const consKeys = ['c_n', 'c_up', 'c_dn', 'c_ratio', 'c_chg90', 'c_eps_g', 'c_rev_g', 'c_fpe', 'c_upside', 'c_buy', 'c_surp', 'c_beats', 'c_next'];
   const fakeHist = `<div style="height:140px;background:linear-gradient(180deg,transparent 40%,var(--soft));border-radius:10px"></div>`;
   h += sec('cons', 'cons', '컨센서스', '애널리스트 전망과 그 변화',
-    erRes + erCard + (m.c_n ? card('', '', kvGrid(m, consKeys, F)) : card('', '', `<div class="mut s13">이 종목의 컨센서스는 준비 중입니다. 지금은 S&P 500 종목부터 제공하고 있어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
+    erRes + erCard + (m.c_n ? card('', '', kvGrid(m, consKeys, F)) : card('', '', `<div class="mut s13">이 종목은 애널리스트 컨센서스 자료가 없어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
     (!isPro ? '' : card('전망치 일별 이력', '내년 EPS 전망과 30일 상향·하향 건수를 날마다 쌓은 기록',
         P.cons_hist ? `<div class="small mut">내년 EPS 전망 ($)</div><div class="chart sm" id="ch-eps"></div><div class="small mut">30일 상향(위) · 하향(아래) 건수</div><div class="chart sm" id="ch-rev" style="height:130px"></div>
           <div class="small faint">${P.cons_hist.d.length}일째 쌓는 중 (${esc(P.cons_hist.d[0])}부터) — 날마다 한 점씩 늘어납니다</div>`
@@ -202,7 +202,7 @@ async function renderStock(U, d, P) {
   // 차트·수급
   let techBody = card('', '', kvGrid(m, ['r1w', 'r1m', 'r3m', 'r6m', 'r1y', 'rytd', 'r12_1', 'd50', 'd200', 'rsi', 'hi52', 'lo52', 'vr', 'vol', 'gc', 'sv', 'sv_chg', 'si', 'iv', 'pcr', 'skew'], F));
   techBody += `<div class="grid g2">${card('공매도 거래 비중', 'FINRA 일별 공매도 거래량 / 전체 거래량 (최근 120거래일)', d.short ? '<div class="chart sm" id="sv-c"></div>' : '<div class="mut s13">자료 없음</div>')}
-    ${card('내재변동성 (30일 등가격)', '옵션 가격이 말하는 앞으로의 연간 변동성', d.opt && d.opt.d.length > 1 ? '<div class="chart sm" id="iv-c"></div>' : d.opt ? `<div style="font-size:22px;font-weight:700">${fmt(d.opt.iv[0], 'pct')}</div><div class="mut s13">쌓이는 중 — 매일 한 점씩 추가됩니다</div>` : '<div class="mut s13">시가총액 상위 200개 종목만 수집합니다</div>')}</div>`;
+    ${card('내재변동성 (30일 등가격)', '옵션 가격이 말하는 앞으로의 연간 변동성', d.opt && d.opt.d.length > 1 ? '<div class="chart sm" id="iv-c"></div>' : d.opt ? `<div style="font-size:22px;font-weight:700">${fmt(d.opt.iv[0], 'pct')}</div>` : '<div class="mut s13">시가총액 상위 200개 종목만 수집합니다</div>')}</div>`;
   const G13 = d.g13 ? d.g13.holders : [];
   const g13Sum = G13.length ? `<div class="small mut" style="margin-bottom:6px">직전 분기 대비 <span class="up">신규 ${G13.filter(x => x.new).length}</span> · <span class="up">늘림 ${G13.filter(x => !x.new && x.chg > 0.05).length}</span> · <span class="dn">줄임 ${G13.filter(x => x.chg != null && x.chg < -0.05).length}</span>${d.g13.sold ? ` · <span class="dn">전량 매도(유명 투자자) ${d.g13.sold}</span>` : ''}</div>` : '';
   const etfIn = d.etf_in || [];

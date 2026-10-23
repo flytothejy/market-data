@@ -55,7 +55,7 @@ const fm = k => (F[k] || {}).fmt || (EXTRA[k] || [])[2] || 'text';
 const SIGNED = new Set(['r1d', 'r1w', 'r1m', 'r3m', 'r6m', 'r1y', 'rytd', 'r12_1', 'd50', 'd200', 'hi52', 'rev_g', 'rev_qg', 'ni_g', 'c_ratio', 'c_chg90', 'c_upside', 'c_surp', 'c_eps_g', 'c_rev_g']);
 function cell(r, k) {
   const v = r[k];
-  if (k === 'n') return `<td class="l nm">${esc(v)}</td>`;
+  if (k === 'n') return `<td class="l nm sc-n" title="${esc(v)}">${esc(shortName(r) || v)}</td>`;
   if (k === 'sec') return `<td class="l mut">${secKo(v)}</td>`;
   if (k === 'grp' || k === 'k8_last' || k === 'nw_last') return `<td class="l nm mut">${esc(v || '-')}</td>`;
   if (SIGNED.has(k)) return `<td>${pctS(v)}</td>`;

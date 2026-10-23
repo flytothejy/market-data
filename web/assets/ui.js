@@ -178,10 +178,11 @@ async function footer() {
 }
 
 // ---- 순위 목록: rows, 값 표시 함수, 부가 표시 함수
+const shortName = r => r.ko || String(r.n || '').replace(/,?\s+(Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.|Holdings?|Ltd\.?|Limited|plc|PLC|N\.V\.|S\.A\.|AG|SE|L\.P\.)(,?\s+(Inc\.?|Ltd\.?|plc))?\.?$/, '').replace(/^The\s+/, '');
 function rankList(rows, val, sub, n = 8) {
   if (!rows.length) return '<div class="mut s13">해당 종목이 없습니다</div>';
   return `<div class="rank">${rows.slice(0, n).map((r, i) => `<a class="r" href="${stockUrl(r.t)}">
-    <span class="i num">${i + 1}</span><span class="nm"><b>${esc(r.t)}</b><small>${esc(sub ? sub(r) : r.n)}</small></span><span class="v num">${val(r)}</span></a>`).join('')}</div>`;
+    <span class="i num">${i + 1}</span><span class="nm"><b>${esc(r.t)}</b>${sub && (r.ko || r.n) ? `<span class="cn">${esc(shortName(r))}</span>` : ''}<small>${esc(sub ? sub(r) : shortName(r))}</small></span><span class="v num">${val(r)}</span></a>`).join('')}</div>`;
 }
 
 function lockBox(inner, msg = '프로 멤버십에서 볼 수 있어요') {
