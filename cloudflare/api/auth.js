@@ -33,7 +33,7 @@ export function makeAuth(env) {
     secret: env.AUTH_SECRET,
     baseURL: env.API_URL || 'https://api.tickermap.kr',
     basePath: '/api/auth',
-    trustedOrigins: [...SITE_ORIGINS, ...(env.AUTH_DEV === '1' ? ['http://localhost:8766'] : [])],
+    trustedOrigins: [...SITE_ORIGINS, 'https://admin.tickermap.kr', ...(env.AUTH_DEV === '1' ? ['http://localhost:8766'] : [])],
     socialProviders: sp,
     emailAndPassword: { enabled: env.AUTH_DEV === '1' },                         // 로컬 시험용만
     session: { expiresIn: 60 * 60 * 24 * 30, updateAge: 60 * 60 * 24, cookieCache: { enabled: true, maxAge: 300 } },

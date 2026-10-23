@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>티커맵 관리자</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{--bg:#f6f6f3;--card:#fff;--ink:#1c1b19;--muted:#6b6a65;--faint:#9a9993;--line:#e4e3de;--line2:#efeee9;--acc:#e8590c;--up:#d93a26;--dn:#2563eb;--good:#15803d;--warn:#a16207;--soft:#f1f0ec;
+  --c1:#e8590c;--c2:#2563eb;--c3:#15803d;--c4:#9333ea;--c5:#a16207}
+@media (prefers-color-scheme:dark){:root{--bg:#141412;--card:#1c1b19;--ink:#ecebe6;--muted:#a3a29c;--faint:#77766f;--line:#2f2e2a;--line2:#262522;--soft:#242320;--good:#4ade80;--warn:#facc15;--c2:#60a5fa;--c3:#4ade80;--c4:#c084fc;--c5:#facc15}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Pretendard Variable",Pretendard,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.hd{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px}
+.brand{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.brand small{font-weight:600;font-size:11px;color:#fff;background:var(--ink);border-radius:5px;padding:1px 6px}
+.who{margin-left:auto;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+nav{max-width:1180px;margin:0 auto;padding:0 16px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav button{border:0;background:none;padding:10px 12px;font:inherit;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+nav button.on{color:var(--ink);border-color:var(--ink)}
+main{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.demo{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600}
+.grid{display:grid;gap:12px}
+.kpis{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.card h3{margin:0 0 2px;font-size:14.5px}
+.card .d{font-size:12px;color:var(--faint);margin-bottom:10px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:24px;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12px;color:var(--faint)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--soft);border-radius:9px;padding:2px}
+.seg button{border:0;background:none;font:inherit;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 10px;border-radius:7px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.leg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+svg.ch{width:100%;height:200px;display:block;overflow:visible}
+svg.ch text{font-size:10.5px;fill:var(--faint);font-family:inherit}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:600;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td .sub{font-size:11.5px;color:var(--faint)}
+.bar{display:grid;grid-template-columns:70px 1fr 48px;gap:8px;align-items:center;font-size:13px;padding:3px 0}
+.bar b{font-weight:650}
+.bar .t{height:8px;border-radius:4px;background:var(--soft);overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--acc);border-radius:4px}
+.bar .n{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:5px;background:var(--soft);color:var(--muted);margin-right:3px}
+.tag.ok{background:color-mix(in srgb,var(--good) 14%,transparent);color:var(--good)}
+.tag.bad{background:color-mix(in srgb,var(--up) 14%,transparent);color:var(--up)}
+.tag.google{background:#e8f0fe;color:#1a56c4}.tag.kakao{background:#fff6b3;color:#5a4a00}.tag.naver{background:#e3f7ea;color:#03813b}
+@media (prefers-color-scheme:dark){.tag.google,.tag.kakao,.tag.naver{background:var(--soft);color:var(--ink)}}
+input.q{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);min-width:0;flex:1;max-width:320px}
+select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink)}
+.btn{font:inherit;font-weight:600;font-size:13px;padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);cursor:pointer}
+.btn:hover{background:var(--soft)}
+.mut{color:var(--muted)}.faint{color:var(--faint)}.small{font-size:12px}
+.center{min-height:70vh;display:flex;align-items:center;justify-content:center}
+.login{max-width:360px;width:100%;text-align:center;display:flex;flex-direction:column;gap:10px}
+.login .btn{padding:11px}
+.skel{height:120px;border-radius:14px;background:linear-gradient(90deg,var(--soft) 25%,var(--line2) 50%,var(--soft) 75%);background-size:200% 100%;animation:sk 1.2s infinite linear}
+@keyframes sk{to{background-position:-200% 0}}
+.empty{padding:20px;text-align:center;color:var(--faint);font-size:13px}
+.more{margin-top:10px;width:100%}
+@media (max-width:600px){.g2{grid-template-columns:1fr}.kpi .v{font-size:21px}main{padding:12px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd"><div class="brand">티커맵 <small>관리자</small></div><div class="who" id="who"></div></div>
+  <nav id="nav"></nav>
+</header>
+<main id="app"><div class="skel"></div><div class="skel"></div></main>
+<script>
+'use strict';
+// ── 설정 ─────────────────────────────────────────────
+// admin.tickermap.kr → 실제 API (로그인 쿠키는 tickermap.kr 전체 공용)
+// 그 밖의 주소(미리보기 *.pages.dev 등) → 쿠키가 닿지 않으므로 만든 예시 데이터로 화면만 보여 줌
+const HOST = location.hostname;
+const LOCAL = HOST === 'localhost' || HOST === '127.0.0.1';
+const DEMO = new URLSearchParams(location.search).has('demo') || !(HOST === 'admin.tickermap.kr' || LOCAL);
+const API = window.ADMIN_API || (LOCAL ? 'http://localhost:8787' : 'https://api.tickermap.kr');
+const REPO = 'flytothejy/market-data';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = n => n == null ? '-' : Number(n).toLocaleString('ko-KR');
+const DAY = 864e5;
+const kst = ms => new Date(ms + 9 * 3600e3);
+const kstDay = ms => kst(ms).toISOString().slice(0, 10);
+const when = ms => { if (!ms) return '-'; const d = kst(ms).toISOString(); const diff = Date.now() - ms; const rel = diff < 60e3 ? '방금' : diff < 3600e3 ? Math.floor(diff / 60e3) + '분 전' : diff < DAY ? Math.floor(diff / 3600e3) + '시간 전' : Math.floor(diff / DAY) + '일 전'; return `${d.slice(5, 10).replace('-', '/')} ${d.slice(11, 16)} <span class="faint">· ${rel}</span>`; };
+const PROV = { google: '구글', kakao: '카카오', naver: '네이버', credential: '이메일' };
+const EV = { login: '로그인', logout: '로그아웃', device_link: '기기 연결', account_deleted: '계정 삭제' };
+const KIND = { u: '방문(기기)', v: '종목 조회', w: '후보함 담기', c: '비교 추가', a: '알림 클릭' };
+const PAGE = { INDEX: '홈', STOCK: '종목', MATRIX: '티커맵', RANKING: '랭킹', SCREEN: '스크리너', COMPARE: '비교', WATCH: '후보함', PORTFOLIO: '포트폴리오', EARNINGS: '실적', INVESTORS: '투자자', ACCOUNT: '내 계정', REPORT: '리포트', PRIVACY: '개인정보', TERMS: '약관' };
+
+async function call(path) {
+  if (DEMO) return demo(path);
+  const r = await fetch(API + path, { credentials: 'include' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(j.error || r.status); e.status = r.status; e.body = j; throw e; }
+  return j;
+}
+
+// ── 차트 (막대·꺾은선, 의존성 없음) ─────────────────────
+function chart(days, series, { type = 'line', h = 200 } = {}) {
+  const W = 640, H = h, L = 36, R = 8, T = 8, B = 22, n = days.length;
+  const max = Math.max(1, ...series.flatMap(s => s.v));
+  const nice = (() => { const p = Math.pow(10, Math.floor(Math.log10(max))); const m = max / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; })();
+  const x = i => L + (n === 1 ? (W - L - R) / 2 : i * (W - L - R) / (n - 1)), y = v => T + (H - T - B) * (1 - v / nice);
+  let g = '';
+  for (let k = 0; k <= 4; k++) { const v = nice * k / 4, yy = y(v); g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--line2)"/><text x="${L - 6}" y="${yy + 3}" text-anchor="end">${v >= 1000 ? (v / 1000) + 'k' : +v.toFixed(1)}</text>`; }
+  const step = Math.ceil(n / 7);
+  days.forEach((d, i) => { if (i % step === 0 || i === n - 1) g += `<text x="${type === 'bar' ? L + (i + .5) * (W - L - R) / n : x(i)}" y="${H - 6}" text-anchor="middle">${d.slice(5).replace('-', '/')}</text>`; });
+  if (type === 'bar') {
+    const bw = (W - L - R) / n, k = series.length;
+    series.forEach((s, j) => s.v.forEach((v, i) => { if (!v) return; const bx = L + i * bw + bw * .15 + j * (bw * .7 / k); g += `<rect x="${bx}" y="${y(v)}" width="${Math.max(1, bw * .7 / k - 1)}" height="${y(0) - y(v)}" rx="2" fill="${s.c}"><title>${days[i]} ${s.n}: ${nf(v)}</title></rect>`; }));
+  } else {
+    series.forEach(s => {
+      g += `<polyline fill="none" stroke="${s.c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${s.v.map((v, i) => `${x(i)},${y(v)}`).join(' ')}"/>`;
+      s.v.forEach((v, i) => g += `<circle cx="${x(i)}" cy="${y(v)}" r="${n > 40 ? 0 : 2.5}" fill="${s.c}"><title>${days[i]} ${s.n}: ${nf(v)}</title></circle>`);
+    });
+  }
+  return `<div class="leg">${series.map(s => `<span><i style="background:${s.c}"></i>${esc(s.n)} <b>${nf(s.v.reduce((a, b) => a + b, 0))}</b></span>`).join('')}</div><svg class="ch" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:${H}px">${g}</svg>`;
+}
+const dayRange = (from, n) => Array.from({ length: n }, (_, i) => kstDay(Date.parse(from + 'T00:00:00+09:00') + i * DAY));
+const bars = (rows, label = r => r.t, href) => { const m = Math.max(1, ...rows.map(r => r.n)); return rows.length ? rows.map(r => `<div class="bar"><b>${href ? `<a href="${href(r)}" target="_blank" rel="noopener">${esc(label(r))}</a>` : esc(label(r))}</b><span class="t"><i style="width:${r.n / m * 100}%"></i></span><span class="n">${nf(r.n)}</span></div>`).join('') : '<div class="empty">아직 기록이 없어요</div>'; };
+const card = (t, d, body) => `<div class="card"><h3>${t}</h3>${d ? `<div class="d">${d}</div>` : ''}${body}</div>`;
+const kpi = (l, v, s) => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+const provTags = a => (a || []).map(p => `<span class="tag ${p}">${PROV[p] || esc(p)}</span>`).join('');
+
+// ── 화면 ──────────────────────────────────────────────
+const TABS = [['overview', '개요'], ['users', '사용자'], ['audit', '보안 기록'], ['alerts', '알림'], ['ops', '운영'], ['adminlog', '관리자 기록']];
+let tab = (location.hash || '#overview').slice(1), days = 30;
+function nav() { $('#nav').innerHTML = TABS.map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" data-t="${k}">${l}</button>`).join(''); }
+$('#nav').onclick = e => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.t; history.replaceState(null, '', '#' + tab); nav(); render(); };
+const banner = () => DEMO ? '<div class="demo">미리보기 — 화면 확인용으로 만든 예시 숫자예요. 실제 데이터는 admin.tickermap.kr 에서만 보여요.</div>' : '';
+
+const V = {
+  async overview() {
+    const o = await call(`/admin/overview?days=${days}`);
+    const D = dayRange(o.from, o.days), by = {};
+    for (const r of o.series) (by[r.k] = by[r.k] || {})[r.d] = r.n;
+    const S = k => D.map(d => (by[k] || {})[d] || 0);
+    const sg = Object.fromEntries(o.signups.map(r => [r.d, r.n])), lg = Object.fromEntries(o.logins.map(r => [r.d, r.uu]));
+    const T = o.tot, y1 = D[D.length - 2], sum7 = k => S(k).slice(-7).reduce((a, b) => a + b, 0);
+    return `${banner()}
+    <div class="row" style="justify-content:space-between"><div class="mut small">기준 ${o.asof} (한국 시간) · 방문·조회는 기기·종목·하루 한 번만 셉니다</div>
+      <div class="seg" id="days">${[7, 30, 90].map(n => `<button class="${n === days ? 'on' : ''}" data-d="${n}">${n}일</button>`).join('')}</div></div>
+    <div class="grid kpis">
+      ${kpi('로그인 계정', nf(T.accounts), Object.entries(T.providers || {}).map(([p, n]) => `${PROV[p] || p} ${n}`).join(' · ') || '-')}
+      ${kpi('어제 방문 기기', nf((by.u || {})[y1] || 0), `최근 7일 ${nf(sum7('u'))}`)}
+      ${kpi('활성 기기', nf(T.dev7), `7일 안에 쓴 기기 · 30일 ${nf(T.dev30)} / 전체 ${nf(T.devices)}`)}
+      ${kpi('후보함 사용자', nf(T.watch_users), `담긴 종목 ${nf(T.watch_items)}개 · 평균 ${T.watch_users ? (T.watch_items / T.watch_users).toFixed(1) : 0}`)}
+      ${kpi('텔레그램 연결', nf(T.tg), `알림 끔 ${nf(T.tg_off)}`)}
+      ${kpi('포트폴리오 저장', nf(T.pf_users), '로그인 계정만')}
+      ${kpi('최근 7일 알림', nf(o.alerts7.n), o.alerts7.n ? `성공 ${Math.round(o.alerts7.ok / o.alerts7.n * 100)}%` : '발송 기록 없음')}
+      ${kpi('살아 있는 세션', nf(T.sessions), '만료 전 로그인 상태')}
+    </div>
+    <div class="grid g2">
+      ${card('방문과 조회', '하루 단위 · 방문 = 하루에 한 번 이상 들어온 기기 수', chart(D, [{ n: '방문(기기)', v: S('u'), c: 'var(--c1)' }, { n: '종목 조회', v: S('v'), c: 'var(--c2)' }]))}
+      ${card('행동', '후보함 담기 · 비교 추가 · 알림 링크로 들어옴', chart(D, [{ n: '후보함 담기', v: S('w'), c: 'var(--c3)' }, { n: '비교 추가', v: S('c'), c: 'var(--c4)' }, { n: '알림 클릭', v: S('a'), c: 'var(--c5)' }]))}
+      ${card('가입과 로그인', '가입 = 새 계정 · 로그인 = 그날 로그인한 계정 수', chart(D, [{ n: '가입', v: D.map(d => sg[d] || 0), c: 'var(--c1)' }, { n: '로그인 계정', v: D.map(d => lg[d] || 0), c: 'var(--c2)' }], { type: 'bar' }))}
+      ${card('화면별 방문', '최근 7일 · 기기·화면·하루 한 번', bars(o.pages, r => PAGE[r.t] || r.t))}
+    </div>
+    <div class="grid g2">
+      ${card('많이 본 종목', '최근 7일 종목 화면 조회', bars(o.top_v, r => r.t, r => `https://tickermap.kr/hub/stock?t=${encodeURIComponent(r.t)}`))}
+      ${card('많이 담은 종목', '최근 7일 후보함 담기', bars(o.top_w, r => r.t, r => `https://tickermap.kr/hub/stock?t=${encodeURIComponent(r.t)}`))}
+    </div>`;
+  },
+  async users(st = { q: '', off: 0 }) {
+    const o = await call(`/admin/users?q=${encodeURIComponent(st.q)}&offset=${st.off}`);
+    const rows = o.rows.map(r => `<tr><td><b>${esc(r.name)}</b><div class="sub">${esc(r.email || '이메일 없음')}</div></td><td>${provTags(r.prov)}</td>
+      <td>${when(r.created)}</td><td>${when(r.last_login)}</td><td class="n">${r.devices}</td><td class="n">${r.watch}</td><td class="n">${r.pf}</td>
+      <td>${r.tg ? `<span class="tag ok">연결${r.mode === 'off' ? ' · 끔' : ''}</span>` : '<span class="faint">-</span>'}</td>
+      <td><button class="btn small" data-audit="${esc(r.id)}" data-name="${esc(r.name)}" style="padding:3px 8px">기록</button></td></tr>`).join('');
+    return `${banner()}
+    <div class="row"><input class="q" id="uq" placeholder="이름·이메일·계정 ID로 찾기" value="${esc(st.q)}"><button class="btn" id="ugo">찾기</button>
+      <span class="mut small" style="margin-left:auto">로그인 안 한 기기 사용자 ${nf(o.anon.n)}명 (텔레그램 ${nf(o.anon.tg)})</span></div>
+    ${card('로그인 계정', '최근 가입 순 · 이메일은 앞 3글자만 · 1단계는 보기 전용이에요', `<div class="tbl"><table><thead><tr><th>이름</th><th>로그인 방식</th><th>가입</th><th>마지막 로그인</th><th class="n">기기</th><th class="n">후보함</th><th class="n">포트폴리오</th><th>텔레그램</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="9" class="empty">계정이 없어요</td></tr>'}</tbody></table></div>
+      <div class="row" style="justify-content:center;margin-top:10px">${st.off ? '<button class="btn" id="uprev">← 이전</button>' : ''}${o.rows.length === 50 ? '<button class="btn" id="unext">다음 →</button>' : ''}</div>`)}`;
+  },
+  async audit(st = { ev: '', id: '', name: '' }) {
+    const o = await call(`/admin/audit?ev=${st.ev}&id=${encodeURIComponent(st.id)}`);
+    const kinds = Object.fromEntries(o.kinds.map(r => [r.ev, r.n]));
+    return `${banner()}
+    <div class="grid kpis">${Object.keys(EV).map(k => kpi(EV[k], nf(kinds[k] || 0), '최근 30일')).join('')}</div>
+    <div class="row"><select id="aev"><option value="">모든 이벤트</option>${Object.entries(EV).map(([k, l]) => `<option value="${k}" ${k === st.ev ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      ${st.id ? `<span class="tag">${esc(st.name || st.id.slice(0, 8))} 계정만 <a href="#" id="aclr">✕</a></span>` : ''}</div>
+    ${card('보안 기록', '로그인·기기 연결·로그아웃·계정 삭제 · IP는 저장하지 않아요 · 1년 보관', auditTable(o.rows) + (o.rows.length === 100 ? '<button class="btn more" id="amore">더 보기</button>' : ''))}`;
+  },
+  async alerts() {
+    const o = await call('/admin/alerts');
+    const D = dayRange(kstDay(Date.now() - 29 * DAY), 30), by = Object.fromEntries(o.days.map(r => [r.d, r]));
+    return `${banner()}
+    ${card('알림 발송', '최근 30일 · 하루 단위', chart(D, [{ n: '성공', v: D.map(d => (by[d] || {}).ok || 0), c: 'var(--c3)' }, { n: '실패', v: D.map(d => ((by[d] || {}).n || 0) - ((by[d] || {}).ok || 0)), c: 'var(--up)' }], { type: 'bar', h: 160 }))}
+    ${card('발송 기록', '최근 100건 · 메시지는 첫 두 줄만 · 90일 보관', alertTable(o.rows) + (o.rows.length === 100 ? '<button class="btn more" id="lmore">더 보기</button>' : ''))}`;
+  },
+  async ops() {
+    let runs = [], err = '';
+    try {
+      const r = await fetch(`https://api.github.com/repos/${REPO}/actions/runs?per_page=40`, { headers: { accept: 'application/vnd.github+json' } });
+      if (!r.ok) throw new Error('GitHub ' + r.status); runs = (await r.json()).workflow_runs || [];
+    } catch (e) { err = String(e.message || e); }
+    let U = {}; try { U = await (await fetch('https://tickermap.kr/api/v1/free/universe.json', { cache: 'no-store' })).json(); } catch (e) { }
+    const WF = { update: '시세 수집', consensus: '컨센서스 수집', hub: '데이터 업데이트', pages: '사이트 배포', api: 'API 배포', preview: '미리보기', admin: '관리자 화면 배포' };
+    const wfName = r => WF[(r.path || '').split('/').pop().replace(/\.ya?ml$/, '')] || r.name;
+    const st = r => r.status !== 'completed' ? '<span class="tag">진행 중</span>' : r.conclusion === 'success' ? '<span class="tag ok">성공</span>' : r.conclusion === 'cancelled' || r.conclusion === 'skipped' ? `<span class="tag">${r.conclusion === 'cancelled' ? '취소' : '건너뜀'}</span>` : `<span class="tag bad">실패</span>`;
+    const dur = r => r.run_started_at && r.updated_at ? Math.max(0, Math.round((Date.parse(r.updated_at) - Date.parse(r.run_started_at)) / 60e3)) + '분' : '-';
+    const last = {}; for (const r of runs) { const k = wfName(r); if (!last[k]) last[k] = r; }
+    const fails = runs.filter(r => r.conclusion === 'failure').length;
+    return `${banner()}
+    <div class="grid kpis">
+      ${kpi('데이터 기준일', `<span style="font-size:19px">${esc(U.asof || '-')}</span>`, '미국 종가 기준')}
+      ${kpi('컨센서스 기준', `<span style="font-size:19px">${esc(U.consensus_asof || '-')}</span>`, '')}
+      ${kpi('최근 40회 중 실패', nf(fails), err ? esc(err) : 'GitHub Actions')}
+      ${Object.entries(last).slice(0, 5).map(([k, r]) => kpi(esc(k), st(r), when(Date.parse(r.updated_at)))).join('')}
+    </div>
+    ${card('실행 기록', `GitHub Actions 최근 40회 · <a href="https://github.com/${REPO}/actions" target="_blank" rel="noopener">GitHub에서 보기 →</a>`, runs.length ? `<div class="tbl"><table><thead><tr><th>작업</th><th>결과</th><th>시작</th><th class="n">걸린 시간</th><th>계기</th></tr></thead><tbody>${runs.map(r => `<tr><td><a href="${esc(r.html_url)}" target="_blank" rel="noopener"><b>${esc(wfName(r))}</b></a><div class="sub">${esc((r.display_title || '').slice(0, 60))}</div></td><td>${st(r)}</td><td>${when(Date.parse(r.run_started_at || r.created_at))}</td><td class="n">${dur(r)}</td><td class="mut">${{ schedule: '예약', push: '코드 올림', workflow_dispatch: '수동', workflow_run: '이어서', repository_dispatch: '깨우미' }[r.event] || esc(r.event)}</td></tr>`).join('')}</tbody></table></div>` : `<div class="empty">${esc(err || '기록 없음')}</div>`)}`;
+  },
+  async adminlog() {
+    const o = await call('/admin/admin-log');
+    const A = { overview: '개요 조회', users: '사용자 조회', audit: '보안 기록 조회', alerts: '알림 기록 조회' };
+    return `${banner()}${card('관리자 기록', '이 화면에서 누가 무엇을 봤는지 · 2년 보관 · 이 목록 자체를 본 것은 남기지 않아요', o.rows.length ? `<div class="tbl"><table><thead><tr><th>시각</th><th>관리자</th><th>한 일</th><th>대상·조건</th></tr></thead><tbody>${o.rows.map(r => `<tr><td>${when(r.at)}</td><td>${esc(r.admin)}</td><td>${A[r.action] || esc(r.action)}</td><td class="mut">${esc(r.target || '')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">기록 없음</div>')}`;
+  },
+};
+const auditTable = rows => rows.length ? `<div class="tbl"><table><thead><tr><th>시각</th><th>이벤트</th><th>계정</th><th>기기</th></tr></thead><tbody>${rows.map(auditRow).join('')}</tbody></table></div>` : '<div class="empty">기록 없음</div>';
+const auditRow = r => `<tr data-at="${r.at}"><td>${when(r.at)}</td><td><span class="tag ${r.ev === 'account_deleted' ? 'bad' : r.ev === 'login' ? 'ok' : ''}">${EV[r.ev] || esc(r.ev)}</span></td><td>${r.gone ? `<span class="faint">삭제된 계정 · ${esc((r.auth_id || '').slice(0, 8))}</span>` : `<b>${esc(r.name)}</b> <span class="sub">${esc(r.email || '')}</span>`}</td><td class="mut">${esc(r.dev)}</td></tr>`;
+const alertTable = rows => rows.length ? `<div class="tbl"><table><thead><tr><th>시각</th><th>결과</th><th>종류</th><th>받는 사람</th><th>내용</th></tr></thead><tbody>${rows.map(alertRow).join('')}</tbody></table></div>` : '<div class="empty">아직 발송 기록이 없어요 (이번 배포 뒤부터 쌓여요)</div>';
+const alertRow = r => `<tr data-at="${r.at}"><td>${when(r.at)}</td><td>${r.ok ? '<span class="tag ok">성공</span>' : `<span class="tag bad" title="${esc(r.why)}">실패</span>`}</td><td class="mut">${r.kind === 'test' ? '시험' : '알림'}</td><td class="mut">${esc(r.uid)}</td><td style="white-space:normal;min-width:240px">${esc(r.head)}${r.ok ? '' : `<div class="sub">${esc(r.why)}</div>`}</td></tr>`;
+
+let ust = { q: '', off: 0 }, ast = { ev: '', id: '', name: '' };
+async function render() {
+  const el = $('#app'); el.innerHTML = '<div class="skel"></div><div class="skel"></div>';
+  try {
+    el.innerHTML = tab === 'users' ? await V.users(ust) : tab === 'audit' ? await V.audit(ast) : await (V[tab] || V.overview)();
+    wire();
+  } catch (e) { fail(e); }
+}
+function wire() {
+  const d = $('#days'); if (d) d.onclick = e => { const b = e.target.closest('button'); if (b) { days = +b.dataset.d; render(); } };
+  const go = () => { ust = { q: $('#uq').value.trim(), off: 0 }; render(); };
+  if ($('#ugo')) { $('#ugo').onclick = go; $('#uq').onkeydown = e => { if (e.key === 'Enter') go(); }; }
+  if ($('#unext')) $('#unext').onclick = () => { ust.off += 50; render(); };
+  if ($('#uprev')) $('#uprev').onclick = () => { ust.off = Math.max(0, ust.off - 50); render(); };
+  document.querySelectorAll('[data-audit]').forEach(b => b.onclick = () => { ast = { ev: '', id: b.dataset.audit, name: b.dataset.name }; tab = 'audit'; history.replaceState(null, '', '#audit'); nav(); render(); });
+  if ($('#aev')) $('#aev').onchange = e => { ast.ev = e.target.value; render(); };
+  if ($('#aclr')) $('#aclr').onclick = e => { e.preventDefault(); ast = { ev: ast.ev, id: '', name: '' }; render(); };
+  const more = (btn, path, rowFn) => { if (!btn) return; btn.onclick = async () => {
+    const tb = btn.parentElement.querySelector('tbody'), last = tb.lastElementChild ? +tb.lastElementChild.dataset.at : Date.now();
+    const o = await call(path(last)); tb.insertAdjacentHTML('beforeend', o.rows.map(rowFn).join('')); if (o.rows.length < 100) btn.remove(); }; };
+  more($('#amore'), b => `/admin/audit?ev=${ast.ev}&id=${encodeURIComponent(ast.id)}&before=${b}`, auditRow);
+  more($('#lmore'), b => `/admin/alerts?before=${b}`, alertRow);
+}
+function fail(e) {
+  const el = $('#app');
+  if (e.status === 401) {
+    el.innerHTML = `<div class="center"><div class="login card"><h3 style="font-size:18px">관리자 로그인</h3><div class="mut small" style="margin-bottom:6px">티커맵 계정으로 로그인해 주세요. 관리자로 등록된 이메일만 들어올 수 있어요.</div>
+      <button class="btn" data-p="google">구글로 로그인</button><button class="btn" data-p="kakao">카카오로 로그인</button><button class="btn" data-p="naver">네이버로 로그인</button></div></div>`;
+    el.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+      const r = await fetch(API + '/api/auth/sign-in/social', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: b.dataset.p, callbackURL: location.href, errorCallbackURL: location.href }) });
+      const j = await r.json().catch(() => ({})); if (j.url) location.href = j.url; else alertBox('로그인을 시작하지 못했어요');
+    });
+  } else if (e.status === 403) {
+    el.innerHTML = `<div class="center"><div class="login card"><h3 style="font-size:18px">관리자 계정이 아니에요</h3><div class="mut small">${esc(e.body && e.body.email || '이 계정')}은(는) 관리자 목록에 없어요.<br>Cloudflare의 ADMIN_EMAILS 변수에 이메일을 넣어 주세요.</div><a class="btn" href="https://tickermap.kr/hub/account">계정 화면으로</a></div></div>`;
+  } else el.innerHTML = `<div class="card"><h3>불러오지 못했어요</h3><div class="mut small">${esc(e.message || e)}</div><button class="btn" onclick="render()" style="margin-top:10px">다시 시도</button></div>`;
+}
+function alertBox(m) { const el = document.createElement('div'); el.className = 'demo'; el.textContent = m; $('#app').prepend(el); }
+
+// ── 예시 데이터 (미리보기용) ─────────────────────────
+function demo(path) {
+  const rnd = (i, a, b) => Math.round(a + (b - a) * ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1);
+  const now = Date.now(), u = new URL(path, 'https://x');
+  if (path.startsWith('/admin/me')) return { email: 'flytothejy@gmail.com', name: '지용' };
+  if (path.startsWith('/admin/overview')) {
+    const n = +u.searchParams.get('days') || 30, from = kstDay(now - (n - 1) * DAY), D = dayRange(from, n), series = [];
+    D.forEach((d, i) => { const g = 1 + i / n; series.push({ d, k: 'u', n: Math.round(rnd(i, 40, 90) * g) }, { d, k: 'v', n: Math.round(rnd(i + 3, 120, 260) * g) }, { d, k: 'w', n: rnd(i + 5, 4, 22) }, { d, k: 'c', n: rnd(i + 7, 2, 14) }, { d, k: 'a', n: i % 1 ? 0 : rnd(i + 9, 0, 6) }); });
+    return { asof: kstDay(now), days: n, from, series, tot: { accounts: 23, providers: { google: 14, kakao: 7, naver: 3 }, users: 61, tg: 9, tg_off: 1, linked: 23, devices: 74, dev7: 38, dev30: 66, pf_users: 8, sessions: 19, watch_users: 41, watch_items: 287 },
+      alerts7: { n: 52, ok: 51 }, signups: D.filter((_, i) => i % 3 === 0).map((d, i) => ({ d, n: rnd(i, 0, 3) })), logins: D.map((d, i) => ({ d, n: rnd(i, 2, 9), uu: rnd(i + 1, 1, 7) })),
+      top_v: ['NVDA', 'TSLA', 'PLTR', 'AAPL', 'SPCX', 'MSFT', 'AMD', 'META', 'IONQ', 'AVGO'].map((t, i) => ({ t, n: 180 - i * 15 + rnd(i, 0, 9) })),
+      top_w: ['PLTR', 'NVDA', 'IONQ', 'TSLA', 'SOFI', 'RKLB', 'AMD', 'HIMS'].map((t, i) => ({ t, n: 30 - i * 3 })),
+      pages: [['STOCK', 410], ['INDEX', 260], ['MATRIX', 150], ['RANKING', 120], ['WATCH', 90], ['COMPARE', 60], ['EARNINGS', 44], ['PORTFOLIO', 30]].map(([t, n]) => ({ t, n })) };
+  }
+  const names = ['지용', '김민수', 'Sarah', '박서연', '이준호', '정하늘', '최우진', '한지민'];
+  if (path.startsWith('/admin/users')) return { offset: 0, anon: { n: 38, tg: 3 }, rows: names.map((nm, i) => ({ id: 'demo' + i, name: nm, email: i % 3 === 1 ? null : ['fly****@gmail.com', 'min***@naver.com', 'sar**@gmail.com'][i % 3], created: now - i * 2.3 * DAY, prov: [['google'], ['kakao'], ['google', 'naver'], ['naver']][i % 4], last_login: now - i * 5.1 * 3600e3, sessions: 1, tg: i % 3 === 0, mode: i === 3 ? 'off' : 'digest', devices: 1 + i % 3, watch: rnd(i, 0, 25), pf: i % 2 ? rnd(i, 1, 12) : 0 })) };
+  if (path.startsWith('/admin/audit')) { const evs = ['login', 'device_link', 'login', 'logout', 'login', 'account_deleted']; return { kinds: [{ ev: 'login', n: 64 }, { ev: 'device_link', n: 31 }, { ev: 'logout', n: 9 }, { ev: 'account_deleted', n: 1 }], rows: Array.from({ length: 24 }, (_, i) => { const ev = evs[i % 6], g = ev === 'account_deleted'; return { id: i, auth_id: 'demo' + (i % 8) + 'x9f2k', ev, dev: ['iOS · Safari', 'Windows · Chrome', 'Android · 카카오톡', 'Mac · Chrome'][i % 4], at: now - i * 3.7 * 3600e3, name: g ? null : names[i % 8], email: g ? null : 'fly****@gmail.com', gone: g }; }) }; }
+  if (path.startsWith('/admin/alerts')) return { days: dayRange(kstDay(now - 29 * DAY), 30).map((d, i) => ({ d, n: rnd(i, 5, 10), ok: rnd(i, 5, 10) - (i === 20 ? 1 : 0), uu: 7 })), rows: Array.from({ length: 12 }, (_, i) => ({ id: i, uid: 'a1b2…', kind: i === 5 ? 'test' : 'alert', ok: i === 7 ? 0 : 1, why: i === 7 ? 'Forbidden: bot was blocked by the user' : '', head: ['티커맵 알림 · 미국 10/22 목 종가 기준 / 📊 SPCX 실적 발표 결과', '티커맵 알림 · 미국 10/22 목 종가 기준 / 📅 내일 실적 발표: TSLA', '티커맵 알림 · 미국 10/21 수 종가 기준 / 🟢 임원 매수: PLTR'][i % 3], at: now - i * 0.4 * DAY })) };
+  if (path.startsWith('/admin/admin-log')) return { rows: Array.from({ length: 8 }, (_, i) => ({ admin: 'fly****@gmail.com', action: ['overview', 'users', 'audit', 'alerts'][i % 4], target: i === 2 ? 'id=demo3x9f2k' : null, at: now - i * 600e3 })) };
+  return {};
+}
+
+(async () => {
+  nav();
+  try { const m = await call('/admin/me'); $('#who').textContent = (DEMO ? '미리보기 · ' : '') + (m.name || '') + ' · ' + m.email; render(); }
+  catch (e) { fail(e); }
+})();
+</script>
+</body>
+</html>

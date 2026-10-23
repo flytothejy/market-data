@@ -343,7 +343,7 @@ def run(limit=0, full=False, **_):
             ok_users = set()
             for i in range(0, len(out), 15):
                 chunk = out[i:i + 15]
-                res = _api("/internal/send", {"msgs": [{"uid": m["uid"], "text": m["text"]} for m in chunk]})["results"]
+                res = _api("/internal/send", {"msgs": [{"uid": m["uid"], "text": m["text"], "kind": "alert" if m["_keys"] else "test"} for m in chunk]})["results"]
                 for m, rr in zip(chunk, res):
                     if rr.get("ok"):
                         n_msg += 1

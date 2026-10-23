@@ -14,6 +14,7 @@
 // 처음 한 번:  https://<이 Worker 주소>/setup?key=<ALERT_KEY>  → 텔레그램 웹훅·명령어 등록
 
 import { makeAuth, log, isNoEmail, SITE_ORIGINS } from './auth.js';
+import { admin, adminCors, ADMIN_ORIGINS } from './admin.js';
 
 const DAY = 864e5;
 const json = (o, s = 200) => new Response(JSON.stringify(o), {
@@ -214,7 +215,7 @@ async function api(req, env, path) {
 // ---- 계정 (쿠키 세션이 필요한 요청 — 허용한 사이트 주소에서만, 자격 증명 포함 CORS)
 const credCors = (req, env) => {
   const o = req.headers.get('origin') || '';
-  const ok = SITE_ORIGINS.includes(o) || (env.AUTH_DEV === '1' && /^http:\/\/localhost(:\d+)?$/.test(o));
+  const ok = SITE_ORIGINS.includes(o) || ADMIN_ORIGINS.includes(o) || (env.AUTH_DEV === '1' && /^http:\/\/localhost(:\d+)?$/.test(o));
   return ok ? { 'access-control-allow-origin': o, 'access-control-allow-credentials': 'true', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'vary': 'Origin' } : {};
 };
 const withCors = (res, h) => { const r = new Response(res.body, res); for (const [k, v] of Object.entries(h)) r.headers.set(k, v); return r; };
@@ -361,7 +362,9 @@ async function webhook(req, env) {
 async function internal(req, env, path) {
   if (!env.ALERT_KEY || req.headers.get('authorization') !== `Bearer ${env.ALERT_KEY}`) return json({ error: 'forbidden' }, 403);
   if (path === '/internal/subs') {
-    await env.DB.prepare('DELETE FROM auth_log WHERE at < ?').bind(Date.now() - 365 * DAY).run().catch(() => { });   // 보안 기록은 1년 보관 (매일 아침 알림 때 정리)                    // 알림 받을 사용자와 후보함 (필요한 필드만)
+    await env.DB.prepare('DELETE FROM auth_log WHERE at < ?').bind(Date.now() - 365 * DAY).run().catch(() => { });
+    await env.DB.prepare('DELETE FROM alert_log WHERE at < ?').bind(Date.now() - 90 * DAY).run().catch(() => { });
+    await env.DB.prepare('DELETE FROM admin_audit WHERE at < ?').bind(Date.now() - 730 * DAY).run().catch(() => { });   // 보안 기록은 1년 보관 (매일 아침 알림 때 정리)                    // 알림 받을 사용자와 후보함 (필요한 필드만)
     const rows = (await env.DB.prepare("SELECT u.uid, w.data FROM users u JOIN watch w ON w.uid=u.uid WHERE u.chat_id IS NOT NULL AND u.mode<>'off'").all()).results;
     const users = rows.map(r => {
       let a = []; try { a = JSON.parse(r.data); } catch (e) { }
@@ -399,6 +402,8 @@ async function internal(req, env, path) {
       const r = await say(env, u.chat_id, String(m.text).slice(0, 4096));
       if (r.status === 403) await env.DB.prepare('UPDATE users SET chat_id=NULL WHERE uid=?').bind(m.uid).run();   // 봇 차단
       out.push({ uid: m.uid, ok: r.status === 200, why: r.status === 200 ? '' : String(r.body && r.body.description || r.status) });
+      const head = String(m.text).replace(/<[^>]+>/g, '').split('\n').filter(Boolean).slice(0, 2).join(' / ').slice(0, 140);
+      await env.DB.prepare('INSERT INTO alert_log (uid, kind, ok, why, head, at) VALUES (?,?,?,?,?,?)').bind(m.uid, String(m.kind || 'alert').slice(0, 20), r.status === 200 ? 1 : 0, out[out.length - 1].why.slice(0, 200), head, Date.now()).run().catch(() => { });
     }
     return json({ results: out });
   }
@@ -433,9 +438,10 @@ export default {
   async fetch(req, env, ctx) {
     const path = new URL(req.url).pathname.replace(/\/$/, '') || '/';
     const cred = path.startsWith('/api/auth/') || path.startsWith('/api/account/');
-    if (req.method === 'OPTIONS') return new Response(null, { headers: cred ? { ...credCors(req, env), 'access-control-max-age': '86400' } : CORS });
+    if (req.method === 'OPTIONS') return new Response(null, { headers: path.startsWith('/admin/') ? adminCors(req, env) : cred ? { ...credCors(req, env), 'access-control-max-age': '86400' } : CORS });
     try {
       if (path.startsWith('/api/auth/')) return withCors(await makeAuth(env).handler(req), credCors(req, env));
+      if (path.startsWith('/admin/')) return await admin(req, env, path);
       if (path.startsWith('/api/account/')) return await account(req, env, path);
       if (path === '/api/ev' && req.method === 'POST') return await events(req, env);
       if (path === '/api/popular' && req.method === 'GET') return await popular(req, env, ctx);

@@ -1,0 +1,29 @@
+name: admin
+
+# 관리자 화면(admin/) → Cloudflare Pages 프로젝트 tickermap-admin
+#   main        → 실제 주소 (admin.tickermap.kr — Cloudflare Access로 잠금)
+#   다른 브랜치 → https://<브랜치>.tickermap-admin.pages.dev (예시 숫자만 보이는 미리보기)
+# 숫자는 화면이 api.tickermap.kr/admin/* 에서 받아 옴 (로그인 + 관리자 이메일 확인). 이 배포에는 비밀값·데이터가 들어가지 않음
+on:
+  push:
+    paths: ["admin/**", ".github/workflows/admin.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: admin-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: deploy
+        run: |
+          export CLOUDFLARE_ACCOUNT_ID=$(echo "$R2_ACCOUNT_ID" | grep -oE '[0-9a-f]{32}' | head -1)
+          npx -y wrangler@3 pages project create tickermap-admin --production-branch main 2>/dev/null || true
+          npx -y wrangler@3 pages deploy admin --project-name tickermap-admin --branch "${GITHUB_REF_NAME}" --commit-dirty=true
+          if [ "$GITHUB_REF_NAME" = main ]; then echo "### https://admin.tickermap.kr" >> $GITHUB_STEP_SUMMARY; else echo "### 미리보기: https://${GITHUB_REF_NAME}.tickermap-admin.pages.dev" >> $GITHUB_STEP_SUMMARY; fi
