@@ -1382,6 +1382,12 @@ def run(limit=0, **_):
         dump(OUT / "free" / "peers.json", co_movers(PX, set(E.ticker), lev))
     except Exception as e:
         R.warning(f"같이 움직인 종목: {str(e)[:80]}")
+    try:   # 최근 약 3개월 일별 수정종가 — 티커 말풍선 미니 차트·티커맵 히트맵 시간 재생용 (전 종목 한 파일, 필요할 때만 받음)
+        PV = PX[PX.date >= PX.date.max() - pd.Timedelta(days=100)].pivot_table(index="date", columns="ticker", values="adj_close").sort_index().tail(64)
+        rnd_ = lambda v: None if not np.isfinite(v) else round(float(v), 2 if v >= 10 else 3)
+        dump(OUT / "free" / "px3m.json", {"d": [str(x.date()) for x in PV.index], "t": {t: [rnd_(v) for v in PV[t].values] for t in PV.columns if PV[t].notna().sum() >= 5}}, nd=3)
+    except Exception as e:
+        R.warning(f"3개월 가격 파일: {str(e)[:80]}")
     for key, by in FRAMES.items():
         fd, tt = max(by.items(), key=lambda kv: len(kv[1]))     # 가장 많은 종목이 쓰는 격자
         dump(OUT / "free" / "frames" / f"{key}.json", {"d": list(fd), "t": tt})
