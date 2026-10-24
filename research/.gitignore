@@ -5,3 +5,4 @@ data/raw/
 __pycache__/
 data/*.log
 data/events.csv
+data/s2_features.csv
