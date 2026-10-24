@@ -28,7 +28,10 @@ if WINS:
 if MINCAP > 0:
     pn = pn[pn["mcap"] >= MINCAP]
 pn["era"] = pd.cut(pn["date"].dt.year, [2010, 2015, 2020, 2030], labels=["2011-15", "2016-20", "2021~"]).astype(str)
-SIG = {"GPA": "high", "ACC": "low", "AG": "low", "ISS": "low", "FS": "high", "EY": "high", "FCFY": "high", "RDCF": "low", "RGAP": "low"}
+SIG = {"GPA": "high", "ACC": "low", "AG": "low", "ISS": "low", "FS": "high", "EY": "high", "FCFY": "high", "RDCF": "low", "RGAP": "low", "RDCFD": "low"}
+SIG = {k: v for k, v in SIG.items() if k in pn.columns}
+if os.environ.get("ONLY"):                                  # 등록된 검정만 (예: ONLY=RDCFD)
+    SIG = {k: SIG[k] for k in os.environ["ONLY"].split(",")}
 CELLS = {"설계": ("A", "odd"), "확인1": ("A", "even"), "확인2": ("B", "odd"), "최종": ("B", "even")}
 
 

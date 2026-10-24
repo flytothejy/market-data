@@ -21,3 +21,4 @@ data/raw/sb/delisted_cik.csv
 data/task5_panel_R.csv
 data/raw/mkt/
 data/raw/sb/facts_rdcf.parquet
+data/task5_panel_D.csv
