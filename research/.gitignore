@@ -1,0 +1,6 @@
+# 큰 원천 데이터는 커밋하지 않음 (스크립트로 재생성)
+data/prices/
+data/raw/
+*.parquet
+__pycache__/
+data/*.log
