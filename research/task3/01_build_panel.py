@@ -49,6 +49,11 @@ print("pool tickers (US, priced):", len(pool_t))
 f = pd.read_parquet(os.path.join(R2, "sec__facts.parquet"), columns=["cik", "tag", "start", "end", "fp", "form", "filed", "val"])
 f["filed"] = pd.to_datetime(f["filed"]); f["end"] = pd.to_datetime(f["end"]); f["start"] = pd.to_datetime(f["start"])
 sh = f[f["tag"] == "EntityCommonStockSharesOutstanding"].sort_values("filed")
+# 보완: 표지 발행주식수가 없을 때 희석 가중평균 주식수 (PLAN 변경 이력 2026-10-24)
+wad = pd.read_parquet(os.path.join(R2, "sec__facts.parquet"), columns=["cik", "tag", "filed", "val"])
+wad = wad[wad["tag"] == "WeightedAverageNumberOfDilutedSharesOutstanding"].copy()
+wad["filed"] = pd.to_datetime(wad["filed"]); wad = wad.sort_values("filed")
+wad_by = {c: g[["filed", "val"]] for c, g in wad.groupby("cik")}
 ni = f[f["tag"] == "NetIncomeLoss"].copy()
 ni["dur"] = (ni["end"] - ni["start"]).dt.days
 first = ni.sort_values("filed").drop_duplicates(["cik", "start", "end"], keep="first")
@@ -75,11 +80,14 @@ def earn_ok(cik, d):
     return float(last4["val"].iloc[-1] > 0 and last4["val"].sum() > 0)
 
 def shares(cik, d):
-    g = sh_by.get(cik)
-    if g is None:
-        return np.nan
-    g = g[g["filed"] < d]
-    return g["val"].iloc[-1] if len(g) else np.nan
+    for src in (sh_by, wad_by):
+        g = src.get(cik)
+        if g is None:
+            continue
+        g = g[(g["filed"] < d) & (g["filed"] >= d - pd.Timedelta(days=200))]   # 최근 공시만 (오래된 값 배제)
+        if len(g):
+            return g["val"].iloc[-1]
+    return np.nan
 
 # ---------- 예측일 ----------
 spy = pd.read_parquet(os.path.join(PX, "SPY.parquet"))
