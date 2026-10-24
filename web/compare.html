@@ -67,7 +67,7 @@ async function render() {
   let h = `<div class="hero"><h1>종목 비교</h1><p>최대 ${MAX}개 종목·ETF를 같은 기준으로 나란히 봅니다. ● 표시는 그 줄에서 가장 좋은 값이에요(높을수록·낮을수록 좋은 지표만).</p></div>`;
   h += `<div class="card"><div class="cmp-add">${rows.map((r, i) => `<span class="cmp-chip"><i style="background:${COLORS[i]}"></i><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a><span class="mut">${esc((r.n || '').slice(0, 16))}</span><button data-rm="${esc(r.t)}" aria-label="${esc(r.t)} 빼기">×</button></span>`).join('')}
     ${rows.length < MAX ? `<input class="f" id="add" list="tk" placeholder="티커 추가 (예: MSFT)" autocomplete="off" style="width:180px"><datalist id="tk">${S.map(r => `<option value="${esc(r.t)}">${esc(r.n || '')}</option>`).join('')}</datalist><button class="btn" id="addb">추가</button>` : ''}
-    ${Watch.list().length ? `<button class="btn" id="usew">내 종목으로 채우기</button>` : ''}</div></div>`;
+    ${Watch.list().length ? `<button class="btn" id="usew">관심 종목으로 채우기</button>` : ''}</div></div>`;
   if (rows.length) h += `<div class="card" id="sg"></div>`;
   if (!rows.length) {
     h += `<div class="card"><div class="mut s13">위에서 비교할 종목을 추가하세요. 예: <a href="?t=AAPL,MSFT,GOOGL">AAPL · MSFT · GOOGL</a> · <a href="?t=NVDA,AMD,AVGO,INTC">NVDA · AMD · AVGO · INTC</a> · <a href="?t=SPY,QQQ,SCHD">SPY · QQQ · SCHD</a></div></div>`;

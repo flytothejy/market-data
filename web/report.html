@@ -68,9 +68,11 @@
 <script>
 header('주간 리포트');
 const DEMO = [{ t: 'NVDA', sh: 50, cost: 120 }, { t: 'AAPL', sh: 20, cost: 200 }, { t: 'QQQ', sh: 5, cost: 500 }, { t: 'JPM', sh: 10 }, { t: 'GME', sh: 100, cost: 25 }];
-function loadItems() {
-  if (qs('demo')) return { items: DEMO, demo: true };
-  if (Auth.hint()) { try { const p = JSON.parse(localStorage.getItem('hub.portfolio.v1')); const it = (p && p.items || []).filter(x => x.sh > 0); if (it.length) return { items: it, demo: false }; } catch (e) { } }
+function loadItems() {                                    // 포트폴리오(비중) → 가상 시작 금액을 지금 종가로 나눠 주식 수로
+  if (qs('demo')) return { items: DEMO, demo: true, name: '예시 포트폴리오' };
+  const L = Auth.hint() ? PF.list().filter(p => p.items.length) : [];
+  const p = L.find(x => x.id === qs('p')) || L[0];
+  if (p) return { pf: p, list: L, demo: false, name: p.name };
   return { items: [], demo: false, empty: true };
 }
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -167,16 +169,17 @@ function perfChart(dates, a, b) {
 }
 
 (async () => {
-  const { items, demo, empty } = loadItems();
+  let { items, demo, empty, pf, list, name } = loadItems();
   if (empty) {
-    $('#app').innerHTML = `<div class="hero"><h1>주간 리포트</h1></div><div class="card" style="gap:10px"><b style="font-size:16px">수량을 넣은 보유 종목이 없습니다</b><span class="s13 mut">내 종목에서 ‘보유’로 표시하고 주식 수를 넣으면 리포트가 만들어져요</span>
-      <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="watch.html?f=hold" style="text-decoration:none">보유 종목 넣기</a><a class="btn" href="report.html?demo=1" style="text-decoration:none">주간 리포트 예시 보기</a></div></div>`;
+    $('#app').innerHTML = `<div class="hero"><h1>주간 리포트</h1></div><div class="card" style="gap:10px"><b style="font-size:16px">포트폴리오가 없습니다</b><span class="s13 mut">관심 종목을 비중으로 묶어 포트폴리오를 만들면, 한 주 동안의 변화를 한 장으로 정리해 드려요</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="portfolio.html" style="text-decoration:none">포트폴리오 만들기</a><a class="btn" href="report.html?demo=1" style="text-decoration:none">주간 리포트 예시 보기</a></div></div>`;
     footer(); return;
   }
   let U, M;
   try { [U, M] = await Promise.all([Data.universe(), Data.market()]); }
   catch (e) { $('#app').innerHTML = `<div class="loading">데이터를 불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   const byT = Object.fromEntries(U.rows.map(r => [r.t, r]));
+  if (pf) { const W = pf.items.reduce((a, x) => a + x.w, 0) || 1; items = pf.items.filter(x => x.w > 0 && byT[x.t] && byT[x.t].px).map(x => ({ t: x.t, sh: pf.cap * x.w / W / byT[x.t].px })); }
   const hold = items.filter(x => byT[x.t]);
   const det = await Promise.all(hold.map(x => (byT[x.t].k === 'etf' ? Data.etf(x.t) : Data.stock(x.t)).catch(() => null)));
   const spy = await Data.etf('SPY').catch(() => null);
@@ -221,7 +224,7 @@ function perfChart(dates, a, b) {
   // 한 문장 요약 (규칙 기반 — 숫자에서만 만든다)
   const top = contrib[0], bot = contrib[contrib.length - 1];
   const vs = sW != null ? wRet - sW : null;
-  let lede = `이번 주 내 포트폴리오는 ${fmt(wRet, 'pct', { sign: true })}로 `;
+  let lede = `이번 주 ‘${name}’ 수익률은 ${fmt(wRet, 'pct', { sign: true })}로 `;
   lede += vs != null ? (Math.abs(vs) < 0.002 ? 'S&P 500과 비슷했습니다. ' : `S&P 500보다 ${Math.abs(vs * 100).toFixed(1)}%p ${vs > 0 ? '앞섰습니다' : '뒤처졌습니다'}. `) : '';
   lede += top.c > 0 ? `가장 크게 보탠 종목은 ${top.t}(${pp(top.c)})` : `모든 종목이 약세였고`;
   lede += bot.c < 0 ? `${top.c > 0 ? ', ' : ' '}가장 크게 끌어내린 종목은 ${bot.t}(${pp(bot.c)})입니다.` : '입니다.';
@@ -231,13 +234,13 @@ function perfChart(dates, a, b) {
   const asof = dates[dates.length - 1];
   const cats = [['cons', '컨센서스'], ['fin', '재무'], ['tech', '차트·수급'], ['doc', '공시·내부자'], ['news', '뉴스']];
   const maxAbs = Math.max(...contrib.map(c => Math.abs(c.c))) || 1;
-  let h = `<div class="tools">${demo ? '<span class="tag" style="margin-right:auto">예시</span>' : ''}<a class="btn" href="watch.html?f=hold">내 종목으로</a><button class="btn dark" onclick="print()">PDF로 저장 · 인쇄</button></div>
+  let h = `<div class="tools">${demo ? '<span class="tag" style="margin-right:auto">예시</span>' : ''}${list && list.length > 1 ? `<select class="f" onchange="location.search='?p='+this.value">${list.map(x => `<option value="${x.id}" ${x === pf ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : ''}<a class="btn" href="${pf ? 'portfolio.html?p=' + pf.id : 'portfolio.html'}">포트폴리오로</a><button class="btn dark" onclick="print()">PDF로 저장 · 인쇄</button></div>
   <article class="sheet">
-    <div class="r-head"><div><div class="small mut">주간 포트폴리오 리포트</div><h1>내 포트폴리오 · ${rows.length}종목</h1></div>
+    <div class="r-head"><div><div class="small mut">주간 포트폴리오 리포트</div><h1>${esc(name)} · ${rows.length}종목</h1></div>
       <div class="meta">${esc(asof)} 종가 기준<br>티커맵</div></div>
     <p class="lede">${esc(lede)}</p>
     <div class="tiles">
-      <div class="tile"><span>평가액</span><b>$${Math.round(val).toLocaleString()}</b><small>보유 수량 × 종가</small></div>
+      <div class="tile"><span>${pf ? "가상 금액" : "평가액"}</span><b>$${Math.round(val).toLocaleString()}</b><small>${pf ? `가상 시작 $${Math.round(pf.cap).toLocaleString()}을 지금 비중으로` : '보유 수량 × 종가'}</small></div>
       <div class="tile"><span>이번 주</span><b class="${cls(wRet)}">${fmt(wRet, 'pct', { sign: true })}</b><small>5거래일</small></div>
       <div class="tile"><span>S&P 500 대비</span><b class="${cls(vs)}">${pp(vs)}</b><small>SPY ${fmt(sW, 'pct', { sign: true })}</small></div>
       <div class="tile"><span>원화 기준</span><b class="${cls(krwRet)}">${krwRet != null ? fmt(krwRet, 'pct', { sign: true }) : '-'}</b><small>${fxW != null ? `환율 ${fmt(fxW, 'pct', { sign: true })}` : '환율 자료 없음'}</small></div>
@@ -245,7 +248,7 @@ function perfChart(dates, a, b) {
     <div class="row2">
       <div class="blk"><h2><span class="n">1</span>최근 3개월 성과</h2>
         ${sIdx ? perfChart(dates, pIdx, sIdx) : ''}
-        <div class="cap">시작일 = 100 · 지금 보유 수량을 3개월 전부터 들고 있었다고 가정 · 배당 제외</div></div>
+        <div class="cap">시작일 = 100 · 지금 비중을 3개월 전부터 들고 있었다고 가정 · 배당 제외</div></div>
       <div class="blk"><h2><span class="n">2</span>이번 주 수익의 출처</h2>
         <div class="contrib">${contrib.map(c => { const w = Math.abs(c.c) / maxAbs * 50; return `<b>${c.t}</b><div class="bar2"><span class="axis" style="left:50%"></span><i style="left:${c.c >= 0 ? 50 : 50 - w}%;width:${Math.max(w, 0.6)}%;background:${c.c >= 0 ? css('--up') : css('--dn')}"></i></div><span class="num ${cls(c.c)}" style="text-align:right">${pp(c.c)}</span>`; }).join('')}</div>
         <div class="cap">종목 주가 변화 × 비중 = 포트폴리오 수익률에 보탠 몫</div></div>

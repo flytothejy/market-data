@@ -25,6 +25,7 @@ const Plan = {
     } catch (e) { return new URLSearchParams(location.search).get('pro') === '1'; }
   },
   PORTFOLIO_MAX: 50,
+  PF_COUNT: 3,                                        // 관심 포트폴리오 개수 (서버 PF_MAX와 같게)
 };
 
 const Data = {

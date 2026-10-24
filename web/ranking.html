@@ -49,17 +49,17 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
     ${M.vix != null ? `<div><span>VIX (변동성 지수)</span><b>${M.vix.toFixed(1)}</b></div>` : ''}
   </div></div>`;
 
-  // 내 종목 (로그인한 경우)
+  // 관심 종목 (로그인한 경우)
   const W = Watch.list().map(t => U.rows.find(r => r.t === t)).filter(Boolean);
   if (W.length) {
-    h += `<div class="sec-head"><h2>내 종목</h2><span class="desc">${W.length}개</span>
+    h += `<div class="sec-head"><h2>관심 종목</h2><span class="desc">${W.length}개</span>
       <a class="more" href="compare.html?t=${encodeURIComponent(W.slice(0, 5).map(r => r.t).join(','))}">비교하기 →</a></div>
       <div class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>종목</th><th>종가</th><th>1일</th><th>1개월</th><th>1년</th><th>다음 실적</th><th class="l">한 줄 요약</th><th></th></tr></thead><tbody>
       ${W.map(r => `<tr><td><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 18))}</span></td><td class="num">${fmt(r.px, 'px')}</td><td>${pctS(r.r1d)}</td><td>${pctS(r.r1m)}</td><td>${pctS(r.r1y)}</td>
         <td class="num">${r.c_next ? esc(r.c_next.slice(5)) : '-'}</td><td class="l nm mut" style="max-width:360px">${esc(r.s1 || '')}</td><td>${starBtn(r.t)}</td></tr>`).join('')}
       </tbody></table></div></div>`;
   } else {
-    h += `<div class="card" style="flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap"><span class="s13 mut">종목 화면에서 <b style="color:var(--ink)">☆ 내 종목에 담기</b>를 누르면 여기에 모아 보여요. 실적 달력·비교에서도 바로 쓸 수 있어요.</span></div>`;
+    h += `<div class="card" style="flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap"><span class="s13 mut">종목 화면에서 <b style="color:var(--ink)">☆ 관심 종목에 담기</b>를 누르면 여기에 모아 보여요. 실적 달력·비교에서도 바로 쓸 수 있어요.</span></div>`;
   }
 
   // 업종 표
@@ -149,7 +149,7 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
   if (!enough) return;                                  // 숫자가 적을 땐 칸을 아예 안 보여 줌
   el.innerHTML = section('watch', '티커맵 사용자들은', '최근 7일 합계', [
     card('많이 본 종목', '종목 화면 조회', list('v', '회')),
-    card('내 종목에 많이 담은 종목', '☆ 담기', list('w', '회')),
+    card('관심 종목에 많이 담은 종목', '☆ 담기', list('w', '회')),
     card('비교에 많이 넣은 종목', '종목 비교에 추가', list('c', '회')),
   ]);
 })();

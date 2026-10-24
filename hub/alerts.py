@@ -232,7 +232,7 @@ def message(asof, items, ev, R):
         r = R.get(it["t"], {})
         ret = (r.get("px") / it["px"] - 1) if it.get("px") and r.get("px") else None
         head = f"<b>{html.escape(it['t'])}</b> {html.escape(r.get('ko') or r.get('n') or '')}"
-        sub = " · ".join(x for x in [PURPOSE_KO.get(it.get("purpose") or "", ""), f"담은 뒤 {pct(ret)}" if ret is not None else ""] if x)
+        sub = " · ".join(x for x in [", ".join(it.get("pf") or []), f"담은 뒤 {pct(ret)}" if ret is not None else ""] if x)
         lines = [head + (f"  <i>{html.escape(sub)}</i>" if sub else "")]
         icon = {"er": "📅", "ins": "👤", "warn": "⚠️"}
         for x in sorted(e, key=lambda x: x["ord"]):

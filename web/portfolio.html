@@ -2,11 +2,254 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="robots" content="noindex">
-<meta http-equiv="refresh" content="0; url=watch.html?f=hold">
-<link rel="canonical" href="watch.html">
-<title>내 종목 | 티커맵</title>
-<script>location.replace('watch.html?f=hold');</script>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="티커맵 포트폴리오 — 관심 종목을 비중으로 묶어 과거 시뮬레이션, 만든 뒤 성과, 포트폴리오끼리 비교.">
+<title>포트폴리오 | 티커맵</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/app.css">
+<script src="assets/data.js"></script>
+<script src="assets/ui.js"></script>
+<script src="assets/pf.js"></script>
+<style>
+.pf-tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pf-tabs a,.pf-tabs button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:inherit;font-size:14px;background:var(--card);color:var(--ink);text-decoration:none;cursor:pointer;min-height:34px}
+.pf-tabs a.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+.pf-tabs .add{color:var(--muted);border-style:dashed}
+.pf-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.pf-head h2{margin:0;font-size:22px}
+.pf-head .act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.pf-ed table input{width:76px;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--bg);color:var(--ink);text-align:right}
+.pf-ed .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pf-ed .x{border:0;background:none;color:var(--faint);font-size:17px;cursor:pointer;min-width:28px;min-height:28px}
+.pf-big{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline}
+.pf-big div{display:flex;flex-direction:column;gap:2px}
+.pf-big span{font-size:12.5px;color:var(--muted)}
+.pf-big b{font-size:22px}
+.pfx-tip{display:none;position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);white-space:nowrap;z-index:5}
+.pfx-tip i,.pfx-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0}
+.pfx-t td,.pfx-t th{white-space:nowrap}
+.cmp-pick{display:flex;gap:6px;flex-wrap:wrap}
+.cmp-pick label{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13.5px;cursor:pointer;background:var(--card)}
+.cmp-pick input{accent-color:var(--ink)}
+</style>
 </head>
-<body><a href="watch.html?f=hold">내 종목으로 이동</a></body>
+<body>
+<div class="wrap" id="app"><div class="skel" role="status" aria-label="불러오는 중"><i class="sk sk-h"></i><i class="sk sk-p"></i><div class="sk-grid"><i class="sk sk-c"></i><i class="sk sk-c"></i><i class="sk sk-c"></i></div><i class="sk sk-b"></i></div></div>
+<script>
+header('포트폴리오');
+const st = { id: qs('p'), tab: qs('tab') === 'cmp' ? 'cmp' : '', per: '3y', edit: false, draft: null, cmp: null, bench: { SPY: true, QQQ: false } };
+let U, byT, SER = {};
+const money = v => v == null ? '-' : '$' + Math.round(v).toLocaleString();
+const today = () => new Date().toISOString().slice(0, 10);
+const NOTE = '주간 수정종가(배당 재투자 포함) 기준 · 수수료·세금 제외 · 샤프 지수는 무위험 수익률 0으로 계산';
+
+async function need(ts) {                                   // 필요한 종목 시계열만 받아 둠
+  const miss = [...new Set(ts)].filter(t => !(t in SER));
+  if (!miss.length) return;
+  const got = await PFX.series(miss, byT);
+  miss.forEach(t => SER[t] = got[t] || null);
+}
+function calendar() { return SER.SPY ? SER.SPY.d : [...new Set(Object.values(SER).filter(Boolean).flatMap(w => w.d))].sort(); }
+function aligned(ts, dates) { const A = {}; ts.forEach(t => { if (SER[t]) A[t] = PFX.align(SER[t], dates); }); return A; }
+function perStart(dates, per) { const y = PFX.PER.find(p => p[0] === per)[2], d = new Date(Date.parse(dates[dates.length - 1]) - y * 365.25 * 864e5).toISOString().slice(0, 10); return PFX.idxOn(dates, d); }
+const segPer = (cur, attr = 'data-per') => `<div class="seg">${PFX.PER.map(([k, l]) => `<button class="btn ${cur === k ? 'on' : ''}" ${attr}="${k}">${l}</button>`).join('')}</div>`;
+
+// ---- 위쪽: 포트폴리오 고르기
+function tabs(list) {
+  return `<div class="pf-tabs">${list.map(p => `<a href="?p=${p.id}" data-go="${p.id}" class="${!st.tab && p.id === st.id ? 'on' : ''}">${esc(p.name)} <small class="${!st.tab && p.id === st.id ? '' : 'mut'}">${p.items.length}</small></a>`).join('')}
+    ${list.length < PF.max() ? `<button class="add" data-new>+ 새 포트폴리오 <small>${list.length}/${PF.max()}</small></button>` : `<span class="small faint">포트폴리오는 ${PF.max()}개까지 만들 수 있어요</span>`}
+</div>`;
+}
+function empty() {
+  const W = Watch.list();
+  return `<div class="card" style="gap:12px"><b style="font-size:16px">관심 종목을 비중으로 묶어 포트폴리오를 만들어 보세요</b>
+    <ul class="s13 mut" style="margin:0;padding-left:18px;line-height:1.8"><li>과거 1·3·5·10년 동안 이 비중으로 들고 있었다면 어땠는지 S&P 500·나스닥 100과 비교</li><li>만든 날부터 실제로 어떻게 움직이는지 따로 추적</li><li>포트폴리오끼리 나란히 비교 (${PF.max()}개까지)</li></ul>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${W.length ? `<button class="btn dark" data-fromwatch>관심 종목 ${Math.min(30, W.length)}개로 만들기 (같은 비중)</button>` : ''}<button class="btn ${W.length ? '' : 'dark'}" data-new>빈 포트폴리오 만들기</button></div>
+    <div class="small faint">직접 고른 종목과 비중으로 계산만 해요 · 정보 제공용이며 투자 권유가 아닙니다</div></div>`;
+}
+
+// ---- 편집
+function editor(p) {
+  const d = st.draft, sum = d.items.reduce((a, x) => a + (+x.w || 0), 0);
+  return `<div class="card pf-ed" style="gap:12px">
+    <div class="row"><label class="s13 mut">이름 <input class="f" id="e-name" value="${esc(d.name)}" maxlength="30" style="width:200px"></label></div>
+    ${d.items.length ? `<div class="tbl-wrap"><table class="t"><thead><tr><th class="l">티커</th><th class="l">이름</th><th>비중(%)</th><th></th></tr></thead><tbody>
+      ${d.items.map((x, i) => `<tr><td class="l"><b>${esc(x.t)}</b></td><td class="l nm">${esc(byT[x.t] ? (byT[x.t].ko || byT[x.t].n) : '')}</td><td><input type="number" step="any" min="0" max="100" value="${x.w}" data-w="${i}"></td><td><button class="x" data-rm="${i}" aria-label="${esc(x.t)} 빼기">×</button></td></tr>`).join('')}
+      </tbody><tfoot><tr><td class="l" colspan="2"><span class="s13 mut">합계</span></td><td class="num"><b id="e-sum" style="color:${Math.abs(sum - 100) < 0.5 ? 'var(--good)' : 'var(--warn)'}">${+sum.toFixed(1)}%</b></td><td></td></tr></tfoot></table></div>` : '<div class="s13 mut">종목을 추가하세요</div>'}
+    <div class="row"><input class="f" id="e-t" placeholder="티커 추가 (예: AAPL)" list="tick" style="width:170px;text-transform:uppercase" autocomplete="off"><button class="btn" id="e-add">추가</button>
+      ${Watch.list().length ? `<select class="f" id="e-w"><option value="">관심 종목에서</option>${Watch.list().filter(t => !d.items.some(x => x.t === t)).map(t => `<option>${t}</option>`).join('')}</select>` : ''}
+      <span class="mut s13" id="e-msg"></span>
+      <span style="margin-left:auto;display:flex;gap:6px"><button class="btn" id="e-eq">같은 비중</button><button class="btn" id="e-100">합계 100%로</button></span></div>
+    <div class="row"><label class="s13 mut">가상 시작 금액 $ <input class="f" type="number" id="e-cap" value="${d.cap}" min="100" step="100" style="width:110px"></label>
+      <label class="s13 mut">리밸런싱 <select class="f" id="e-rb"><option value="none">안 함 (처음 비중으로 사서 그대로)</option><option value="q" ${d.rb === 'q' ? 'selected' : ''}>분기마다 처음 비중으로</option></select></label></div>
+    <div class="small faint">비중 합계가 100%가 아니면 계산할 때 비율대로 맞춰요 · 종목이나 비중을 바꾸면 ‘만든 뒤 성과’는 바꾼 날부터 다시 시작해요</div>
+    <div class="row"><button class="btn dark" id="e-save">저장</button><button class="btn" id="e-cancel">취소</button><button class="btn" id="e-del" style="margin-left:auto;color:var(--dn)">포트폴리오 삭제</button></div>
+    <datalist id="tick">${U.rows.map(r => `<option value="${r.t}">${esc(r.n)}</option>`).join('')}</datalist></div>`;
+}
+function bindEditor(p) {
+  const d = st.draft;
+  const re = () => { renderMain(); };
+  document.querySelectorAll('[data-w]').forEach(i => i.oninput = () => { d.items[+i.dataset.w].w = Math.max(0, +i.value || 0); const s = d.items.reduce((a, x) => a + x.w, 0), el = $('#e-sum'); el.textContent = +s.toFixed(1) + '%'; el.style.color = Math.abs(s - 100) < 0.5 ? 'var(--good)' : 'var(--warn)'; });
+  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { d.items.splice(+b.dataset.rm, 1); re(); });
+  const add = t => {
+    t = (t || '').trim().toUpperCase().replace('.', '-');
+    if (!byT[t]) { $('#e-msg').textContent = `${t || '티커'}: 추적 대상이 아니에요`; return; }
+    if (d.items.some(x => x.t === t)) { $('#e-msg').textContent = `${t}: 이미 있어요`; return; }
+    if (d.items.length >= 30) { $('#e-msg').textContent = '종목은 30개까지예요'; return; }
+    const w = d.items.length ? Math.round(d.items.reduce((a, x) => a + x.w, 0) / d.items.length * 10) / 10 : 100;
+    d.items.push({ t, w }); re(); const i = $('#e-t'); if (i) i.focus();
+  };
+  $('#e-add').onclick = () => add($('#e-t').value);
+  $('#e-t').onkeydown = e => { if (e.key === 'Enter') add(e.target.value); };
+  const ew = $('#e-w'); if (ew) ew.onchange = e => { if (e.target.value) add(e.target.value); };
+  const fix = () => { const s = d.items.reduce((a, x) => a + x.w, 0), k = d.items.reduce((m, x, i, a) => x.w > a[m].w ? i : m, 0); if (d.items.length) d.items[k].w = Math.round((d.items[k].w + 100 - s) * 10) / 10; };   // 반올림 나머지는 가장 큰 종목에
+  $('#e-eq').onclick = () => { const n = d.items.length; d.items.forEach(x => x.w = Math.round(1000 / n) / 10); fix(); re(); };
+  $('#e-100').onclick = () => { const s = d.items.reduce((a, x) => a + x.w, 0); if (s > 0) { d.items.forEach(x => x.w = Math.round(x.w / s * 1000) / 10); fix(); } re(); };
+  $('#e-name').oninput = e => d.name = e.target.value;
+  $('#e-cap').oninput = e => d.cap = Math.max(100, +e.target.value || 10000);
+  $('#e-rb').onchange = e => d.rb = e.target.value;
+  $('#e-save').onclick = () => {
+    const key = a => JSON.stringify(a.filter(x => x.w > 0).map(x => [x.t, +x.w]).sort());
+    const patch = { name: d.name.trim() || p.name, items: d.items.filter(x => x.w > 0), cap: d.cap, rb: d.rb };
+    if (key(p.items) !== key(d.items) || p.rb !== d.rb) patch.start = today();      // 구성이 바뀌면 만든 뒤 성과를 새로 시작
+    PF.update(p.id, patch); st.edit = false; st.draft = null; render();
+  };
+  $('#e-cancel').onclick = () => { st.edit = false; st.draft = null; if (!p.items.length) { PF.remove(p.id); st.id = null; } render(); };
+  $('#e-del').onclick = () => { if (!confirm(`'${p.name}' 포트폴리오를 지울까요?`)) return; PF.remove(p.id); st.id = null; st.edit = false; render(); };
+}
+
+// ---- 한 포트폴리오 보기
+async function view(p) {
+  const el = $('#pf-body');
+  el.innerHTML = '<div class="loading">계산하는 중…</div>';
+  await need([...p.items.map(x => x.t), 'SPY', 'QQQ']);
+  if (!el.isConnected) return;
+  const dates = calendar(), ts = [...p.items.map(x => x.t), 'SPY', 'QQQ'], A = aligned(ts, dates);
+  const col = PFX.COLORS[0];
+  // 만든 뒤 성과
+  const i0 = PFX.idxOn(dates, p.start || today());
+  const fwd = PFX.run(p.items, A, dates, i0, p.cap, p.rb), fS = PFX.bench(A, dates, i0, 'SPY');
+  const fm = fwd && !fwd.empty ? PFX.metrics(fwd) : null, fsm = fS && !fS.empty ? PFX.metrics(fS) : null;
+  // 과거 시뮬레이션
+  const s0 = perStart(dates, st.per);
+  const sim = PFX.run(p.items, A, dates, s0, p.cap, p.rb), bS = PFX.bench(A, dates, s0, 'SPY'), bQ = PFX.bench(A, dates, s0, 'QQQ');
+  const ok = sim && !sim.empty;
+  const lines = ok ? [{ name: p.name, color: col, d: sim.d, v: sim.v, bold: 1 }, bS && { name: 'S&P 500', color: PFX.BCOL.SPY, d: bS.d, v: bS.v }, bQ && { name: '나스닥 100', color: PFX.BCOL.QQQ, d: bQ.d, v: bQ.v }].filter(Boolean) : [];
+  // 같은 시작점에서 비교되게 벤치마크도 포트폴리오 시작에 맞춤
+  if (ok) lines.forEach(l => { const k = l.d.indexOf(sim.start); if (k > 0) { l.d = l.d.slice(k); l.v = l.v.slice(k); } });
+  const mRows = ok ? lines.map((l, k) => ({ name: l.name, color: l.color, m: PFX.metrics(l, k === 0 ? (lines[1] || null) : lines[1]) })) : [];
+  const perL = PFX.PER.find(x => x[0] === st.per)[1];
+  // 구성
+  const comp = (ok ? sim.contrib : p.items.map(x => ({ t: x.t, w: x.w / p.items.reduce((a, y) => a + y.w, 0), c: null }))).slice().sort((a, b) => b.w - a.w);
+  const sec = {}; comp.forEach(x => { const r = byT[x.t]; const s = !r ? '기타' : r.k === 'etf' ? 'ETF' : secKo(r.sec); sec[s] = (sec[s] || 0) + x.w; });
+  const days = Math.round((Date.now() - Date.parse(p.start || today())) / 864e5);
+  let h = '';
+  h += `<div class="card"><h3>만든 뒤 성과 <span class="mut s13" style="font-weight:400">· ${esc(p.start || today())}부터${days ? ` (${days}일)` : ''}</span></h3>
+    ${fm ? `<div class="pf-big"><div><span>${esc(p.name)}</span><b class="${cls(fm.tot)}">${(fm.tot >= 0 ? '+' : '') + (fm.tot * 100).toFixed(1)}%</b></div>${fsm ? `<div><span>같은 기간 S&P 500</span><b class="${cls(fsm.tot)}">${(fsm.tot >= 0 ? '+' : '') + (fsm.tot * 100).toFixed(1)}%</b></div>` : ''}<div><span>가상 금액</span><b>${money(fwd.v[fwd.v.length - 1])}</b></div></div>
+      <div id="ch-f"></div>` : `<div class="s13 mut">만든 지 얼마 안 돼서 아직 쌓인 기록이 없어요. 다음 주부터 그래프가 그려져요 — 과거 시뮬레이션과 달리 결과를 모르고 고른 뒤의 성적이라, 전략을 점검하는 데 더 정직한 기록이에요.</div>`}</div>`;
+  h += `<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">과거 시뮬레이션</h3><span class="mut s13">${perL} 전에 이 비중으로 샀다면 · 리밸런싱 ${p.rb === 'q' ? '분기마다' : '안 함'}</span><span style="margin-left:auto">${segPer(st.per)}</span></div>
+    ${ok ? `${PFX.legend(lines)}<div id="ch-s"></div>${PFX.table(mRows)}` : '<div class="s13 mut">계산할 수 있는 종목 자료가 없어요</div>'}
+    ${ok && sim.late.length ? `<div class="small" style="color:var(--warn)">${esc(sim.late.join(', '))} 상장 뒤인 ${esc(sim.start)}부터 계산했어요</div>` : ''}
+    ${sim && sim.missing && sim.missing.length ? `<div class="small" style="color:var(--warn)">주가 자료가 없어 뺀 종목: ${esc(sim.missing.join(', '))}</div>` : ''}
+    <div class="small faint">지금 고른 종목을 과거에 대 본 결과라 실제보다 좋게 나오기 쉬워요 (이미 오른 종목을 고르게 되므로) · ${NOTE}</div></div>`;
+  h += `<div class="grid g2"><div class="card"><h3>구성</h3><div class="tbl-wrap"><table class="t"><thead><tr><th class="l">종목</th><th>비중</th><th>1개월</th><th>1년</th>${ok ? `<th title="과거 시뮬레이션 기간 동안 포트폴리오 수익률에 보탠 몫">기여 (${perL})</th>` : ''}<th>점검표</th></tr></thead><tbody>
+      ${comp.map(x => { const r = byT[x.t]; const ck = r ? checklist(r, U) : []; const nw = ck.filter(c => c.s === 'warn').length; return `<tr><td class="l"><a href="${stockUrl(x.t)}"><b>${esc(x.t)}</b></a> <span class="mut small">${esc(r ? shortName(r.ko || r.n) : '')}</span></td><td class="num">${(x.w * 100).toFixed(1)}%</td><td>${r ? pctS(r.r1m) : '-'}</td><td>${r ? pctS(r.r1y) : '-'}</td>${ok ? `<td>${pctS(x.c)}</td>` : ''}<td>${r ? (nw ? `<span style="color:var(--warn)">경고 ${nw}</span>` : '<span class="faint">-</span>') : ''}</td></tr>`; }).join('')}</tbody></table></div></div>
+    <div class="card"><h3>업종 비중</h3>${Object.entries(sec).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div style="display:grid;grid-template-columns:100px 1fr 48px;gap:8px;align-items:center;font-size:13px"><span>${esc(k)}</span><div class="bar"><i style="width:${v * 100}%"></i></div><span class="num" style="text-align:right">${(v * 100).toFixed(1)}%</span></div>`).join('')}</div></div>`;
+  h += `<div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 직접 고른 종목과 비중으로 계산한 가상 결과예요</div>`;
+  el.innerHTML = h;
+  if (fm) PFX.chart(el.querySelector('#ch-f'), [{ name: p.name, color: col, d: fwd.d, v: fwd.v, bold: 1 }, fS && { name: 'S&P 500', color: PFX.BCOL.SPY, d: fS.d, v: fS.v }], { h: 180 });
+  if (ok) PFX.chart(el.querySelector('#ch-s'), lines);
+  el.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { st.per = b.dataset.per; view(p); });
+}
+
+// ---- 비교
+async function compare(list) {
+  const el = $('#pf-body');
+  if (!st.cmp) st.cmp = list.map(p => p.id);
+  const pick = list.filter(p => st.cmp.includes(p.id));
+  el.innerHTML = '<div class="loading">계산하는 중…</div>';
+  await need([...list.flatMap(p => p.items.map(x => x.t)), 'SPY', 'QQQ']);
+  if (!el.isConnected) return;
+  const dates = calendar(), A = aligned(Object.keys(SER), dates), s0 = perStart(dates, st.per);
+  const runs = pick.map(p => ({ p, r: PFX.run(p.items, A, dates, s0, 10000, p.rb) })).filter(x => x.r && !x.r.empty);
+  // 모두가 자료를 가진 첫 주부터 같이 비교
+  const start = runs.reduce((a, x) => a > x.r.start ? a : x.r.start, dates[s0]);
+  const i1 = dates.indexOf(start);
+  const lines = runs.map(x => { const r = PFX.run(x.p.items, A, dates, i1, 10000, x.p.rb); return { name: x.p.name, color: PFX.COLORS[list.indexOf(x.p)], d: r.d, v: r.v, bold: 1, contrib: r.contrib }; });
+  const spy = PFX.bench(A, dates, i1, 'SPY');
+  PFX.BENCH.forEach(([t, n]) => { if (st.bench[t]) { const b = PFX.bench(A, dates, i1, t); if (b) lines.push({ name: n, color: PFX.BCOL[t], d: b.d, v: b.v }); } });
+  const mRows = lines.map(l => ({ name: l.name, color: l.color, m: PFX.metrics(l, spy) }));
+  // 겹치는 종목
+  const share = []; for (let a = 0; a < pick.length; a++) for (let b = a + 1; b < pick.length; b++) { const A1 = pick[a].items.map(x => x.t), B1 = new Set(pick[b].items.map(x => x.t)); const both = A1.filter(t => B1.has(t)); share.push([pick[a].name, pick[b].name, both]); }
+  // 업종 비중 나란히
+  const secOf = p => { const W = p.items.reduce((a, x) => a + x.w, 0) || 1, m = {}; p.items.forEach(x => { const r = byT[x.t]; const s = !r ? '기타' : r.k === 'etf' ? 'ETF' : secKo(r.sec); m[s] = (m[s] || 0) + x.w / W; }); return m; };
+  const secs = pick.map(secOf), keys = [...new Set(secs.flatMap(m => Object.keys(m)))].sort((a, b) => secs.reduce((s, m) => s + (m[b] || 0), 0) - secs.reduce((s, m) => s + (m[a] || 0), 0));
+  const perL = PFX.PER.find(x => x[0] === st.per)[1];
+  let h = `<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">포트폴리오 비교</h3><span class="mut s13">${perL} · 모두 같은 날 가상 $10,000로 시작</span><span style="margin-left:auto">${segPer(st.per)}</span></div>
+    <div class="cmp-pick">${list.map((p, k) => `<label><input type="checkbox" data-pk="${p.id}" ${st.cmp.includes(p.id) ? 'checked' : ''}><i class="pfx-dot" style="background:${PFX.COLORS[k]}"></i>${esc(p.name)}</label>`).join('')}${PFX.BENCH.map(([t, n]) => `<label><input type="checkbox" data-bk="${t}" ${st.bench[t] ? 'checked' : ''}><i class="pfx-dot" style="background:${PFX.BCOL[t]}"></i>${n}</label>`).join('')}</div>
+    ${lines.length ? `<div id="ch-c"></div>${PFX.table(mRows)}` : '<div class="s13 mut">비교할 포트폴리오를 고르세요</div>'}
+    ${start !== dates[s0] && runs.length ? `<div class="small" style="color:var(--warn)">늦게 상장한 종목이 있어 ${esc(start)}부터 비교했어요</div>` : ''}
+    <div class="small faint">지금 고른 종목을 과거에 대 본 결과라 실제보다 좋게 나오기 쉬워요 · ${NOTE}</div></div>`;
+  if (pick.length >= 2) h += `<div class="grid g2"><div class="card"><h3>업종 비중</h3><div class="tbl-wrap"><table class="t"><thead><tr><th class="l">업종</th>${pick.map(p => `<th><i class="pfx-dot" style="background:${PFX.COLORS[list.indexOf(p)]}"></i>${esc(p.name)}</th>`).join('')}</tr></thead><tbody>${keys.map(k => `<tr><td class="l">${esc(k)}</td>${secs.map(m => `<td class="num">${m[k] ? (m[k] * 100).toFixed(1) + '%' : '<span class="faint">-</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
+    <div class="card"><h3>겹치는 종목</h3>${share.map(([a, b, both]) => `<div class="s13"><b>${esc(a)}</b> · <b>${esc(b)}</b> — ${both.length ? both.map(t => `<a href="${stockUrl(t)}">${esc(t)}</a>`).join(', ') : '<span class="mut">없음</span>'}</div>`).join('')}</div></div>`;
+  h += `<div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 직접 고른 종목과 비중으로 계산한 가상 결과예요</div>`;
+  el.innerHTML = h;
+  if (lines.length) PFX.chart(el.querySelector('#ch-c'), lines);
+  el.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { st.per = b.dataset.per; compare(list); });
+  el.querySelectorAll('[data-pk]').forEach(c => c.onchange = () => { st.cmp = [...el.querySelectorAll('[data-pk]:checked')].map(x => x.dataset.pk); compare(list); });
+  el.querySelectorAll('[data-bk]').forEach(c => c.onchange = () => { st.bench[c.dataset.bk] = c.checked; compare(list); });
+}
+
+// ---- 전체 그리기
+function render() {
+  const list = PF.list();
+  if (!list.some(p => p.id === st.id)) st.id = list[0] ? list[0].id : null;
+  if (st.tab === 'cmp' && list.length < 2) { st.tab = ''; if (list.length) setTimeout(() => notice('비교하려면 포트폴리오가 2개 이상 있어야 해요'), 300); }
+  $('#app').innerHTML = `<div class="hero"><h1>포트폴리오</h1><p>관심 종목을 비중으로 묶어 과거 시뮬레이션과 만든 뒤 성과를 보고, 포트폴리오끼리 비교해요</p></div>
+    ${list.length ? tabs(list) : ''}<div id="pf-main" style="display:flex;flex-direction:column;gap:12px"></div>`;
+  renderMain();
+  document.querySelectorAll('[data-go]').forEach(a => a.onclick = e => { e.preventDefault(); st.id = a.dataset.go; st.tab = ''; st.edit = false; history.replaceState(null, '', '?p=' + st.id); render(); });
+  document.querySelectorAll('[data-new]').forEach(b => b.onclick = () => { const p = PF.create(null, []); if (!p) return; st.id = p.id; st.tab = ''; st.edit = true; st.draft = JSON.parse(JSON.stringify(p)); history.replaceState(null, '', '?p=' + p.id); render(); });
+  const fw = document.querySelector('[data-fromwatch]'); if (fw) fw.onclick = () => { const W = Watch.list().slice(0, 30); const p = PF.create('관심 종목', W.map((t, i) => ({ t, w: i ? Math.round(1000 / W.length) / 10 : Math.round((100 - Math.round(1000 / W.length) / 10 * (W.length - 1)) * 10) / 10 }))); if (p) { st.id = p.id; history.replaceState(null, '', '?p=' + p.id); render(); } };
+}
+function renderMain() {
+  const list = PF.list(), m = $('#pf-main');
+  if (!list.length) { m.innerHTML = empty(); bindTop(); return; }
+  if (st.tab === 'cmp') { m.innerHTML = '<div id="pf-body" style="display:flex;flex-direction:column;gap:12px"></div>'; compare(list); return; }
+  const p = PF.get(st.id);
+  if (st.edit || !p.items.length) {
+    if (!st.draft) st.draft = JSON.parse(JSON.stringify(p));
+    st.edit = true;
+    m.innerHTML = `<div class="pf-head"><h2>${esc(p.name)}</h2><span class="mut s13">편집</span></div>${editor(p)}`;
+    bindEditor(p); return;
+  }
+  const W = p.items.reduce((a, x) => a + x.w, 0);
+  m.innerHTML = `<div class="pf-head"><h2>${esc(p.name)}</h2><span class="mut s13">${p.items.length}종목 · 가상 ${money(p.cap)} · 리밸런싱 ${p.rb === 'q' ? '분기마다' : '안 함'}${Math.abs(W - 100) > 0.5 ? ' · 비중 합계를 100%로 맞춰 계산' : ''}</span>
+      <span class="act"><button class="btn" data-edit>편집</button><a class="btn" href="report.html?p=${p.id}" style="text-decoration:none">주간 리포트</a></span></div>
+    <div id="pf-body" style="display:flex;flex-direction:column;gap:12px"></div>`;
+  m.querySelector('[data-edit]').onclick = () => { st.edit = true; st.draft = JSON.parse(JSON.stringify(p)); renderMain(); };
+  view(p);
+}
+function bindTop() {
+  document.querySelectorAll('#pf-main [data-new]').forEach(b => b.onclick = () => { const p = PF.create(null, []); if (!p) return; st.id = p.id; st.edit = true; st.draft = JSON.parse(JSON.stringify(p)); history.replaceState(null, '', '?p=' + p.id); render(); });
+  const fw = document.querySelector('#pf-main [data-fromwatch]'); if (fw) fw.onclick = () => { const W = Watch.list().slice(0, 30); const p = PF.create('관심 종목', W.map((t, i) => ({ t, w: i ? Math.round(1000 / W.length) / 10 : Math.round((100 - Math.round(1000 / W.length) / 10 * (W.length - 1)) * 10) / 10 }))); if (p) { st.id = p.id; history.replaceState(null, '', '?p=' + p.id); render(); } };
+}
+document.addEventListener('portfolio-change', () => { if (U && !st.edit && !document.activeElement.matches('input,textarea,select')) render(); });
+
+(async () => {
+  if (!Auth.hint()) { loginWall('포트폴리오', ['관심 종목을 비중으로 묶어 과거 1·3·5·10년 시뮬레이션', '만든 날부터 실제 성과를 S&P 500과 비교', `포트폴리오 ${Plan.PF_COUNT}개까지 나란히 비교`]); footer(); return; }
+  try { U = await Data.universe(); } catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
+  byT = Object.fromEntries(U.rows.map(r => [r.t, r]));
+  // 예전 보유 종목(주식 수) → 첫 포트폴리오로 옮김 (지금 평가액 비중)
+  const d = PF.load();
+  if (d.old && !d.pfs.length) {
+    const its = d.old.filter(x => byT[x.t]).map(x => ({ t: x.t, v: (x.sh > 0 ? x.sh : 0) * (byT[x.t].px || 0) }));
+    const tot = its.reduce((a, x) => a + x.v, 0);
+    PF.create('예전 보유 종목', its.map(x => ({ t: x.t, w: tot ? Math.round(x.v / tot * 1000) / 10 : Math.round(1000 / its.length) / 10 })));
+  } else PF.dropOld();
+  render();
+  footer();
+})();
+</script>
+</body>
 </html>

@@ -59,13 +59,14 @@ const NAV = [
   { id: 'map', label: '티커맵', icon: 'map', href: 'matrix.html', subs: [['matrix.html?mode=bubble', '버블', { mode: 'bubble' }], ['matrix.html?mode=heat', '히트맵', { mode: 'heat' }]] },
   { id: 'rank', label: '랭킹', icon: 'rank', href: 'ranking.html', subs: [['ranking.html', '티커랭킹'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자']] },
   { id: 'find', label: '검색', icon: 'find', href: 'screen.html', subs: [['screen.html', '조건 검색'], ['compare.html', '비교'], ['stock.html', '전체 종목']] },
-  { id: 'my', label: '내 종목', icon: 'star', href: 'watch.html', subs: [['watch.html', '목록'], ['report.html', '주간 리포트'], ['watch.html?tab=alert', '알림']] },
+  { id: 'my', label: '내 종목', icon: 'star', href: 'watch.html', subs: [['watch.html', '관심 종목'], ['portfolio.html', '포트폴리오'], ['portfolio.html?tab=cmp', '비교'], ['watch.html?tab=alert', '알림']] },
 ];
 function navWhere() {
   const page = ((location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') || 'index') + '.html';   // Cloudflare는 .html 없는 주소로 보여 줌
   const p = location.pathname, q = new URLSearchParams(location.search);
   if (/\/s\/[^/]+\/?$/.test(p) || (page === 'stock.html' && q.get('t'))) return { g: 'find', sub: null, detail: true };   // 종목 화면은 자기 구역 탭이 있음
   if (/\/i\/[^/]+\/?$/.test(p)) return { g: 'rank', sub: 'investors.html' };
+  if (page === 'report.html') return { g: 'my', sub: 'portfolio.html' };
   for (const n of NAV) {
     if (n.href === page && !n.subs.length) return { g: n.id, sub: null };
     for (const [h] of n.subs) if (h.split(/[?#]/)[0] === page) return { g: n.id, sub: page };
@@ -96,7 +97,7 @@ function bottomNav(where) {
   document.addEventListener('watch-change', () => { const a = nav.querySelector('a[href="watch.html"]'); if (!a) return; let n = 0; try { n = Watch.list().length; } catch (e) { } let b = a.querySelector('.bn-badge'); if (!n) { if (b) b.remove(); return; } if (!b) { b = document.createElement('i'); b.className = 'bn-badge'; a.append(b); } b.textContent = n > 99 ? '99+' : n; });
 }
 // ---- 로그인 (구글·카카오·네이버 — Better Auth, api.tickermap.kr). 로그인 안 해도 모든 기능을 씀
-// 로그인 = 이 기기의 기기코드를 계정에 묶기. 묶인 뒤에도 내 종목 동기화는 기기코드로 그대로 (다른 기기에서 로그인하면 같은 내 종목)
+// 로그인 = 이 기기의 기기코드를 계정에 묶기. 묶인 뒤에도 관심 종목 동기화는 기기코드로 그대로 (다른 기기에서 로그인하면 같은 관심 종목)
 const Auth = {
   KEY: 'hub.auth.v1',
   hint() { try { return JSON.parse(localStorage.getItem(this.KEY)); } catch (e) { return null; } },   // 이름·사진만 (화면 첫 표시용)
@@ -117,7 +118,7 @@ const Auth = {
     const j = await this.call('/api/auth/sign-in/social', { provider, callbackURL: add(back, 'login=1'), newUserCallbackURL: add(back, 'login=1&new=1'), errorCallbackURL: location.origin + '/hub/account?error=1' });
     if (j && j.url) location.href = j.url; else throw new Error('로그인 주소를 받지 못했어요');
   },
-  async claim() {                                        // 로그인 직후: 이 기기를 계정에 묶고 내 종목을 합침
+  async claim() {                                        // 로그인 직후: 이 기기를 계정에 묶고 관심 종목을 합침
     const j = await this.call('/api/account/claim', { code: Sync.st().code || null });
     if (j && j.code) { Sync.set({ code: j.code }); await Sync.run().catch(() => { }); }
     await Prefs.sync().catch(() => { });                 // 설정도 계정과 맞춤 (이 브라우저 설정이 더 최근이면 계정에 올라감)
@@ -127,7 +128,7 @@ const Auth = {
     const code = Sync.st().code;
     try { await this.call('/api/account/forget-device', { code }); } catch (e) { }
     try { await this.call('/api/auth/sign-out', {}); } catch (e) { }
-    Sync.set({ code: null, me: null, at: 0 }); this.setHint(null); clearMine();   // 내 종목는 로그인한 계정 것 — 로그아웃하면 이 브라우저에서 지움
+    Sync.set({ code: null, me: null, at: 0 }); this.setHint(null); clearMine();   // 관심 종목는 로그인한 계정 것 — 로그아웃하면 이 브라우저에서 지움
   },
   sessions() { return this.call('/api/auth/list-sessions'); },
   revokeOthers() { return this.call('/api/auth/revoke-other-sessions', {}); },
@@ -135,7 +136,7 @@ const Auth = {
   async remove() { const j = await this.call('/api/account/delete', {}); Sync.set({ code: null, me: null, at: 0 }); this.setHint(null); clearMine(); return j; },
 };
 function clearMine() { ['hub.watch.v2', 'hub.watch.v1', 'hub.watch.del', 'hub.portfolio.v1'].forEach(k => { try { localStorage.removeItem(k); } catch (e) { } }); }
-// ---- 로그인이 필요한 기능(내 종목)을 로그인 안 한 상태에서 누르면: 로그인 안내 창
+// ---- 로그인이 필요한 기능(관심 종목)을 로그인 안 한 상태에서 누르면: 로그인 안내 창
 // pending: 로그인하고 돌아오면 이어서 할 일 (예: {watch: 'NVDA', src}) — 로그인 뒤 같은 화면으로 돌아와 자동으로 담음
 function loginGate(msg, pending) {
   let el = document.getElementById('login-gate');
@@ -159,7 +160,7 @@ function loginGate(msg, pending) {
     try { await Auth.signIn(b.dataset.p); } catch (e) { notice('로그인을 시작하지 못했어요: ' + e.message); b.textContent = b.dataset.t; el.querySelectorAll('[data-p]').forEach(x => x.disabled = false); }
   });
 }
-// 화면 전체가 로그인 전용일 때 (내 종목): 안내 카드로 대신 그림
+// 화면 전체가 로그인 전용일 때 (관심 종목): 안내 카드로 대신 그림
 function loginWall(title, lines) {
   if (window._loginPending) {   // 로그인하고 막 돌아온 참: 안내 대신 불러오는 중
     $('#app').innerHTML = `<div class="hero"><h1>${esc(title)}</h1></div><div class="card lw"><div class="skel"><i class="sk sk-h"></i><i class="sk sk-p"></i><i class="sk sk-b"></i></div></div>`;
@@ -252,7 +253,7 @@ const qs = k => new URLSearchParams(location.search).get(k);
 // 종목 주소: 검색엔진용 정적 페이지 (/hub/s/NVDA/) — Pages 배포 때 hub/static_pages.py가 만듦
 const stockUrl = t => `s/${encodeURIComponent(t)}/`;
 
-// ---- 내 종목 (로그인한 계정만 — 화면은 이 브라우저 사본으로 바로 그리고, 계정과 동기화. 로그아웃하면 사본을 지움)
+// ---- 관심 종목 (로그인한 계정만 — 화면은 이 브라우저 사본으로 바로 그리고, 계정과 동기화. 로그아웃하면 사본을 지움)
 // 기록 하나 = 공통 스냅샷(담은 순간의 5개 렌즈 값·구역·트레일 모양·주요 지표) + 출처(어느 화면·어느 부분에서 담았나)
 //   { t, at, px, why, note, src: {page, part, ...}, snap: {...} }
 const Watch = {
@@ -261,7 +262,7 @@ const Watch = {
   raw() {
     try {
       let a = JSON.parse(localStorage.getItem(this.KEY));
-      if (!a) {                                          // 예전 관심 종목(티커만) → 내 종목으로 옮김
+      if (!a) {                                          // 예전 관심 종목(티커만) → 관심 종목으로 옮김
         const old = JSON.parse(localStorage.getItem(this.OLD)) || [];
         a = old.map(t => ({ t, at: null, px: null, purpose: '', why: '예전에 담음', note: '', src: { page: 'legacy' }, snap: null }));
         localStorage.setItem(this.KEY, JSON.stringify(a));
@@ -275,7 +276,7 @@ const Watch = {
   has(t) { return this.list().includes(t); },
   add(rec) { const a = this.records().filter(r => r.t !== rec.t); a.unshift({ ...rec, u: Date.now() }); this.undel(rec.t); this.save(a); },
   update(t, patch) { const a = this.records(); const r = a.find(x => x.t === t); if (r) { Object.assign(r, patch, { u: Date.now() }); this.save(a); } return r; },
-  remove(t) { this.tomb(t, Date.now()); this.save(this.records().filter(r => r.t !== t)); if (PF.held(t)) PF.hold(t, false); },
+  remove(t) { this.tomb(t, Date.now()); this.save(this.records().filter(r => r.t !== t)); },
   toggle(t) { if (this.has(t)) { this.remove(t); return false; } this.add({ t, at: null, px: null, purpose: '', why: '', note: '', src: { page: 'unknown' }, snap: null }); return true; },
   // 지운 기록 (다른 기기에도 지워지게 동기화할 때 씀)
   DEL: 'hub.watch.del',
@@ -284,7 +285,7 @@ const Watch = {
   undel(t) { const d = this.dels(); if (t in d) { delete d[t]; try { localStorage.setItem(this.DEL, JSON.stringify(d)); } catch (e) { } } },
 };
 
-// ---- 내 종목 동기화 + 텔레그램 알림 (Cloudflare Worker + D1)
+// ---- 관심 종목 동기화 + 텔레그램 알림 (Cloudflare Worker + D1)
 // 이 브라우저의 기기코드(무작위)가 로그인 전 단계의 계정 역할. 코드는 이 브라우저에만 있고 서버엔 해시만 저장
 // 화면은 언제나 localStorage로 바로 그리고, 바뀐 것만 뒤에서 서버와 주고받음 (항목마다 수정 시각이 더 최근인 쪽이 이김)
 function notice(msg) {
@@ -338,7 +339,7 @@ const Sync = {
   async mode(m) { const j = await this.call('/api/mode', { code: this.st().code, mode: m }); this.set({ me: j.me }); return j.me; },
   async wipe() { await this.call('/api/delete', { code: this.st().code }); this.set({ code: null, me: null, at: 0 }); },
   async unlink() { const j = await this.call('/api/unlink', { code: this.st().code }); this.set({ me: j.me }); return j.me; },
-  async join(token) {                                  // 텔레그램 /기기 링크 → 이 기기를 같은 내 종목에 붙임 (이 기기 내 종목은 합쳐짐)
+  async join(token) {                                  // 텔레그램 /기기 링크 → 이 기기를 같은 관심 종목에 붙임 (이 기기 관심 종목은 합쳐짐)
     const j = await this.call('/api/join', { token });
     this.set({ code: j.code });
     return this.run();
@@ -348,14 +349,14 @@ const Sync = {
   const m = location.hash.match(/join=([\w-]+)/);
   if (m) {
     history.replaceState(null, '', location.pathname + location.search);
-    Sync.join(m[1]).then(() => notice('이 기기에 내 종목을 이어 붙였어요')).catch(e => notice('기기 추가 실패: ' + e.message));
+    Sync.join(m[1]).then(() => notice('이 기기에 관심 종목을 이어 붙였어요')).catch(e => notice('기기 추가 실패: ' + e.message));
   } else if (new URLSearchParams(location.search).has('login')) {
     // 로그인 직후는 아래 '로그인하고 돌아왔을 때'가 처리
   } else if (Auth.hint() && !Sync.on()) {
-    // 로그인은 돼 있는데 이 브라우저의 기기 연결이 없음(지워졌거나 끊김) → 다시 연결해서 계정 내 종목을 받아옴
+    // 로그인은 돼 있는데 이 브라우저의 기기 연결이 없음(지워졌거나 끊김) → 다시 연결해서 계정 관심 종목을 받아옴
     setTimeout(() => Auth.claim().then(j => { if (j) document.dispatchEvent(new CustomEvent('watch-change')); }).catch(() => { }), 300);
   } else if (Sync.on() && Date.now() - (Sync.st().at || 0) > (/watch(\.html)?$/.test(location.pathname) ? 0 : 60e3)) {
-    // 내 종목 화면은 열 때마다, 그 밖은 1분에 한 번
+    // 관심 종목 화면은 열 때마다, 그 밖은 1분에 한 번
     setTimeout(() => Sync.run().catch(() => {
       if (Auth.hint() && !Sync.on()) Auth.claim().then(j => { if (j) document.dispatchEvent(new CustomEvent('watch-change')); }).catch(() => { });   // 기기 연결이 서버에서 사라졌으면 다시 연결
     }), 300);
@@ -373,7 +374,7 @@ const PREF_SCHEMA = [
       opts: [['r1d', '1일'], ['r1w', '1주'], ['r1m', '1개월'], ['r3m', '3개월']] },
   ] },
   { id: 'alert', title: '알림', items: [
-    { k: '_watch', label: '내 종목 텔레그램 알림', desc: '연결·알림 방식·끄기는 알림 화면에서', type: 'link', href: 'watch.html?tab=alert' },
+    { k: '_watch', label: '관심 종목 텔레그램 알림', desc: '연결·알림 방식·끄기는 알림 화면에서', type: 'link', href: 'watch.html?tab=alert' },
   ] },
 ];
 const Prefs = {
@@ -410,23 +411,35 @@ const Prefs = {
   let at = 0; try { at = +localStorage.getItem(Prefs.KEY + '.at') || 0; } catch (e) { }
   if (Auth.hint() && Date.now() - at > 600e3) setTimeout(() => Prefs.sync().catch(() => { }), 500);
 })();
-// 포트폴리오 (이 브라우저 저장 + 로그인하면 계정에도 저장해 다른 기기와 같게)
+// 관심 포트폴리오 (여러 개, 종목·비중) — 이 브라우저 사본 + 로그인한 계정에 저장해 다른 기기와 같게
+//   { v:2, pfs:[{ id, name, items:[{t, w(%)}], start:'YYYY-MM-DD'(만든 날), cap(가상 시작 금액), rb:'none'|'q'(분기 리밸런싱) }], u }
 const PF = {
   KEY: 'hub.portfolio.v1',
-  load() { try { return JSON.parse(localStorage.getItem(this.KEY)) || { name: '내 포트폴리오', items: [] }; } catch (e) { return { name: '내 포트폴리오', items: [] }; } },
-  save(p, quiet) { if (!quiet) p.u = Date.now(); try { localStorage.setItem(this.KEY, JSON.stringify(p)); } catch (e) { } if (!quiet) Sync.soon(); },
-  has() { try { return !!localStorage.getItem(this.KEY); } catch (e) { return false; } },
-  // 내 종목 안에서 '보유' 표시 = 이 목록에 있음 (수량·매입가는 선택)
-  get(t) { return (this.load().items || []).find(x => x.t === t) || null; },
-  held(t) { return !!this.get(t); },
-  hold(t, on) {
-    const p = this.load(); p.items = (p.items || []).filter(x => x.t !== t);
-    if (on) { if (p.items.length >= Plan.PORTFOLIO_MAX) return false; p.items.push({ t, sh: null, cost: null }); }
-    this.save(p); document.dispatchEvent(new CustomEvent('portfolio-change')); return true;
+  load() {
+    let d = null; try { d = JSON.parse(localStorage.getItem(this.KEY)); } catch (e) { }
+    if (!d || d.v !== 2) d = { v: 2, pfs: [], u: 0, old: d && Array.isArray(d.items) && d.items.length ? d.items : undefined };   // 예전 보유 종목(수량)은 old로 남겨 두고 화면에서 옮김
+    return d;
   },
-  setPos(t, patch) { const p = this.load(), x = (p.items || []).find(y => y.t === t); if (x) { Object.assign(x, patch); this.save(p); } },
+  save(d, quiet) { if (!quiet) d.u = Date.now(); try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) { } if (!quiet) { Sync.soon(); document.dispatchEvent(new CustomEvent('portfolio-change')); } },
+  has() { try { return !!localStorage.getItem(this.KEY); } catch (e) { return false; } },
+  list() { return this.load().pfs; },
+  get(id) { return this.list().find(p => p.id === id) || null; },
+  max() { return Plan.PF_COUNT; },
+  create(name, items) {
+    const d = this.load(); if (d.pfs.length >= this.max()) return null;
+    const p = { id: Math.random().toString(36).slice(2, 8), name: name || `포트폴리오 ${d.pfs.length + 1}`, items: items || [], start: new Date().toISOString().slice(0, 10), cap: 10000, rb: 'none' };
+    d.pfs.push(p); delete d.old; this.save(d); return p;
+  },
+  update(id, patch) { const d = this.load(), p = d.pfs.find(x => x.id === id); if (p) { Object.assign(p, patch); this.save(d); } return p; },
+  remove(id) { const d = this.load(); d.pfs = d.pfs.filter(p => p.id !== id); this.save(d); },
+  addTicker(id, t) {                                   // 넣을 때 비중은 지금 종목들의 평균(합계는 계산할 때 100%로 맞춤)
+    const p = this.get(id); if (!p || p.items.some(x => x.t === t) || p.items.length >= 30) return false;
+    const w = p.items.length ? Math.round(p.items.reduce((s, x) => s + x.w, 0) / p.items.length * 10) / 10 : 100;
+    this.update(id, { items: [...p.items, { t, w }] }); return true;
+  },
+  dropOld() { const d = this.load(); if (d.old) { delete d.old; this.save(d, true); } },
 };
-function portfolioTickers() { return Auth.hint() ? (PF.load().items || []).map(x => x.t) : []; }
+function portfolioTickers() { return Auth.hint() ? [...new Set(PF.list().flatMap(p => p.items.map(x => x.t)))] : []; }
 
 // 렌즈 값 (티커맵 matrix.js LENS와 같은 정의) — 스냅샷·이유 문장용
 const LENS_SNAP = {
@@ -487,7 +500,7 @@ function watchSrc(btn) {
   if (btn && btn.closest && btn.closest('.sugg')) return { page: 'search', label: '검색창' };
   if (window.watchSrc) { try { const s = window.watchSrc(btn); if (s) return s; } catch (e) { } }
   const page = (location.pathname.split('/').pop() || 'index.html').replace('.html', '') || 'index';
-  const label = { index: '홈', ranking: '티커랭킹', earnings: '실적 달력', compare: '비교', screen: '검색', investors: '유명 투자자', portfolio: '내 종목', watch: '내 종목' }[page] || page;
+  const label = { index: '홈', ranking: '티커랭킹', earnings: '실적 달력', compare: '비교', screen: '검색', investors: '유명 투자자', portfolio: '포트폴리오', watch: '관심 종목' }[page] || page;
   const h = btn.closest('.card') && btn.closest('.card').querySelector('h3');
   return { page: page === 'earnings' ? 'earnings' : page, label, part: h ? h.textContent.trim().slice(0, 30) : '' };
 }
@@ -508,10 +521,9 @@ function watchToast(t) {
   if (!rec) return;
   let el = document.getElementById('watch-toast');
   if (!el) { el = document.createElement('div'); el.id = 'watch-toast'; document.body.appendChild(el); }
-  el.innerHTML = `<div class="wt-top"><b>★ ${esc(t)} 내 종목에 담음</b>${rec.px ? `<span class="mut">$${(+rec.px).toFixed(2)}</span>` : ''}<button class="wt-x" aria-label="닫기">×</button></div>
+  el.innerHTML = `<div class="wt-top"><b>★ ${esc(t)} 관심 종목에 담음</b>${rec.px ? `<span class="mut">$${(+rec.px).toFixed(2)}</span>` : ''}<button class="wt-x" aria-label="닫기">×</button></div>
     <label class="wt-why"><span class="mut">담은 이유</span><input value="${esc(rec.why || '')}" maxlength="80" aria-label="담은 이유"></label>
-    <div class="wt-chips"><button data-h="0" class="${PF.held(t) ? '' : 'on'}">관심</button><button data-h="1" class="${PF.held(t) ? 'on' : ''}">보유 중</button></div>
-    <div class="wt-act"><button class="wt-undo">담기 취소</button><a href="watch.html">내 종목 보기</a><button class="wt-ok">완료</button></div>`;
+    <div class="wt-act"><button class="wt-undo">담기 취소</button><a href="watch.html">관심 종목 보기</a><button class="wt-ok">완료</button></div>`;
   el.classList.add('show');
   let timer;
   const arm = () => { clearTimeout(timer); timer = setTimeout(() => el.classList.remove('show'), 7000); };
@@ -522,36 +534,31 @@ function watchToast(t) {
   el.querySelector('.wt-ok').onclick = close;
   el.querySelector('.wt-undo').onclick = () => {                  // 방금 담은 것 되돌리기
     Watch.remove(t); close();
-    document.querySelectorAll(`[data-watch="${CSS.escape(t)}"]`).forEach(x => { x.classList.remove('on'); x.setAttribute('aria-pressed', false); x.textContent = x.classList.contains('watch') ? '☆ 내 종목에 담기' : '☆'; });
+    document.querySelectorAll(`[data-watch="${CSS.escape(t)}"]`).forEach(x => { x.classList.remove('on'); x.setAttribute('aria-pressed', false); x.textContent = x.classList.contains('watch') ? '☆ 관심 종목에 담기' : '☆'; });
     document.dispatchEvent(new CustomEvent('watch-change'));
   };
   const inp = el.querySelector('.wt-why input');
   inp.onchange = () => Watch.update(t, { why: inp.value.trim() });
-  el.querySelectorAll('[data-h]').forEach(b => b.onclick = () => {
-    const on = b.dataset.h === '1';
-    if (PF.held(t) !== on && !PF.hold(t, on)) { notice(`보유 종목은 ${Plan.PORTFOLIO_MAX}개까지예요`); return; }
-    el.querySelectorAll('[data-h]').forEach(x => x.classList.toggle('on', (x.dataset.h === '1') === on));
-    document.dispatchEvent(new CustomEvent('watch-change'));
-  });
+
   arm();
 }
 
-const watchBtn = t => `<button class="btn watch ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" aria-pressed="${Watch.has(t)}">${Watch.has(t) ? '★ 내 종목' : '☆ 내 종목에 담기'}</button>`;
+const watchBtn = t => `<button class="btn watch ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" aria-pressed="${Watch.has(t)}">${Watch.has(t) ? '★ 관심 종목' : '☆ 관심 종목에 담기'}</button>`;
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-watch]');
   if (!b) return;
   e.preventDefault();
-  if (!Auth.hint()) { loginGate(`${b.dataset.watch}을(를) 내 종목에 담으려면 로그인해 주세요. 로그인하고 돌아오면 바로 담아 둘게요.`, { watch: b.dataset.watch, src: watchSrc(b) }); return; }
+  if (!Auth.hint()) { loginGate(`${b.dataset.watch}을(를) 관심 종목에 담으려면 로그인해 주세요. 로그인하고 돌아오면 바로 담아 둘게요.`, { watch: b.dataset.watch, src: watchSrc(b) }); return; }
   const t = b.dataset.watch, on = !Watch.has(t);
   if (on) captureWatch(t, b); else Watch.remove(t);
   document.querySelectorAll(`[data-watch="${CSS.escape(t)}"]`).forEach(x => {
     x.classList.toggle('on', on); x.setAttribute('aria-pressed', on);
-    if (x.classList.contains('watch')) x.textContent = on ? '★ 내 종목' : '☆ 내 종목에 담기';
+    if (x.classList.contains('watch')) x.textContent = on ? '★ 관심 종목' : '☆ 관심 종목에 담기';
     else x.textContent = on ? '★' : '☆';
   });
   document.dispatchEvent(new CustomEvent('watch-change'));
 });
-const starBtn = t => `<button class="star ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" title="내 종목에 담기" aria-label="${esc(t)} 내 종목">${Watch.has(t) ? '★' : '☆'}</button>`;
+const starBtn = t => `<button class="star ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" title="관심 종목에 담기" aria-label="${esc(t)} 관심 종목">${Watch.has(t) ? '★' : '☆'}</button>`;
 
 // ---- 종목 점검표: 점수가 아니라 '확인할 거리' — 경고를 먼저, 근거 수준을 함께
 // 반환: [{k, s: 'good'|'warn'|'info', t: 제목, d: 근거 한 줄, v: 내부 백테스트로 뒷받침된 신호(화면에는 표시하지 않고 정렬에만 씀)}]
@@ -624,7 +631,7 @@ function checklistHtml(items, compact) {
     <div class="ck-list">${rows || '<div class="small mut">경고·우호 신호 없음</div>'}</div></div>`;
 }
 
-// ---- 최근 실적 결과 (build.py er_result) — 종목 화면·내 종목에서 같이 씀
+// ---- 최근 실적 결과 (build.py er_result) — 종목 화면·관심 종목에서 같이 씀
 function erResultHtml(L, opt = {}) {
   if (!L) return '';
   const md = s => s ? `${+s.slice(5, 7)}/${+s.slice(8, 10)}` : '';
@@ -814,14 +821,14 @@ async function popularStats() {   // 최근 7일·30일 종목별 합계 {d7: {T
   if (/account(\.html)?$/.test(location.pathname)) return;              // 계정 화면은 스스로 처리
   // 마무리하는 동안 화면이 멈춘 것처럼 보이지 않게 진행 표시
   window._loginPending = true;
-  const wait = document.createElement('div'); wait.id = 'login-wait'; wait.innerHTML = '<div><i class="lw-spin"></i><b>로그인 마무리 중…</b><span>내 종목과 설정을 계정에서 불러오고 있어요</span></div>';
+  const wait = document.createElement('div'); wait.id = 'login-wait'; wait.innerHTML = '<div><i class="lw-spin"></i><b>로그인 마무리 중…</b><span>관심 종목과 설정을 계정에서 불러오고 있어요</span></div>';
   const addWait = () => document.body && document.body.appendChild(wait);
   if (document.body) addWait(); else document.addEventListener('DOMContentLoaded', addWait);
   Auth.claim().then(() => Auth.me()).then(me => {
     wait.remove(); window._loginPending = false;
     const msg = isNew ? `가입을 환영해요${me && me.user.name ? ', ' + me.user.name + '님' : ''}!` : `로그인했어요${me && me.user.name ? ' · ' + me.user.name : ''}`;
     let pend = null; try { pend = JSON.parse(sessionStorage.getItem('hub.pending')); } catch (e) { }
-    if (document.querySelector('.lw') && !(pend && pend.watch)) {   // 로그인 안내를 보여 주던 화면(내 종목)은 내용으로 다시 그림
+    if (document.querySelector('.lw') && !(pend && pend.watch)) {   // 로그인 안내를 보여 주던 화면(관심 종목)은 내용으로 다시 그림
       try { sessionStorage.setItem('hub.notice', msg); } catch (e) { }
       location.reload(); return;
     }
@@ -829,7 +836,7 @@ async function popularStats() {   // 최근 7일·30일 종목별 합계 {d7: {T
     document.querySelectorAll('header .acct').forEach(a => a.outerHTML = acctBtn());
     notice(msg);
     if (pend && pend.watch && !Watch.has(pend.watch)) {           // 로그인 전에 누른 ☆ 이어서 담기
-      captureWatch(pend.watch, null, pend.src).then(() => { if (document.querySelector('.lw')) { location.reload(); return; } }).then(() => document.querySelectorAll(`[data-watch="${CSS.escape(pend.watch)}"]`).forEach(x => { x.classList.add('on'); x.setAttribute('aria-pressed', true); x.textContent = x.classList.contains('watch') ? '★ 내 종목' : '★'; }));
+      captureWatch(pend.watch, null, pend.src).then(() => { if (document.querySelector('.lw')) { location.reload(); return; } }).then(() => document.querySelectorAll(`[data-watch="${CSS.escape(pend.watch)}"]`).forEach(x => { x.classList.add('on'); x.setAttribute('aria-pressed', true); x.textContent = x.classList.contains('watch') ? '★ 관심 종목' : '★'; }));
     }
     document.dispatchEvent(new CustomEvent('watch-change')); document.dispatchEvent(new CustomEvent('portfolio-change')); document.dispatchEvent(new CustomEvent('sync-change'));
   }).catch(e => { wait.remove(); window._loginPending = false; if (document.querySelector('.lw .skel')) location.reload(); notice('로그인 마무리 중 문제가 생겼어요: ' + e.message); });

@@ -162,15 +162,35 @@ async function popular(req, env, ctx) {
   return res;
 }
 
-// ---- 포트폴리오: 문서 통째로 (보유 종목·수량·평균단가), 수정 시각이 더 최근인 쪽이 이김
+// ---- 포트폴리오: 문서 통째로, 수정 시각이 더 최근인 쪽이 이김
+// v2 = 관심 포트폴리오 여러 개 { v:2, pfs:[{id, name, items:[{t, w}], start, cap, rb}], u } — 개수는 PF_MAX(기본 3)까지
+function pfDoc(pf, env) {
+  const max = Math.max(1, Math.min(20, +env.PF_MAX || 3)), day = /^\d{4}-\d{2}-\d{2}$/;
+  const pfs = (Array.isArray(pf.pfs) ? pf.pfs : []).slice(0, max).filter(p => p && typeof p === 'object').map(p => ({
+    id: String(p.id || rnd(6)).replace(/[^A-Za-z0-9]/g, '').slice(0, 12) || rnd(6),
+    name: String(p.name || '포트폴리오').slice(0, 30),
+    items: (Array.isArray(p.items) ? p.items : []).slice(0, 30).filter(x => x && TICK.test(x.t)).map(x => ({ t: x.t, w: Math.max(0, Math.min(100, +x.w || 0)) })),
+    start: day.test(p.start) ? p.start : null,
+    cap: Math.max(100, Math.min(1e9, +p.cap || 10000)),
+    rb: p.rb === 'q' ? 'q' : 'none',
+  }));
+  return { v: 2, pfs, u: Math.floor(+pf.u) };
+}
 async function syncPf(env, uid, pf) {
   const cur = await env.DB.prepare('SELECT data, u FROM portfolio WHERE uid=?').bind(uid).first();
-  if (pf && Array.isArray(pf.items) && (+pf.u || 0) > (cur ? cur.u : -1)) {
-    const doc = { name: String(pf.name || '내 포트폴리오').slice(0, 40), items: pf.items.slice(0, 200).filter(x => x && TICK.test(x.t)).map(x => ({ t: x.t, sh: +x.sh || 0, cost: x.cost == null ? null : +x.cost })), u: Math.floor(+pf.u) };
+  if (pf && pf.v === 2 && (+pf.u || 0) > (cur ? cur.u : -1)) {
+    const doc = pfDoc(pf, env);
     await env.DB.prepare('INSERT INTO portfolio (uid, data, u) VALUES (?,?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data, u=excluded.u').bind(uid, JSON.stringify(doc), doc.u).run();
     return doc;
   }
   return cur ? JSON.parse(cur.data) : null;
+}
+// 알림 대상: 관심 종목 + 포트폴리오 종목 (포트폴리오 이름을 붙여서)
+function pfTickers(data) {
+  let d = null; try { d = JSON.parse(data); } catch (e) { }
+  const out = {};
+  if (d && d.v === 2) for (const p of d.pfs || []) for (const x of p.items || []) if (x.w > 0) (out[x.t] = out[x.t] || []).push(p.name);
+  return out;
 }
 
 // ---- 브라우저용 API
@@ -375,10 +395,13 @@ async function internal(req, env, path) {
     await env.DB.prepare('DELETE FROM auth_log WHERE at < ?').bind(Date.now() - 365 * DAY).run().catch(() => { });
     await env.DB.prepare('DELETE FROM alert_log WHERE at < ?').bind(Date.now() - 90 * DAY).run().catch(() => { });
     await env.DB.prepare('DELETE FROM admin_audit WHERE at < ?').bind(Date.now() - 730 * DAY).run().catch(() => { });   // 보안 기록은 1년 보관 (매일 아침 알림 때 정리)                    // 알림 받을 사용자와 후보함 (필요한 필드만)
-    const rows = (await env.DB.prepare("SELECT u.uid, w.data FROM users u JOIN watch w ON w.uid=u.uid WHERE u.chat_id IS NOT NULL AND u.mode<>'off'").all()).results;
+    const rows = (await env.DB.prepare("SELECT u.uid, w.data, p.data pdata FROM users u LEFT JOIN watch w ON w.uid=u.uid LEFT JOIN portfolio p ON p.uid=u.uid WHERE u.chat_id IS NOT NULL AND u.mode<>'off'").all()).results;
     const users = rows.map(r => {
-      let a = []; try { a = JSON.parse(r.data); } catch (e) { }
-      return { uid: r.uid, items: live(a).map(d => ({ t: d.t, purpose: d.purpose || '', at: d.at || null, px: d.px ?? null })) };
+      let a = []; try { a = JSON.parse(r.data || '[]'); } catch (e) { }
+      const pt = r.pdata ? pfTickers(r.pdata) : {};
+      const items = live(a).map(d => ({ t: d.t, purpose: d.purpose || '', at: d.at || null, px: d.px ?? null, pf: pt[d.t] || [] }));
+      for (const t of Object.keys(pt)) if (!items.some(x => x.t === t)) items.push({ t, purpose: '', at: null, px: null, pf: pt[t] });
+      return { uid: r.uid, items };
     }).filter(u => u.items.length);
     return json({ users });
   }
