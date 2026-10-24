@@ -46,7 +46,8 @@ er = pd.merge_asof(er, k8, left_on="date", right_on="kdate", by="t",
 has8 = er["kdate"].notna() & (er["timing_8k"] != "INTRA")
 er.loc[has8, "date"] = er.loc[has8, "kdate"]
 er["timing"] = np.where(has8, er["timing_8k"], er["timing_yf"])
-er.loc[er["timing_8k"] == "INTRA", "timing"] = "UNK"   # 장중 공시는 반응일 애매 → 제외
+# 장중 접수 8-K(은행 등: 07시 보도자료 뒤 오전에 8-K 접수)는 발표 시각 근거가 못 됨 → yfinance 시각 사용.
+# yfinance 시각도 없으면 UNK (np.where 결과 그대로).
 er["timing_src"] = np.select([has8, er["timing_yf"] != "UNK"], ["8k", "yf"], "none")
 er = er.sort_values(["t", "date"]).drop_duplicates(["t", "date"], keep="first").reset_index(drop=True)
 both = er["kdate"].notna() & (er["timing_yf"] != "UNK") & (er["timing_8k"] != "INTRA")
@@ -73,8 +74,8 @@ for t, g in er.groupby("t"):
     px = load_px(t)
     if px is None or len(px) < 30:
         continue
-    px = px.reindex(cal).ffill(limit=0)
-    ret = px["Close"].pct_change()
+    px = px.reindex(cal)
+    ret = px["Close"].pct_change(fill_method=None)
     for _, r in g.iterrows():
         if r["timing"] == "UNK":
             recs.append((r.name, pd.NaT, np.nan, np.nan, None)); continue

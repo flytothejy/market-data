@@ -1,1 +1,2 @@
 run_id,date,task,hypothesis,signal,variant,target,cell,n,metric,value,baseline,diff,p,note
+T1-000,2026-10-24,1,기본 비율(신호 아님),none,none,Y1/Y3,전체,74065,beat_rate,0.679,,,,"74,065건/1,025종목, 반응 측정 70,975건; 상회→초과반응 +1.4%·상승 59%, 하회→-2.2%·상승 33%; 4칸 모두 상회율 67.8~67.9%"

@@ -4,3 +4,4 @@ data/raw/
 *.parquet
 __pycache__/
 data/*.log
+data/events.csv
