@@ -110,6 +110,7 @@ function mountChart(id, d, isEtf) {
     seg.append(b); if (k === '1년') b.click(); });
 }
 
+const hist8S = er => (er && er.hist || []).slice(-8).some(x => x[2] != null) ? ' · EPS 서프라이즈' : '';
 function headBlock(m, extraTags) {
   const tags = [m.sec ? secKo(m.sec) : null, m.ind, ...(m.idx ? m.idx.split(',') : []), ...extraTags].filter(Boolean);
   return `<div class="hero"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h1>${esc(m.t)}</h1><span class="mut" style="font-size:17px">${m.ko ? `<b style="color:var(--ink);font-weight:650">${esc(m.ko)}</b> · ` : ''}${esc(m.n)}</span></div>
@@ -158,11 +159,13 @@ async function renderStock(U, d, P) {
   if (er.next || (er.hist && er.hist.length)) {
     const hist = (er.hist || []).slice(-8);
     const mx = Math.max(0.05, ...hist.map(x => Math.abs(x[1])));
+    const hasS = hist.some(x => x[2] != null);
     const bars8 = hist.length ? `<div style="display:flex;align-items:center;gap:4px;height:120px;position:relative;border-bottom:0">
-        ${hist.map(([dd, v]) => `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;height:100%" title="${dd} ${fmt(v, 'pct', { sign: true })}">
+        ${hist.map(([dd, v, sp]) => `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;height:100%" title="${dd} 주가 ${fmt(v, 'pct', { sign: true })}${sp != null ? ' · EPS 서프라이즈 ' + fmt(sp, 'pct', { sign: true }) : ''}">
           <div style="height:50%;display:flex;align-items:flex-end">${v > 0 ? `<i style="display:block;width:100%;height:${v / mx * 100}%;background:var(--up);border-radius:3px 3px 0 0"></i>` : ''}</div>
           <div style="height:50%;display:flex;align-items:flex-start;border-top:1px solid var(--line)">${v < 0 ? `<i style="display:block;width:100%;height:${-v / mx * 100}%;background:var(--dn);border-radius:0 0 3px 3px"></i>` : ''}</div></div>`).join('')}</div>
-      <div style="display:flex;gap:4px;font-size:11px;color:var(--faint)">${hist.map(([dd, v]) => `<span style="flex:1;text-align:center"><span class="${cls(v)}">${fmt(v, 'pct', { sign: true })}</span><br>${dd.slice(2, 7).replace('-', '.')}</span>`).join('')}</div>` : '';
+      <div class="er-lab">${hist.map(([dd, v, sp]) => `<span><span class="${cls(v)}">${fmt(v, 'pct', { sign: true })}</span>${hasS ? `<em class="${sp == null ? 'faint' : sp > 0 ? 'up' : sp < 0 ? 'dn' : 'mut'}">${sp == null ? '-' : fmt(sp, 'pct', { sign: true })}</em>` : ''}<br>${dd.slice(2, 7).replace('-', '.')}</span>`).join('')}</div>
+      ${hasS ? '<div class="small faint">위 = 다음 날 주가 · 아래 = EPS 서프라이즈(예상 대비 실제, 최근 4분기만)</div>' : ''}` : '';
     const ratio = er.imp && er.avg ? er.imp / er.avg : null;
     const verdict = ratio == null ? '' : ratio > 1.5 ? '옵션 시장은 이번 발표에서 평소보다 큰 움직임을 예상하고 있어요' : ratio < 0.8 ? '옵션 시장은 이번 발표에서 평소보다 작은 움직임을 예상하고 있어요' : '옵션 시장의 예상은 과거 평균과 비슷한 수준이에요';
     erCard = card('실적 발표', '과거 발표 때 주가 반응과 옵션 시장이 예상하는 이번 변동폭',
@@ -182,7 +185,7 @@ async function renderStock(U, d, P) {
   const consKeys = ['c_n', 'c_up', 'c_dn', 'c_ratio', 'c_chg90', 'c_eps_g', 'c_rev_g', 'c_fpe', 'c_upside', 'c_buy', 'c_surp', 'c_beats', 'c_next'];
   const fakeHist = `<div style="height:140px;background:linear-gradient(180deg,transparent 40%,var(--soft));border-radius:10px"></div>`;
   h += sec('cons', 'cons', '컨센서스', '애널리스트 전망과 그 변화',
-    erRes + erCard + (m.c_n ? `<div class="card cons-ck"><div class="cc-head"><b id="cc-title">실적 발표 때 주가 변동</b><button class="btn" id="cc-reset" style="display:none;min-height:28px;padding:2px 10px;font-size:12.5px">← 실적 반응</button></div><div id="cons-chart">${erBars || '<div class="mut s13">실적 발표 이력이 없어요</div>'}</div>
+    erRes + erCard + (m.c_n ? `<div class="card cons-ck"><div class="cc-head"><b id="cc-title">실적 발표 때 주가 변동${hist8S(er)}</b><button class="btn" id="cc-reset" style="display:none;min-height:28px;padding:2px 10px;font-size:12.5px">← 실적 반응</button></div><div id="cons-chart">${erBars || '<div class="mut s13">실적 발표 이력이 없어요</div>'}</div>
       ${kvGrid(m, consKeys, F)}<div class="small faint">숫자 칸을 누르면 같은 산업 종목과 나란히 비교한 차트로 바뀌어요</div></div>` : card('', '', `<div class="mut s13">이 종목은 애널리스트 컨센서스 자료가 없어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
     (!isPro ? '' : card('전망치 일별 이력', '내년 EPS 전망과 30일 상향·하향 건수를 날마다 쌓은 기록',
         P.cons_hist ? `<div class="small mut">내년 EPS 전망 ($)</div><div class="chart sm" id="ch-eps"></div><div class="small mut">30일 상향(위) · 하향(아래) 건수</div><div class="chart sm" id="ch-rev" style="height:130px"></div>
@@ -260,42 +263,59 @@ async function renderStock(U, d, P) {
     const show = (v, t) => v == null ? '-' : t === 'pct' ? fmt(v, 'pct') : t === 'eps' ? '$' + v.toFixed(2) : fmtUsd(v);
     let curK = 'annual', selM = 4;
     const chart = rows => {
-      // 화면 폭에 맞춘 픽셀 좌표 (값 글자를 차트 위에 바로 씀)
+      // 화면 폭에 맞춘 픽셀 좌표 — 값과 직전 기간 대비 변화를 차트 위에 바로 씀
       const [lab, typ, get] = MET[selM];
-      const Wd = Math.max(300, ($('#fin-box') || {}).clientWidth || 600), Ht = 210, top = 22, bot = 22, n = rows.length, cw = Wd / n;
-      const rev = rows.map(r => r.rev || 0), sv = rows.map(get), sameAxis = typ === 'usd' || selM === 0;
+      const Wd = Math.max(300, ($('#fin-box') || {}).clientWidth || 600), Ht = 236, top = 34, bot = 22, n = rows.length, cw = Wd / n;
+      const rev = rows.map(r => r.rev ?? null), sv = rows.map(get), sameAxis = typ === 'usd' || selM === 0;
       const short = (v, t) => v == null ? '' : t === 'pct' ? (v * 100).toFixed(Math.abs(v) < 0.1 ? 1 : 0) + '%' : t === 'eps' ? '$' + v.toFixed(2) : fmtUsd(v).replace('$', '');
-      const fs = Wd < 420 ? 9.5 : 11;
+      const chg = (arr, j, t) => {                       // 직전 기간 대비 (비율은 %p, 나머지는 %)
+        if (j === 0 || arr[j] == null || arr[j - 1] == null) return '';
+        if (t === 'pct') { const d = (arr[j] - arr[j - 1]) * 100; return Math.abs(d) < 0.05 ? '' : `${d > 0 ? '+' : ''}${d.toFixed(1)}%p`; }
+        if (!arr[j - 1] || arr[j - 1] < 0) return '';
+        const c = arr[j] / arr[j - 1] - 1; return `${c > 0 ? '+' : ''}${(c * 100).toFixed(Math.abs(c) < 0.1 ? 1 : 0)}%`;
+      };
+      const fs = Wd < 420 ? 9.5 : 11, fs2 = fs - 1.5;
+      const lbl = (x, y, v, t, c, col = 'var(--ink)', up = true) => `<text x="${x.toFixed(1)}" y="${(up ? y - (c ? 15 : 5) : y + 12).toFixed(1)}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="${col}">${short(v, t)}</text>`
+        + (c ? `<text x="${x.toFixed(1)}" y="${(up ? y - 4 : y + 23).toFixed(1)}" text-anchor="middle" font-size="${fs2}" fill="${c.startsWith('-') ? css('--dn') : css('--up')}">${c}</text>` : '');
       let g = '';
       if (sameAxis) {
-        const vals = selM === 0 ? rev : [...rev, ...sv.map(v => v || 0)];
-        const hi = Math.max(0, ...vals), lo = Math.min(0, ...vals), rg = (hi - lo) || 1, y = v => top + (hi - v) / rg * (Ht - top - bot), y0 = y(0);
+        const vals = selM === 0 ? rev.map(v => v || 0) : [...rev.map(v => v || 0), ...sv.map(v => v || 0)];
+        const hi = Math.max(0, ...vals), lo = Math.min(0, ...vals), rg = (hi - lo) || 1, y = v => top + (hi - v) / rg * (Ht - top - bot - (lo < 0 ? 24 : 0)), y0 = y(0);
         rows.forEach((r, j) => {
-          const two = selM !== 0, bw = cw * (two ? 0.34 : 0.56), x0 = j * cw + cw * (two ? 0.14 : 0.22);
+          const two = selM !== 0, bw = cw * (two ? 0.36 : 0.56), x0 = j * cw + cw * (two ? 0.12 : 0.22);
           const bar = (v, x, col) => `<rect x="${x.toFixed(1)}" y="${Math.min(y(v), y0).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, Math.abs(y(v) - y0)).toFixed(1)}" fill="${col}" rx="2"/>`;
-          if (!two) { g += bar(rev[j], x0, css('--accent')) + `<text x="${(x0 + bw / 2).toFixed(1)}" y="${(rev[j] >= 0 ? y(rev[j]) - 5 : y(rev[j]) + 12).toFixed(1)}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--ink)">${short(rev[j], 'usd')}</text>`; return; }
-          g += bar(rev[j], x0, css('--line'));
-          if (sv[j] != null) {
-            const x1 = x0 + bw + cw * 0.04;
-            g += bar(sv[j], x1, css('--accent')) + `<text x="${(x1 + bw / 2).toFixed(1)}" y="${(sv[j] >= 0 ? y(sv[j]) - 5 : y(sv[j]) + 12).toFixed(1)}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--ink)">${short(sv[j], typ)}</text>`;
+          if (rev[j] != null) {
+            g += bar(rev[j], x0, two ? css('--line') : css('--accent'));
+            g += lbl(x0 + bw / 2, y(rev[j]), rev[j], 'usd', chg(rev, j, 'usd'), two ? 'var(--muted)' : 'var(--ink)');
+          }
+          if (two && sv[j] != null) {
+            const x1 = x0 + bw + cw * 0.04, neg = sv[j] < 0;
+            g += bar(sv[j], x1, neg ? css('--dn') : css('--accent')) + lbl(x1 + bw / 2, y(sv[j]), sv[j], typ, chg(sv, j, typ), 'var(--ink)', !neg);
           }
         });
-        g += `<line x1="0" x2="${Wd}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="var(--muted)" stroke-width="1"/>`;
+        if (lo < 0) g += `<line x1="0" x2="${Wd}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
       } else {
-        // 비율·EPS: 매출은 옅은 막대(배경), 지표는 점 + 값, 0 기준선
-        const rh = Math.max(...rev.map(Math.abs)) || 1;
-        rows.forEach((r, j) => { const h = Math.abs(rev[j]) / rh * (Ht - top - bot) * 0.9; g += `<rect x="${(j * cw + cw * 0.25).toFixed(1)}" y="${(Ht - bot - h).toFixed(1)}" width="${(cw * 0.5).toFixed(1)}" height="${h.toFixed(1)}" fill="${css('--line2')}" rx="2"/>`; });
+        // 비율·EPS: 매출은 옅은 막대(값은 막대 안 아래쪽), 지표는 선 + 점 + 값 (0 아래는 파란색)
+        const rh = Math.max(...rev.map(v => Math.abs(v || 0))) || 1;
+        rows.forEach((r, j) => {
+          if (rev[j] == null) return;
+          const h = Math.abs(rev[j]) / rh * (Ht - top - bot) * 0.92, x = j * cw + cw * 0.22, w = cw * 0.56;
+          g += `<rect x="${x.toFixed(1)}" y="${(Ht - bot - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${css('--line2')}" rx="2"/>`
+            + (h > 16 ? `<text x="${(x + w / 2).toFixed(1)}" y="${(Ht - bot - 5).toFixed(1)}" text-anchor="middle" font-size="${fs2}" fill="var(--faint)">${short(rev[j], 'usd')}</text>` : '');
+        });
         const ok = sv.map((v, j) => [v, j]).filter(([v]) => v != null);
         if (ok.length) {
-          const hi = Math.max(0, ...ok.map(x => x[0])), lo = Math.min(0, ...ok.map(x => x[0])), rg = (hi - lo) || 1;
-          const y = v => top + 6 + (hi - v) / rg * (Ht - top - bot - 18), y0 = y(0);
-          g += `<line x1="0" x2="${Wd}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/><text x="2" y="${(y0 - 3).toFixed(1)}" font-size="9.5" fill="var(--faint)">0</text>`;
-          g += ok.map(([v, j]) => { const cx = j * cw + cw / 2, cy = y(v), col = v < 0 ? css('--dn') : css('--accent');
-            return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="${col}" stroke="var(--card)" stroke-width="1.5"/><text x="${cx.toFixed(1)}" y="${(cy - 9).toFixed(1)}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--ink)">${short(v, typ)}</text>`; }).join('');
+          const hi = Math.max(...ok.map(x => x[0])), lo = Math.min(...ok.map(x => x[0])), rg = (hi - lo) || Math.abs(hi) || 1;
+          const y = v => top + 4 + (hi - v) / rg * (Ht - top - bot - 40);
+          const P = ok.map(([v, j]) => [j * cw + cw / 2, y(v), v, j]);
+          for (let i = 1; i < P.length; i++) if (P[i][3] === P[i - 1][3] + 1)
+            g += `<line x1="${P[i - 1][0].toFixed(1)}" y1="${P[i - 1][1].toFixed(1)}" x2="${P[i][0].toFixed(1)}" y2="${P[i][1].toFixed(1)}" stroke="${css('--accent')}" stroke-width="2" stroke-linecap="round"/>`;
+          g += P.map(([cx, cy, v, j]) => { const col = v < 0 ? css('--dn') : css('--accent');
+            return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="${col}" stroke="var(--card)" stroke-width="1.5"/>` + lbl(cx, cy - 2, v, typ, chg(sv, j, typ), v < 0 ? css('--dn') : 'var(--ink)'); }).join('');
         }
       }
       g += rows.map((r, j) => `<text x="${(j * cw + cw / 2).toFixed(1)}" y="${Ht - 6}" text-anchor="middle" font-size="${fs}" fill="var(--faint)">${r.end.slice(2, 7).replace('-', '.')}</text>`).join('');
-      return `<div style="display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap">${selM ? `<span><span class="cat-dot" style="background:${css(sameAxis ? '--line' : '--line2')}"></span>매출${sameAxis ? '' : ' (배경)'}</span>` : ''}<span><span class="cat-dot" style="background:${css('--accent')}"></span>${lab}</span><span class="faint" style="margin-left:auto">아래 표에서 줄을 누르면 바뀌어요</span></div>
+      return `<div style="display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap">${selM ? `<span><span class="cat-dot" style="background:${css(sameAxis ? '--line' : '--line2')}"></span>매출</span>` : ''}<span><span class="cat-dot" style="background:${css('--accent')}"></span>${lab}</span><span class="faint">작은 숫자 = 직전 기간 대비</span><span class="faint" style="margin-left:auto">아래 표에서 줄을 누르면 바뀌어요</span></div>
         <svg viewBox="0 0 ${Wd} ${Ht}" width="100%" height="${Ht}" style="display:block;overflow:visible">${g}</svg>`;
     };
     const draw = k => {
@@ -320,18 +340,49 @@ async function renderStock(U, d, P) {
     const erHtml = cc.innerHTML, G = peerGroup(m);
     const CHG = new Set(['c_ratio', 'c_chg90', 'c_eps_g', 'c_rev_g', 'c_upside', 'c_surp']);
     const shw = (k, v) => v == null ? '-' : F[k].fmt === 'pct' ? fmt(v, 'pct', CHG.has(k) ? { sign: true } : {}) : fmt(v, F[k].fmt);
+    // 같은 산업 비교: 40개 이하면 전부, 넘으면 위 10 · 이 종목 앞뒤 5 · 아래 5 (순위는 전체 기준)
+    const pickRows = (xs, val) => {
+      const all = xs.slice().sort((a, b) => val(b) - val(a));
+      if (all.length <= 40) return all.map((r, i) => ({ r, i }));
+      const me = all.findIndex(r => r.t === m.t), keep = new Set();
+      for (let i = 0; i < 10; i++) keep.add(i);
+      for (let i = me - 5; i <= me + 5; i++) if (i >= 0 && i < all.length) keep.add(i);
+      for (let i = all.length - 5; i < all.length; i++) keep.add(i);
+      return [...keep].sort((a, b) => a - b).map(i => ({ r: all[i], i }));
+    };
+    const gapRow = '<div class="pc-gap">⋯</div>';
     const peerChart = k => {
       if (!G) return '<div class="mut s13">비교할 같은 산업 종목이 부족해요</div>';
-      let xs = G.rows.filter(r => typeof r[k] === 'number' && isFinite(r[k]));
+      const xs = G.rows.filter(r => typeof r[k] === 'number' && isFinite(r[k]));
       if (xs.length < 3) return '<div class="mut s13">이 지표는 비교할 종목이 부족해요</div>';
-      const med = xs.map(r => r[k]).sort((a, b) => a - b)[Math.floor(xs.length / 2)];
-      let pick = xs.slice().sort((a, b) => (b.mcap || 0) - (a.mcap || 0)).slice(0, 14);
-      if (!pick.some(r => r.t === m.t) && typeof m[k] === 'number') pick.push(xs.find(r => r.t === m.t) || m);
-      pick.sort((a, b) => b[k] - a[k]);
-      const hi = Math.max(0, ...pick.map(r => r[k])), lo = Math.min(0, ...pick.map(r => r[k])), rg = (hi - lo) || 1, zp = (-lo) / rg * 100;
-      return `<div class="pc">${pick.map(r => { const v = r[k], w = Math.abs(v) / rg * 100, me = r.t === m.t;
-        return `<a class="pc-r ${me ? 'me' : ''}" href="${stockUrl(r.t)}"><b>${esc(r.t)}</b><span class="pc-t"><i style="left:${(v >= 0 ? zp : zp - w).toFixed(1)}%;width:${Math.max(0.8, w).toFixed(1)}%;background:${me ? 'var(--accent)' : v < 0 ? 'color-mix(in srgb,var(--dn) 55%,var(--card))' : 'color-mix(in srgb,var(--ink) 30%,var(--card))'}"></i>${lo < 0 ? `<em style="left:${zp.toFixed(1)}%"></em>` : ''}</span><span class="pc-v">${shw(k, v)}</span></a>`; }).join('')}</div>
-        <div class="small faint">${esc(G.name)} ${xs.length}종목 중 시가총액 상위 ${Math.min(14, xs.length)}개${pick.length > 14 ? ' + 이 종목' : ''} · 중간값 ${shw(k, med)}</div>`;
+      const vals = xs.map(r => r[k]).sort((a, b) => a - b), med = vals[Math.floor(vals.length / 2)];
+      const rows = pickRows(xs, r => r[k]);
+      const hi = Math.max(0, ...rows.map(x => x.r[k])), lo = Math.min(0, ...rows.map(x => x.r[k])), rg = (hi - lo) || 1, zp = (-lo) / rg * 100;
+      const myV = typeof m[k] === 'number' ? m[k] : null, myP = myV == null ? null : (myV - lo) / rg * 100;
+      let prev = -1, out = '';
+      for (const { r, i } of rows) {
+        if (prev >= 0 && i > prev + 1) out += gapRow; prev = i;
+        const v = r[k], w = Math.abs(v) / rg * 100, me = r.t === m.t;
+        out += `<a class="pc-r ${me ? 'me' : ''}" href="${stockUrl(r.t)}"><span class="pc-n">${i + 1}</span><b>${esc(r.t)}</b><span class="pc-t"><i style="left:${(v >= 0 ? zp : zp - w).toFixed(1)}%;width:${Math.max(0.8, w).toFixed(1)}%;background:${me ? 'var(--accent)' : v < 0 ? 'color-mix(in srgb,var(--dn) 55%,var(--card))' : 'color-mix(in srgb,var(--ink) 30%,var(--card))'}"></i>${lo < 0 ? `<em style="left:${zp.toFixed(1)}%"></em>` : ''}${myP != null ? `<s style="left:${myP.toFixed(1)}%"></s>` : ''}</span><span class="pc-v">${shw(k, v)}</span></a>`;
+      }
+      const rank = 1 + xs.filter(r => r[k] > (myV ?? -Infinity)).length;
+      return `<div class="pc">${out}</div><div class="small faint">${esc(G.name)} ${xs.length}종목 · ${m.t} ${myV != null ? `${rank}위` : '자료 없음'} · 중간값 ${shw(k, med)} · 점선 = ${esc(m.t)} 수준</div>`;
+    };
+    // 애널리스트 수: 투자의견 분포(매수·보유·매도)로 나눈 막대
+    const recChart = () => {
+      if (!G) return '<div class="mut s13">비교할 같은 산업 종목이 부족해요</div>';
+      const tot = r => (r.c_rb || 0) + (r.c_rh || 0) + (r.c_rs || 0);
+      const xs = G.rows.filter(r => tot(r) > 0);
+      if (xs.length < 3 || !tot(m)) return '<div class="mut s13">투자의견 분포 자료가 아직 없어요 (다음 데이터 갱신부터)</div>';
+      const rows = pickRows(xs, tot), mx = Math.max(...rows.map(x => tot(x.r))), myP = tot(m) / mx * 100;
+      let prev = -1, out = '';
+      for (const { r, i } of rows) {
+        if (prev >= 0 && i > prev + 1) out += gapRow; prev = i;
+        const n = tot(r), seg = (c, col) => c ? `<i style="position:static;display:inline-block;height:100%;width:${(c / mx * 100).toFixed(2)}%;background:${col}"></i>` : '';
+        out += `<a class="pc-r ${r.t === m.t ? 'me' : ''}" href="${stockUrl(r.t)}"><span class="pc-n">${i + 1}</span><b>${esc(r.t)}</b><span class="pc-t pc-st">${seg(r.c_rb, 'var(--up)')}${seg(r.c_rh, 'color-mix(in srgb,var(--ink) 25%,var(--card))')}${seg(r.c_rs, 'var(--dn)')}<s style="left:${myP.toFixed(1)}%"></s></span><span class="pc-v">${r.c_rb || 0}·${r.c_rh || 0}·${r.c_rs || 0}</span></a>`;
+      }
+      return `<div class="leg-row"><span><i style="background:var(--up)"></i>매수</span><span><i style="background:color-mix(in srgb,var(--ink) 25%,var(--card))"></i>보유</span><span><i style="background:var(--dn)"></i>매도</span></div><div class="pc">${out}</div>
+        <div class="small faint">${esc(G.name)} · 막대 길이 = 의견을 낸 애널리스트 수 · 오른쪽 숫자 = 매수·보유·매도 · 점선 = ${esc(m.t)} 수준</div>`;
     };
     const box = cc.closest('.card');
     box.querySelectorAll('.kv>div[data-k]').forEach(el => {
@@ -340,11 +391,11 @@ async function renderStock(U, d, P) {
       el.onclick = e => {
         if (e.target.closest('.tip')) return;
         box.querySelectorAll('.kv>div').forEach(x => x.classList.toggle('on', x === el));
-        $('#cc-title').textContent = `${F[k].label} — 같은 산업과 비교`; $('#cc-reset').style.display = '';
-        cc.innerHTML = peerChart(k);
+        $('#cc-title').textContent = k === 'c_n' ? '투자의견 분포 — 같은 산업과 비교' : `${F[k].label} — 같은 산업과 비교`; $('#cc-reset').style.display = '';
+        cc.innerHTML = k === 'c_n' ? recChart() : peerChart(k);
       };
     });
-    $('#cc-reset').onclick = () => { cc.innerHTML = erHtml; $('#cc-title').textContent = '실적 발표 때 주가 변동'; $('#cc-reset').style.display = 'none'; box.querySelectorAll('.kv>div').forEach(x => x.classList.remove('on')); };
+    $('#cc-reset').onclick = () => { cc.innerHTML = erHtml; $('#cc-title').textContent = '실적 발표 때 주가 변동' + hist8S(er); $('#cc-reset').style.display = 'none'; box.querySelectorAll('.kv>div').forEach(x => x.classList.remove('on')); };
   }
   if (isPro && P.cons_hist) {
     const h2 = P.cons_hist;

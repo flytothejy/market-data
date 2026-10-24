@@ -370,3 +370,14 @@ tr.xr{display:none}
 #login-wait span{font-size:12.5px;color:var(--muted)}
 .lw-spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:lwspin .8s linear infinite;margin-bottom:4px}
 @keyframes lwspin{to{transform:rotate(360deg)}}
+
+.pc-r{grid-template-columns:22px 52px minmax(0,1fr) 64px}
+.pc-n{color:var(--faint);font-size:11px;text-align:right;font-variant-numeric:tabular-nums}
+.pc-t s{position:absolute;top:-3px;bottom:-3px;width:0;border-left:1.5px dashed var(--accent);opacity:.9}
+.pc-st{display:flex;align-items:stretch;background:transparent}
+.pc-gap{color:var(--faint);font-size:12px;padding-left:80px;line-height:1}
+.leg-row{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.leg-row i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.er-lab{display:flex;gap:4px;font-size:11px;color:var(--faint)}
+.er-lab>span{flex:1;text-align:center;line-height:1.35}
+.er-lab em{display:block;font-style:normal;font-size:10.5px}
