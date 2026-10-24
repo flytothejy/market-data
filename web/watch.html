@@ -137,6 +137,10 @@ document.addEventListener('sync-change', alertPanel);
 document.addEventListener('watch-change', () => { if (U && !document.activeElement.matches('input,textarea')) render(); });
 
 function render() {
+  if (qs('tab') === 'alert') {                            // 알림 탭: 텔레그램 알림 연결·설정만
+    $('#app').innerHTML = `<div class="hero"><h1>알림</h1><p>후보함 종목의 새 소식을 매일 아침 받아요</p></div><div class="card" id="alert"></div>`;
+    alertPanel(); return;
+  }
   const all = Watch.records();
   let rs = all.filter(r => !st.p || (st.p === 'none' ? !r.purpose : r.purpose === st.p));
   const ret = rec => { const r = U.rows.find(x => x.t === rec.t); return rec.px && r && r.px ? r.px / rec.px - 1 : null; };
@@ -144,8 +148,7 @@ function render() {
   const rets = all.map(ret).filter(v => v != null), avg = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
   const nwarn = all.filter(rec => changes(rec, U.rows.find(x => x.t === rec.t)).warn.length).length;
   const cnt = k => all.filter(r => k === 'none' ? !r.purpose : r.purpose === k).length;
-  $('#app').innerHTML = `<div class="hero"><h1>후보함</h1><p>담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었나 · 계정에 저장돼 다른 기기에서도 같아요 · 어느 화면에서든 ☆를 누르면 그때의 상태가 함께 기록돼요</p></div>
-    <div class="card" id="alert"></div>
+  $('#app').innerHTML = `<div class="hero"><h1>후보함</h1><p>담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었나</p></div>
     ${all.length ? `<div class="card"><div class="kv"><div><span>담은 종목</span><b>${all.length}개</b></div>${avg != null ? `<div><span>담은 뒤 평균</span><b>${pctS(avg)}</b></div>` : ''}<div><span>오른쪽 아래로 들어간 종목</span><b>${nwarn}개</b></div></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="mx-seg seg">${[['', `전체 ${all.length}`], ['hold', `${PURPOSE.hold} ${cnt('hold')}`], ['consider', `${PURPOSE.consider} ${cnt('consider')}`], ['watch', `${PURPOSE.watch} ${cnt('watch')}`], ['none', `목적 미정 ${cnt('none')}`]].map(([k, l]) => `<button class="btn ${st.p === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')}</div>
       <label class="s13 mut" style="margin-left:auto">정렬 <select class="f" id="sort"><option value="at">담은 순</option><option value="ret" ${st.sort === 'ret' ? 'selected' : ''}>담은 뒤 수익률</option></select></label></div>
@@ -164,7 +167,8 @@ function render() {
   });
 }
 (async () => {
-  if (!Auth.hint()) { loginWall('후보함', ['어느 화면에서든 ☆를 누르면 그때의 상태와 담은 이유가 함께 기록돼요', '담은 뒤 무엇이 바뀌었는지(구역·점검표·수익률)를 한눈에', '실적 발표·새 경고·임원 매수를 텔레그램 아침 알림으로']); footer(); return; }
+  if (!Auth.hint() && qs('tab') === 'alert') { loginWall('알림', ['후보함 종목의 실적 발표·발표 뒤 주가 반응', '종목 점검표에 새로 생긴 경고', '임원 장내 매수를 매일 아침 텔레그램으로']); footer(); return; }
+  if (!Auth.hint()) { loginWall('후보함', ['관심 종목을 담고, 담은 뒤 무엇이 바뀌었는지 한눈에', '새 소식은 텔레그램 아침 알림으로']); footer(); return; }
   try { [U, P] = await Promise.all([Data.universe(), patterns()]); }
   catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   // 예전 관심 종목에서 옮긴 것: 지금 상태를 스냅샷으로 채워 둠 (담은 날·가격은 모름)

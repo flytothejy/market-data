@@ -29,7 +29,7 @@ function render() {
   });
   const costed = rows.filter(x => x.c != null), pnlAmt = costed.reduce((s, x) => s + x.v - x.c, 0), pnlBase = costed.reduce((s, x) => s + x.c, 0);
   const left = Plan.PORTFOLIO_MAX - P.items.length;
-  let h = `<div class="hero"><h1>${esc(P.name)}</h1><p>보유 종목을 넣으면 다섯 카테고리에서 생긴 변화를 한 곳에 모아 보여줘요 · 종목 ${Plan.PORTFOLIO_MAX}개까지 · 계정에 저장돼 다른 기기에서도 같아요</p></div>`;
+  let h = `<div class="hero"><h1>${esc(P.name)}</h1><p>보유 종목을 넣으면 다섯 카테고리에서 생긴 변화를 한 곳에 모아 보여줘요 · 종목 ${Plan.PORTFOLIO_MAX}개까지</p></div>`;
   h += `<div class="grid g4">
     <div class="card"><span class="mut s13">평가액</span><b style="font-size:22px" class="num">${money(val)}</b></div>
     <div class="card"><span class="mut s13">오늘 변동</span><b style="font-size:22px" class="num ${cls(day)}">${day >= 0 ? '+' : ''}${money(day)}</b><span class="small">${pctS(val ? day / (val - day) : null)}</span></div>

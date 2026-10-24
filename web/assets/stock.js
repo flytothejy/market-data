@@ -244,7 +244,7 @@ async function renderStock(U, d, P) {
   const tnK = { 1: ['pos', '긍정'], 0: ['neu', '중립'], '-1': ['neg', '부정'] };
   const hasTn = nws.some(x => x.tn != null);
   const n7 = nws.filter(x => x.tn != null && (Date.now() - new Date(x.d)) < 7 * 864e5);
-  const tnSum = hasTn && n7.length ? `<div class="tn-sum"><b>최근 7일 제목 톤</b> <span class="tn pos">긍정 ${n7.filter(x => x.tn > 0).length}</span><span class="tn neu">중립 ${n7.filter(x => x.tn === 0).length}</span><span class="tn neg">부정 ${n7.filter(x => x.tn < 0).length}</span><div class="small faint">기사 제목의 금융 단어(상승·하락·상향·소송 등)를 세어 자동 분류 — 내용까지 읽은 판단은 아니에요</div></div>` : '';
+  const tnSum = hasTn && n7.length ? `<div class="tn-sum"><b>최근 7일 제목 톤${tip('tn')}</b> <span class="tn pos">긍정 ${n7.filter(x => x.tn > 0).length}</span><span class="tn neu">중립 ${n7.filter(x => x.tn === 0).length}</span><span class="tn neg">부정 ${n7.filter(x => x.tn < 0).length}</span></div>` : '';
   h += sec('news', 'news', '뉴스', '최근 기사·보도자료 (영문 원문)', card('', '', nws.length ? tnSum + nws.map(x => `<div class="news-i"><div>${x.tn ? `<span class="tn ${tnK[x.tn][0]}">${tnK[x.tn][1]}</span>` : ''}<a href="${esc(x.u)}" target="_blank" rel="noopener">${esc(x.t)}</a></div><span class="m">${fmt(x.d, 'date')} · ${esc(x.s || '')}${x.k === 'pr' ? ' · 보도자료' : ''}</span></div>`).join('') : '<div class="mut s13">최근 뉴스가 없습니다</div>'));
 
   $('#app').innerHTML = h;

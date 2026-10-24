@@ -169,7 +169,7 @@ def checklist_html(items):
     rows = "".join(f'<div class="ck-row"><span class="ck-ic" style="color:{ic[st][1]}">{ic[st][0]}</span><div><b>{e(t)}</b><div class="small mut">{e(d)}</div></div></div>' for st, t, d in items)
     return (f'<div class="card"><div class="ck"><div class="ck-head"><h2 style="font-size:16px;margin:0">종목 점검표</h2><span class="s13"><span style="color:var(--warn)">경고 {n("warn")}</span> · '
             f'<span style="color:var(--good)">우호 {n("good")}</span> · <span class="mut">참고 {n("info")}</span></span></div><div class="ck-list">{rows}</div>'
-            f'<div class="small faint">점수나 추천이 아니라 확인할 거리예요</div></div></div>')
+            f'</div></div>')
 
 
 def amt(v):

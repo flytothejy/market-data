@@ -59,7 +59,7 @@ const NAV = [
   { id: 'map', label: '티커맵', icon: 'map', href: 'matrix.html', subs: [['matrix.html?mode=bubble', '버블', { mode: 'bubble' }], ['matrix.html?mode=heat', '히트맵', { mode: 'heat' }]] },
   { id: 'rank', label: '랭킹', icon: 'rank', href: 'ranking.html', subs: [['ranking.html', '티커랭킹'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자']] },
   { id: 'find', label: '검색', icon: 'find', href: 'screen.html', subs: [['screen.html', '조건 검색'], ['compare.html', '비교'], ['stock.html', '전체 종목']] },
-  { id: 'my', label: '내 종목', icon: 'star', href: 'watch.html', subs: [['watch.html', '후보함'], ['portfolio.html', '포트폴리오'], ['report.html', '주간 리포트'], ['watch.html#alert', '알림']] },
+  { id: 'my', label: '내 종목', icon: 'star', href: 'watch.html', subs: [['watch.html', '후보함'], ['portfolio.html', '포트폴리오'], ['report.html', '주간 리포트'], ['watch.html?tab=alert', '알림']] },
 ];
 function navWhere() {
   const page = ((location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') || 'index') + '.html';   // Cloudflare는 .html 없는 주소로 보여 줌
@@ -79,7 +79,9 @@ function subnav(where) {
   el.className = 'subnav';
   el.setAttribute('aria-label', n.label + ' 하위 메뉴');
   const page = where.sub;
-  el.innerHTML = `<div class="in">${n.subs.map(([h, l, m]) => `<a href="${h}" class="${!m && !h.includes('#') && h.split('?')[0] === page ? 'on' : ''}" ${m && m.mode ? `data-mode="${m.mode}"` : ''}>${l}</a>`).join('')}</div>`;
+  const tab = new URLSearchParams(location.search).get('tab') || '';
+  const isOn = h => { const [p0, q0] = h.split('?'); return p0 === page && (new URLSearchParams(q0 || '').get('tab') || '') === tab; };
+  el.innerHTML = `<div class="in">${n.subs.map(([h, l, m]) => `<a href="${h}" class="${!m && isOn(h) ? 'on' : ''}" ${m && m.mode ? `data-mode="${m.mode}"` : ''}>${l}</a>`).join('')}</div>`;
   return el;
 }
 function setSub(match) { document.querySelectorAll('.subnav a').forEach(a => a.classList.toggle('on', match(a))); }   // 화면 안에서 바뀔 때(티커맵 버블↔히트맵)
@@ -142,7 +144,7 @@ function loginGate(msg, pending) {
   el.innerHTML = `<div class="lg-box" role="dialog" aria-modal="true" aria-label="로그인 안내"><button class="lg-x" aria-label="닫기">×</button>
     <b class="lg-t">로그인하고 쓰세요</b><p class="lg-m">${esc(msg)}</p>
     ${ON_SITE ? `<div class="lg-sso">${Object.entries(P).map(([k, [l, c]]) => `<button class="${c}" data-p="${k}">${l}로 계속하기</button>`).join('')}</div>` : `<a class="btn dark" href="https://tickermap.kr/hub/account">tickermap.kr에서 로그인</a>`}
-    <p class="lg-s">무료예요 · 후보함과 포트폴리오가 계정에 저장돼 어느 기기에서든 같아요</p></div>`;
+    <p class="lg-s">무료 · 구글·카카오·네이버 계정으로</p></div>`;
   el.classList.add('show');
   const close = () => el.classList.remove('show');
   el.onclick = e => { if (e.target === el) close(); };
@@ -165,8 +167,8 @@ function loginWall(title, lines) {
   }
   $('#app').innerHTML = `<div class="hero"><h1>${esc(title)}</h1></div><div class="card lw"><b style="font-size:16px">로그인하면 ${esc(title)}을 쓸 수 있어요</b>
     <ul class="lw-l">${lines.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
-    <div><button class="btn dark" id="lw-go">로그인 · 무료</button></div><div class="small faint">구글·카카오·네이버 계정으로 바로 · 저장한 내용은 계정에 남아 어느 기기에서든 같아요</div></div>`;
-  $('#lw-go').onclick = () => loginGate(`${title}은 계정에 저장돼요.`);
+    <div><button class="btn dark" id="lw-go">로그인 · 무료</button></div></div>`;
+  $('#lw-go').onclick = () => loginGate(`${title}은(는) 로그인하면 쓸 수 있어요.`);
 }
 function acctBtn() {
   const h = Auth.hint();
@@ -610,8 +612,7 @@ function checklistHtml(items, compact) {
   const ic = { warn: ['⚠', 'var(--warn)'], good: ['✓', 'var(--good)'], info: ['·', 'var(--muted)'] };
   const rows = (compact ? items.filter(x => x.s !== 'info') : items).map(x => `<div class="ck-row"><span class="ck-ic" style="color:${ic[x.s][1]}">${ic[x.s][0]}</span><div><b>${esc(x.t)}</b><div class="small mut">${esc(x.d)}</div></div></div>`).join('');
   return `<div class="ck"><div class="ck-head"><b>종목 점검표</b><span class="s13"><span style="color:var(--warn)">경고 ${n('warn')}</span> · <span style="color:var(--good)">우호 ${n('good')}</span> · <span class="mut">참고 ${n('info')}</span></span></div>
-    <div class="ck-list">${rows || '<div class="small mut">경고·우호 신호 없음</div>'}</div>
-    <div class="small faint">점수나 추천이 아니라 확인할 거리예요</div></div>`;
+    <div class="ck-list">${rows || '<div class="small mut">경고·우호 신호 없음</div>'}</div></div>`;
 }
 
 // ---- 최근 실적 결과 (build.py er_result) — 종목 화면·후보함에서 같이 씀
@@ -641,6 +642,7 @@ function erResultHtml(L, opt = {}) {
 
 // ---- 지표 설명 (라벨 옆 ? 에 마우스를 올리거나 누르면 표시)
 const GLOSS = {
+  tn: '기사 제목의 금융 단어(상승·하락·상향·소송 등)로 분류한 톤. 본문은 읽지 않음',
   c_ratio: '최근 30일 동안 내년 EPS 전망을 올린 애널리스트 수에서 내린 수를 빼고, 전체 수로 나눈 값. 플러스면 전망이 좋아지는 중',
   c_up: '최근 30일 동안 내년 EPS 전망을 올린 애널리스트 수', c_dn: '최근 30일 동안 내년 EPS 전망을 내린 애널리스트 수',
   c_chg90: '90일 전과 비교한 내년 EPS 전망치의 변화율',
