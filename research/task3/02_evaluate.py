@@ -53,7 +53,7 @@ for lst in LISTS:
                       "D": D.mean(), "p1": p, "hits": int(pdd["n_hits"].sum()), "adds_in_cell": int(pdd["n_add"].sum())}
         for c, r in res.items():
             rows.append({"list": lst, "k": k, "cell": c, **r})
-            logs.append([f"T3-{lst}-k{k}-{c}", today, 3, "편입 후보 적중률 vs 상위25 기준선", "SP500add", f"{lst}_k{k}",
+            logs.append([f"T3fx-{lst}-k{k}-{c}", today, 3, "편입 후보 적중률 vs 상위25 기준선", "SP500add", f"{lst}_k{k}",
                          "add3", c, r["dates"], "D", round(r["D"], 5), round(r["b25"], 5), "", round(r["p1"], 4) if r["p1"] == r["p1"] else "",
                          f"hits={r['hits']}"])
 
@@ -77,7 +77,7 @@ for c, (g_, p_) in CELLS.items():
                "net": rr["raw"].mean() - 0.001}
 for c, r in rres.items():
     rows.append({"list": "P3_ret", "k": 10, "cell": c, **r})
-    logs.append([f"T3-ret-P3k10-{c}", today, 3, "편입 후보 보유 초과수익 vs 상위25 나머지", "SP500add", "P3_k10", "ab3", c,
+    logs.append([f"T3fx-ret-P3k10-{c}", today, 3, "편입 후보 보유 초과수익 vs 상위25 나머지", "SP500add", "P3_k10", "ab3", c,
                  r["dates"], "D", round(r["D"], 5), "", "", round(r["p1"], 4), f"net={round(r['net'], 4)}"])
 with open(os.path.join(ROOT, "log.csv"), "a") as fh:
     for l in logs:

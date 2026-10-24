@@ -124,7 +124,8 @@ for d in dates:
         px0 = p["RawClose"].iloc[pos - 1]
         if px0 != px0: continue
         s0, s1 = snap(c, d), snap(c, d - pd.Timedelta(days=365))
-        mc = px0 * s0["SH"] if s0["SH"] == s0["SH"] else np.nan
+        pxu = p["RawUnadj"].iloc[pos - 1]                  # 분할 미반영 실제 주가 (2026-10-25 오류 수정)
+        mc = pxu * s0["SH"] if s0["SH"] == s0["SH"] else np.nan
         r3 = rev(c, d - pd.Timedelta(days=3 * 365))
         fs_parts = [s0["NI"] > 0 if s0["NI"] == s0["NI"] else None,
                     s0["CFO"] > 0 if s0["CFO"] == s0["CFO"] else None,

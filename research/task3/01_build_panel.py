@@ -123,7 +123,7 @@ for d in dates:
         if t in mem:
             continue
         p = pxc[t]
-        c = p["RawClose"].iloc[:pos].dropna()
+        c = p["RawUnadj"].iloc[:pos].dropna()          # 분할 미반영 실제 주가 (2026-10-25 오류 수정)
         if c.empty:
             continue
         firstpx = p["RawClose"].first_valid_index()

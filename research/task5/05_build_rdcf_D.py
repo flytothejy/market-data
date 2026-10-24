@@ -88,7 +88,7 @@ pcache = {}
 def price(t):
     if t not in pcache:
         p = os.path.join(PXD, t[2:].replace("/", "_") + ".parquet") if t.startswith("D:") else os.path.join(PX, f"{t}.parquet")
-        pcache[t] = pd.read_parquet(p)[["Close", "RawClose"]].groupby(level=0).last() if os.path.exists(p) else None
+        pcache[t] = pd.read_parquet(p)[["Close", "RawClose", "RawUnadj"]].groupby(level=0).last() if os.path.exists(p) else None
     return pcache[t]
 
 def beta(t, d):
@@ -126,7 +126,7 @@ for i, r in enumerate(pn.itertuples()):
     if c is None or c != c:
         out.append(rec); continue
     c = int(c); p = price(r.t)
-    px0 = p["RawClose"].loc[:d - pd.Timedelta(days=1)].iloc[-1] if p is not None and len(p.loc[:d - pd.Timedelta(days=1)]) else np.nan
+    px0 = p["RawUnadj"].loc[:d - pd.Timedelta(days=1)].iloc[-1] if p is not None and len(p.loc[:d - pd.Timedelta(days=1)]) else np.nan
     sh = shares(c, d); E = px0 * sh if sh == sh else np.nan
     debt = z(first(inst(c, "LongTermDebtNoncurrent", d), inst(c, "LongTermDebt", d))) + \
            z(first(inst(c, "LongTermDebtCurrent", d), inst(c, "DebtCurrent", d))) + z(inst(c, "ShortTermBorrowings", d))

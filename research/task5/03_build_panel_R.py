@@ -128,7 +128,7 @@ print("pool (current + delisted)", len(pool), "delisted", sum(k.startswith("D:")
 spy = pd.read_parquet(os.path.join(PX, "SPY.parquet")); cal = spy.index
 ma200 = spy["Close"].rolling(200).mean()
 dates = [cal[cal.searchsorted(pd.Timestamp(y, m, 1))] for y in range(2011, 2026) for m in (1, 4, 7, 10)]
-pxs = {t: pd.read_parquet(PATH[t])[["Close", "RawClose", "Volume"]].groupby(level=0).last().reindex(cal) for t in pool}
+pxs = {t: pd.read_parquet(PATH[t])[["Close", "RawClose", "RawUnadj", "Volume"]].groupby(level=0).last().reindex(cal) for t in pool}
 rows = []
 for d in dates:
     pos = cal.get_loc(d)
@@ -140,7 +140,8 @@ for d in dates:
         w = p.iloc[max(0, pos - 252):pos]
         if (w["RawClose"] * w["Volume"]).mean() < 20e6: continue         # 시점 기준 유동성 하한 (PLAN §6)
         s0, s1 = snap(c, d), snap(c, d - pd.Timedelta(days=365))
-        mc = px0 * s0["SH"] if s0["SH"] == s0["SH"] else np.nan
+        pxu = p["RawUnadj"].iloc[pos - 1]                  # 분할 미반영 실제 주가 (2026-10-25 오류 수정)
+        mc = pxu * s0["SH"] if s0["SH"] == s0["SH"] else np.nan
         r3 = rev(c, d - pd.Timedelta(days=3 * 365))
         fs_parts = [s0["NI"] > 0 if s0["NI"] == s0["NI"] else None,
                     s0["CFO"] > 0 if s0["CFO"] == s0["CFO"] else None,
