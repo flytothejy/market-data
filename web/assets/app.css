@@ -314,3 +314,15 @@ tr.xr{display:none}
 .hm-mini-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px 6px}
 .hm-mini-h .hm-sw{margin-left:auto}
 .hm-mini svg{display:block}
+
+/* 하위 탭 (화면 위 고정) — 종목 화면 구역 탭(.tabs)과 같은 모양 */
+.subnav{position:sticky;top:var(--hdr-h,57px);z-index:15;background:var(--bg);border-bottom:1px solid var(--line)}
+.subnav .in{max-width:1160px;margin:0 auto;padding:0 16px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.subnav .in::-webkit-scrollbar{display:none}
+.subnav a{padding:10px 12px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:14.5px}
+.subnav a.on{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
+.subnav a:hover{text-decoration:none;color:var(--ink)}
+@media (max-width:760px){.subnav .in{padding:0 8px}.subnav a{padding:9px 10px;font-size:14px}}
+.bnav a{position:relative}
+.bn-badge{position:absolute;top:6px;left:calc(50% + 6px);min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--accent);color:#fff;font-size:10px;font-style:normal;font-weight:700;line-height:16px;text-align:center}
+#alert{scroll-margin-top:130px}

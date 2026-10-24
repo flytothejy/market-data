@@ -51,28 +51,47 @@ const ICON = {
   rank: '<path d="M5 20V11M12 20V5M19 20v-6"/>',
   find: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
   star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/>',
-  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
 };
-function bottomNav(active) {
+// ---- 메뉴: 아래 탭(컴퓨터는 위 메뉴) 5개 → 화면 위 고정 하위 탭. 새 기능은 맞는 묶음의 subs에 한 줄 추가
+// 하위 탭 [주소, 이름, (선택) 이 화면으로 칠 조건]
+const NAV = [
+  { id: 'home', label: '홈', icon: 'home', href: 'index.html', subs: [] },
+  { id: 'map', label: '티커맵', icon: 'map', href: 'matrix.html', subs: [['matrix.html?mode=bubble', '버블', { mode: 'bubble' }], ['matrix.html?mode=heat', '히트맵', { mode: 'heat' }]] },
+  { id: 'rank', label: '랭킹', icon: 'rank', href: 'ranking.html', subs: [['ranking.html', '티커랭킹'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자']] },
+  { id: 'find', label: '검색', icon: 'find', href: 'screen.html', subs: [['screen.html', '조건 검색'], ['compare.html', '비교'], ['stock.html', '전체 종목']] },
+  { id: 'my', label: '내 종목', icon: 'star', href: 'watch.html', subs: [['watch.html', '후보함'], ['portfolio.html', '포트폴리오'], ['report.html', '주간 리포트'], ['watch.html#alert', '알림']] },
+];
+function navWhere() {
   const page = ((location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') || 'index') + '.html';   // Cloudflare는 .html 없는 주소로 보여 줌
-  // 홈은 티커맵·랭킹 미리보기라 탭에서 빼고 로고로 (더보기에도 둠)
-  const tabs = [['matrix.html', '티커맵', 'map'], ['ranking.html', '랭킹', 'rank'], ['screen.html', '검색', 'find'], ['watch.html', '후보함', 'star']];
-  const more = [['index.html', '홈'], ['earnings.html', '실적 달력'], ['compare.html', '비교'], ['investors.html', '유명 투자자'], ['stock.html', '종목'], ['portfolio.html', '포트폴리오'], ['account.html', Auth.hint() ? '내 계정' : '로그인'], ['settings.html', '설정'], ['terms.html', '이용약관'], ['privacy.html', '개인정보처리방침']];
-  const inMore = more.some(([h]) => h === page && h !== 'index.html') || /\/s\/|\/i\//.test(location.pathname);
+  const p = location.pathname, q = new URLSearchParams(location.search);
+  if (/\/s\/[^/]+\/?$/.test(p) || (page === 'stock.html' && q.get('t'))) return { g: 'find', sub: null, detail: true };   // 종목 화면은 자기 구역 탭이 있음
+  if (/\/i\/[^/]+\/?$/.test(p)) return { g: 'rank', sub: 'investors.html' };
+  for (const n of NAV) {
+    if (n.href === page && !n.subs.length) return { g: n.id, sub: null };
+    for (const [h] of n.subs) if (h.split(/[?#]/)[0] === page) return { g: n.id, sub: page };
+  }
+  return { g: null, sub: null };
+}
+function subnav(where) {
+  const n = NAV.find(x => x.id === where.g);
+  if (!n || !n.subs.length || where.detail) return null;
+  const el = document.createElement('nav');
+  el.className = 'subnav';
+  el.setAttribute('aria-label', n.label + ' 하위 메뉴');
+  const page = where.sub;
+  el.innerHTML = `<div class="in">${n.subs.map(([h, l, m]) => `<a href="${h}" class="${!m && !h.includes('#') && h.split('?')[0] === page ? 'on' : ''}" ${m && m.mode ? `data-mode="${m.mode}"` : ''}>${l}</a>`).join('')}</div>`;
+  return el;
+}
+function setSub(match) { document.querySelectorAll('.subnav a').forEach(a => a.classList.toggle('on', match(a))); }   // 화면 안에서 바뀔 때(티커맵 버블↔히트맵)
+function bottomNav(where) {
   const svg = k => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${ICON[k]}</svg>`;
   const nav = document.createElement('nav');
   nav.className = 'bnav';
   nav.setAttribute('aria-label', '아래 메뉴');
-  nav.innerHTML = tabs.map(([h, l, k]) => `<a href="${h}" class="${h === page ? 'on' : ''}">${svg(k)}<span>${l}</span></a>`).join('')
-    + `<button class="${inMore ? 'on' : ''}" aria-expanded="false">${svg('more')}<span>더보기</span></button>`;
-  const sheet = document.createElement('div');
-  sheet.className = 'bsheet';
-  sheet.innerHTML = `<div class="bsheet-in">${more.map(([h, l]) => `<a href="${h}" class="${h === page ? 'on' : ''}">${l}</a>`).join('')}</div>`;
-  document.body.append(sheet, nav);
-  const btn = nav.querySelector('button');
-  const set = open => { sheet.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); };
-  btn.onclick = e => { e.stopPropagation(); set(!sheet.classList.contains('open')); };
-  sheet.onclick = e => { if (e.target === sheet) set(false); };
+  let wn = 0; try { wn = Watch.list().length; } catch (e) { }
+  nav.innerHTML = NAV.map(n => `<a href="${n.href}" class="${n.id === where.g ? 'on' : ''}">${svg(n.icon)}<span>${n.label}</span>${n.id === 'my' && wn ? `<i class="bn-badge">${wn > 99 ? '99+' : wn}</i>` : ''}</a>`).join('');
+  document.body.append(nav);
+  document.addEventListener('watch-change', () => { const a = nav.querySelector('a[href="watch.html"]'); if (!a) return; let n = 0; try { n = Watch.list().length; } catch (e) { } let b = a.querySelector('.bn-badge'); if (!n) { if (b) b.remove(); return; } if (!b) { b = document.createElement('i'); b.className = 'bn-badge'; a.append(b); } b.textContent = n > 99 ? '99+' : n; });
 }
 // ---- 로그인 (구글·카카오·네이버 — Better Auth, api.tickermap.kr). 로그인 안 해도 모든 기능을 씀
 // 로그인 = 이 기기의 기기코드를 계정에 묶기. 묶인 뒤에도 후보함 동기화는 기기코드로 그대로 (다른 기기에서 로그인하면 같은 후보함)
@@ -119,14 +138,15 @@ function acctBtn() {
   return `<a class="acct" href="account.html" aria-label="${h ? '내 계정' : '로그인'}">${h ? (h.image ? `<img src="${esc(h.image)}" alt="" referrerpolicy="no-referrer">` : `<span class="acct-i">${ini || '나'}</span>`) : '<span class="acct-t">로그인</span>'}</a>`;
 }
 function header(active) {
-  const items = [['matrix.html', '티커맵'], ['ranking.html', '티커랭킹'], ['stock.html', '종목'], ['screen.html', '검색'], ['compare.html', '비교'], ['earnings.html', '실적 달력'], ['investors.html', '유명 투자자'], ['watch.html', '후보함'], ['portfolio.html', '포트폴리오']];
+  const where = navWhere();
   const el = document.createElement('header');
   el.className = 'top';
   el.innerHTML = `<div class="in"><a class="brand" href="index.html" aria-label="티커맵 홈"><svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true" style="flex-shrink:0"><circle cx="7.8" cy="7.8" r="6.8" fill="#d65014"/><circle cx="20.6" cy="5.4" r="4.4" fill="#2463c4"/><circle cx="21.8" cy="13.2" r="2.4" fill="#d9d6cc"/><circle cx="6.1" cy="20.9" r="4.1" fill="#7ea3dc"/><circle cx="18.2" cy="20.2" r="4.8" fill="#eba27e"/><circle cx="12.9" cy="15.3" r="1.5" fill="#d9d6cc"/></svg><span>티커맵</span></a>
-  <nav class="main">${items.map(([h, l]) => `<a href="${h}" class="${l === active ? 'on' : ''}">${l}</a>`).join('')}</nav>
+  <nav class="main">${NAV.map(n => `<a href="${n.href}" class="${n.id === where.g ? 'on' : ''}">${n.label}</a>`).join('')}</nav>
   <div class="search"><input type="search" placeholder="티커·회사명 (한글 가능)" aria-label="종목 검색" autocomplete="off"><div class="sugg"></div></div>${acctBtn()}</div>`;
   document.body.prepend(el);
-  bottomNav(active);
+  const sn = subnav(where); if (sn) el.after(sn);
+  bottomNav(where);
   // 방문 집계(기기·하루 한 번, 개인 식별 없음): 사이트 전체 + 화면별
   try { Stat.hit('u', 'SITE'); Stat.hit('p', (((location.pathname.split('/').pop() || 'index').replace(/\.html$/, '')) || 'index').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'INDEX'); } catch (e) { }
   const hh = () => document.documentElement.style.setProperty('--hdr-h', el.offsetHeight + 'px');   // 따라오는 탭 줄이 헤더 바로 밑에 붙게

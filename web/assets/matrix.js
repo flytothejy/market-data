@@ -599,10 +599,10 @@ function bindSide() {
   let mode = qMode === 'heat' || qMode === 'bubble' ? qMode : defMode, inited = false;
   const DESC = { bubble: '주가와 신호가 어긋난 종목을 찾는 지도 · 가로 = 주가, 세로 = 고른 신호, 점 크기 = 시가총액 · <span id="mx-count"></span>', heat: '업종별 한눈에 · 사각형 크기 = 시가총액, 색 = 주가 변화나 신호 · ▶로 최근 3개월을 다시 보기' };
   $('#app').innerHTML = `<div class="hero mx-hero"><div><h1>티커맵</h1><p id="mx-desc"></p></div>
-      <div class="mx-seg mx-mode" role="tablist" aria-label="지도 모양"><button role="tab" data-mode="bubble">● 버블</button><button role="tab" data-mode="heat">▦ 히트맵</button></div></div>
+</div>
     <div id="mx-body"></div>`;
   const show = () => {
-    document.querySelectorAll('.mx-mode button').forEach(b => { b.classList.toggle('on', b.dataset.mode === mode); b.setAttribute('aria-selected', b.dataset.mode === mode); });
+    setSub(a => a.dataset.mode === mode);                // 위 하위 탭(버블·히트맵)에 표시
     $('#mx-desc').innerHTML = DESC[mode];
     const body = $('#mx-body');
     if (mode === 'heat') { Heat.mount(body, U); return; }
@@ -616,12 +616,13 @@ function bindSide() {
       getJSON('free/patterns.json').then(j => { PATS = j; if (mode === 'bubble') render(true); }).catch(() => { PATS = {}; });
     }
   };
-  $('.mx-mode').onclick = e => {
-    const b = e.target.closest('[data-mode]'); if (!b || b.dataset.mode === mode) return;
+  document.querySelectorAll('.subnav a[data-mode]').forEach(a => a.onclick = e => {   // 새로 불러오지 않고 바로 바꿈
+    e.preventDefault();
+    const b = a; if (b.dataset.mode === mode) return;
     mode = b.dataset.mode;
     const u = new URL(location.href); mode !== defMode ? u.searchParams.set('mode', mode) : u.searchParams.delete('mode'); history.replaceState(null, '', u);
     show();
-  };
+  });
   show();
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (mode === 'bubble' && $('#mx-chart')) render(true); }, 150); });
   document.addEventListener('watch-change', () => { if (mode === 'bubble' && $('#mx-chart')) render(true); });
