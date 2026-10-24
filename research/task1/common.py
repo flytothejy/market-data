@@ -48,11 +48,27 @@ def test(df, sig, target):
     return r
 
 
-def run(ev, sigs, sname, hyp, tag, targets=("Y1", "Y2", "Y3")):
-    """PLAN §4 절차: 설계 D>0 → 확인①② (D>0 & p<0.05, Y3는 비용 후 원수익>0) → 최종 1회."""
+def test_dir(df, sig, target, neg=False):
+    """neg=True: 가설 방향이 '나쁘다'(D<0). D·t 부호를 뒤집어 같은 'D>0' 판정을 쓴다.
+    Y3 비용 판정은 S=1 이벤트를 공매도했을 때 원수익(−ret − 왕복 0.1%)."""
+    r = test(df, sig, target)
+    if r is None or not neg:
+        return r
+    r = dict(r)
+    r["D"], r["t"], r["p1"] = -r["D"], -r["t"], 1 - r["p1"]
+    if target == "Y3":
+        r["raw_on_net"] = -(r["raw_on_net"] + 0.001) - 0.001
+    return r
+
+
+def run(ev, sigs, sname, hyp, tag, targets=("Y1", "Y2", "Y3"), neg=()):
+    """PLAN §4 절차: 설계 D>0 → 확인①② (D>0 & p<0.05, Y3는 비용 후 원수익>0) → 최종 1회.
+    neg 에 든 신호는 가설 방향이 음(−)이며, 부호를 뒤집은 D로 판정·기록한다."""
     rows, logs = [], []
     today = datetime.date.today().isoformat()
     for sig in sigs:
+        ng = sig in neg
+        test = lambda df, s, t, ng=ng: test_dir(df, s, t, ng)  # noqa: E731
         for tg in targets:
             res = {"설계": test(ev[ev["cell"] == "설계"], sig, tg)}
             if res["설계"] is not None and res["설계"]["D"] > 0:
@@ -66,8 +82,9 @@ def run(ev, sigs, sname, hyp, tag, targets=("Y1", "Y2", "Y3")):
             for c, r in res.items():
                 if r is None:
                     continue
-                rows.append({"signal": sig, "target": tg, "cell": c, **r})
-                logs.append([f"T1-{tag}-{sig}-{tg}-{c}", today, 1, hyp, sname, sig, tg, c, r["n"], "D",
+                rows.append({"signal": sig, "dir": "-" if ng else "+", "target": tg, "cell": c, **r})
+                logs.append([f"T1-{tag}-{sig}-{tg}-{c}", today, 1, hyp, sname, sig, tg, c, r["n"],
+                             "D(부호 뒤집음)" if ng else "D",
                              round(r["D"], 5), "", "", round(r["p1"], 4), f"n_on={r['n_on']}"])
     with open(os.path.join(ROOT, "log.csv"), "a") as f:
         for l in logs:
