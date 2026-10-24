@@ -45,7 +45,11 @@ print(m["status"].value_counts().to_string())
 
 # SEC 재무·SIC (상장폐지 확정 + 다른 티커로 아직 제출 중인 회사 = 우리 유니버스 밖)
 use = m[m["status"].isin(["unique", "still_filing_other_ticker"])]
-TAGS = None
+KEEP = set(["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "GrossProfit", "CostOfRevenue",
+        "CostOfGoodsAndServicesSold", "NetIncomeLoss", "NetCashProvidedByUsedInOperatingActivities",
+        "PaymentsToAcquirePropertyPlantAndEquipment", "Assets", "AssetsCurrent", "LiabilitiesCurrent", "LongTermDebt",
+        "LongTermDebtNoncurrent", "CashAndCashEquivalentsAtCarryingValue", "EntityCommonStockSharesOutstanding",
+        "WeightedAverageNumberOfDilutedSharesOutstanding"])
 rows, sic = [], {}
 S = requests.Session(); S.headers.update(H)
 for i, cik in enumerate(sorted(set(use["cik"].astype(int)))):
@@ -66,18 +70,13 @@ for i, cik in enumerate(sorted(set(use["cik"].astype(int)))):
         continue
     for tax in ("us-gaap", "dei"):
         for tag, v in (j.get("facts", {}).get(tax, {}) or {}).items():
+            if tag not in KEEP: continue
             for unit, arr in v.get("units", {}).items():
                 for x in arr:
                     rows.append((cik, tax, tag, unit, x.get("start"), x.get("end"), x.get("val"), x.get("fy"), x.get("fp"),
                                  x.get("form"), x.get("filed"), x.get("accn"), x.get("frame")))
     if i % 200 == 0: print(i, flush=True)
 fx = pd.DataFrame(rows, columns=["cik", "taxonomy", "tag", "unit", "start", "end", "val", "fy", "fp", "form", "filed", "accn", "frame"])
-keep = ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "GrossProfit", "CostOfRevenue",
-        "CostOfGoodsAndServicesSold", "NetIncomeLoss", "NetCashProvidedByUsedInOperatingActivities",
-        "PaymentsToAcquirePropertyPlantAndEquipment", "Assets", "AssetsCurrent", "LiabilitiesCurrent", "LongTermDebt",
-        "LongTermDebtNoncurrent", "CashAndCashEquivalentsAtCarryingValue", "EntityCommonStockSharesOutstanding",
-        "WeightedAverageNumberOfDilutedSharesOutstanding"]
-fx = fx[fx["tag"].isin(keep)]
 fx.to_parquet(os.path.join(R2, "sec__facts_delisted.parquet"))
 pd.Series(sic, name="sic").rename_axis("cik").to_csv(os.path.join(SB, "delisted_sic.csv"))
 print("facts rows", len(fx), "ciks with facts", fx["cik"].nunique())
