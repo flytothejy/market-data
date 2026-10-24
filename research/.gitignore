@@ -11,3 +11,5 @@ data/raw/sb/subs/
 data/raw/sb/cik-lookup-data.txt
 data/raw/sb/company_tickers.json
 data/task3_panel.csv
+data/task4_signals.csv
+data/*.log

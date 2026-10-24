@@ -49,6 +49,7 @@ for cik, name in zip(m["manager_cik"], m["manager"]):
             txt = get(f"{base}/{xn}", js=False)
             if not txt or "infoTable" not in txt: continue
             txt = re.sub(r'\sxmlns(:\w+)?="[^"]+"', "", txt); txt = re.sub(r"<(/?)\w+:", r"<\1", txt)
+            txt = re.sub(r'\s[\w-]+:[\w-]+="[^"]*"', "", txt)
             root = ET.fromstring(txt.encode())
             for it in root.iter("infoTable"):
                 g_ = lambda k: (it.findtext(k) or "").strip()
