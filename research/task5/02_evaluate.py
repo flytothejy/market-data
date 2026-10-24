@@ -11,6 +11,15 @@ grp = pd.read_csv(os.path.join(DATA, "split_groups.csv"))
 grp["t"] = grp["t"].str.replace(".", "-", regex=False); grp = grp.set_index("t")["grp"]
 pn["grp"] = pn["t"].map(grp); pn = pn[pn["grp"].notna()]
 pn["parity"] = np.where(pn["date"].dt.year % 2 == 1, "odd", "even")
+# 결과 확인 후 보완 (PLAN 변경 이력): 날짜별 수익률 상·하위 1% 윈저화, 선택적으로 시점 시가총액 하한
+WINS = os.environ.get("WINS", "1") == "1"; MINCAP = float(os.environ.get("MINCAP", "0")); TAG = os.environ.get("TAG", "w")
+if WINS:
+    for n in (63, 252):
+        lo = pn.groupby("date")[f"r{n}"].transform(lambda x: x.quantile(0.01))
+        hi = pn.groupby("date")[f"r{n}"].transform(lambda x: x.quantile(0.99))
+        pn[f"r{n}"] = pn[f"r{n}"].clip(lo, hi)
+if MINCAP > 0:
+    pn = pn[pn["mcap"] >= MINCAP]
 pn["era"] = pd.cut(pn["date"].dt.year, [2010, 2015, 2020, 2030], labels=["2011-15", "2016-20", "2021~"]).astype(str)
 SIG = {"GPA": "high", "ACC": "low", "AG": "low", "ISS": "low", "FS": "high", "EY": "high", "FCFY": "high", "RDCF": "low", "RGAP": "low"}
 CELLS = {"설계": ("A", "odd"), "확인1": ("A", "even"), "확인2": ("B", "odd"), "최종": ("B", "even")}
@@ -48,11 +57,11 @@ for sig in SIG:
             res[c] = r
         for c, r in res.items():
             rows.append({"signal": sig, "h": n, "cell": c, **r})
-            logs.append([f"T5-{sig}-{n}-{c}", today, 5, "재무 신호 좋은 쪽 5분위 − 전체", "Fundamental", sig, f"r{n}", c, r["dates"],
+            logs.append([f"T5{TAG}-{sig}-{n}-{c}", today, 5, "재무 신호 좋은 쪽 5분위 − 전체", "Fundamental", sig, f"r{n}", c, r["dates"],
                          "D", round(r["D"], 5), "", "", round(r["p1"], 4), f"LS={round(r['LS'], 4)}"])
 with open(os.path.join(ROOT, "log.csv"), "a") as fh:
     for l in logs: fh.write(",".join(str(x) for x in l) + "\n")
-res = pd.DataFrame(rows); res.to_csv(os.path.join(OUT, "results.csv"), index=False)
+res = pd.DataFrame(rows); res.to_csv(os.path.join(OUT, f"results_{TAG}.csv"), index=False)
 
 ref = []
 dz = pn[pn["grp"] == "A"][pn["parity"] == "odd"]
@@ -63,7 +72,7 @@ for sig in SIG:
                 u = per_date(sub, sig, n)
                 if len(u): ref.append({"signal": sig, "h": n, "split": col, "value": v, "D": u["D"].mean(), "LS": u["LS"].mean()})
         u = per_date(pn, sig, n); ref.append({"signal": sig, "h": n, "split": "all", "value": "all", "D": u["D"].mean(), "LS": u["LS"].mean()})
-ref = pd.DataFrame(ref); ref.to_csv(os.path.join(OUT, "reference.csv"), index=False)
+ref = pd.DataFrame(ref); ref.to_csv(os.path.join(OUT, f"reference_{TAG}.csv"), index=False)
 pd.set_option("display.width", 250, "display.float_format", "{:.4f}".format)
 print(res.to_string(index=False))
 print(ref.pivot_table(index=["signal", "h"], columns=["split", "value"], values="D").to_string())
