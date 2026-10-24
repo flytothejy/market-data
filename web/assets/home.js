@@ -92,10 +92,21 @@ function briefCards(U, F) {
   const P = mapPoints(S);
   const tl = pick(P, 'tl', 5), br = pick(P, 'br', 5);
   const row = p => `<a href="matrix.html?t=${encodeURIComponent(p.r.t)}"><b>${esc(p.r.t)}</b><small>${esc(p.r.ko || p.r.n || '')}</small><span class="v">주가 ${sgn(p.r.r1m)} · 전망 ${sgn(p.r.c_chg90)}</span></a>`;
+  // 시장 요약 (오늘의 소식을 켜면 그 맨 위, 끄면 지도 아래)
+  const mkt = head => `${head ? `<div class="sec-head"><h2>오늘의 시장</h2><span class="desc">${esc(M.asof)} 종가</span></div>` : ''}
+    <div class="grid g4">${Object.entries(M.indices).map(([t, x]) => `<a class="card" href="${stockUrl(t)}" style="color:inherit;text-decoration:none;gap:2px">
+      <div class="mut s13">${idxName[t] || t} <span class="faint">${t}</span></div>
+      <div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:20px" class="num">${fmt(x.px, 'px')}</b>${pctS(x.r1d)}</div>
+      <div class="small mut">1개월 ${pctS(x.r1m)} · 연초 이후 ${pctS(x.rytd)}</div></a>`).join('')}</div>
+    <div class="card"><div class="kv">
+      <div><span>상승 / 하락 종목</span><b><span class="up">${M.adv}</span> / <span class="dn">${M.dec}</span></b></div>
+      <div><span>200일선 위 종목 비율</span><b>${fmt(M.breadth_200, 'pct')}</b></div>
+      <div><span>52주 신고가 / 신저가</span><b>${M.new_hi} / ${M.new_lo}</b></div>
+      ${M.vix != null ? `<div><span>VIX (변동성 지수)</span><b>${M.vix.toFixed(1)}</b></div>` : ''}</div></div>`;
   const showBrief = Prefs.get('home.brief');
   let h = '';
   if (showBrief) {
-    h += `<div class="hero"><h1>오늘의 소식</h1><p>미국 ${dayK(U.asof)} 마감 기준 · 매일 아침 새로 골라요 · 종목을 누르면 자세히, ☆로 후보함에</p></div><div class="bf" id="brief">${briefCards(U, null).map(c => c.html).join('')}</div>`;
+    h += `<div class="hero"><h1>오늘의 소식</h1><p>미국 ${dayK(U.asof)} 마감 기준 · 매일 아침 새로 골라요 · 종목을 누르면 자세히, ☆로 후보함에</p></div>${mkt(false)}<div class="bf" id="brief">${briefCards(U, null).map(c => c.html).join('')}</div>`;
     h += `<div class="sec-head map-head"><h2>티커맵</h2><span class="desc" id="map-desc"></span><div class="mx-seg" role="tablist" aria-label="지도 모양"><button data-mode="bubble">● 버블</button><button data-mode="heat">▦ 히트맵</button></div></div>`;
   } else {
     h += `<div class="hero map-head"><div><h1>주가와 신호가 어긋난 종목, 티커맵에서</h1><p id="map-desc"></p></div><div class="mx-seg" role="tablist" aria-label="지도 모양"><button data-mode="bubble">● 버블</button><button data-mode="heat">▦ 히트맵</button></div></div>`;
@@ -106,17 +117,7 @@ function briefCards(U, F) {
       <div class="card"><h3 style="color:var(--dn)">주가는 오르는데 전망은 꺾임</h3><div class="hl">${br.map(row).join('') || '<span class="mut s13">오늘은 없어요</span>'}</div></div>
       <div class="small faint">시가총액 100억 달러 이상 · 종목을 누르면 티커맵에서 지나온 길(티커 트레일)을 보여줘요</div>
     </div></div><div class="home-map heat" id="home-heat" style="display:none"><div class="mini hm-mini" id="mini-heat"></div></div>`;
-  // 시장 요약
-  h += `<div class="sec-head"><h2>오늘의 시장</h2><span class="desc">${esc(M.asof)} 종가</span></div>
-    <div class="grid g4">${Object.entries(M.indices).map(([t, x]) => `<a class="card" href="${stockUrl(t)}" style="color:inherit;text-decoration:none;gap:2px">
-      <div class="mut s13">${idxName[t] || t} <span class="faint">${t}</span></div>
-      <div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:20px" class="num">${fmt(x.px, 'px')}</b>${pctS(x.r1d)}</div>
-      <div class="small mut">1개월 ${pctS(x.r1m)} · 연초 이후 ${pctS(x.rytd)}</div></a>`).join('')}</div>
-    <div class="card"><div class="kv">
-      <div><span>상승 / 하락 종목</span><b><span class="up">${M.adv}</span> / <span class="dn">${M.dec}</span></b></div>
-      <div><span>200일선 위 종목 비율</span><b>${fmt(M.breadth_200, 'pct')}</b></div>
-      <div><span>52주 신고가 / 신저가</span><b>${M.new_hi} / ${M.new_lo}</b></div>
-      ${M.vix != null ? `<div><span>VIX (변동성 지수)</span><b>${M.vix.toFixed(1)}</b></div>` : ''}</div></div>`;
+  if (!showBrief) h += mkt(true);
   // 내 관심 종목
   const Wl = Watch.list().map(t => U.rows.find(r => r.t === t)).filter(Boolean);
   if (Wl.length) {
