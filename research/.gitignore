@@ -19,3 +19,5 @@ data/prices_delisted/
 data/raw/sb/companyfacts/
 data/raw/sb/delisted_cik.csv
 data/task5_panel_R.csv
+data/raw/mkt/
+data/raw/sb/facts_rdcf.parquet
