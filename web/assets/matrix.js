@@ -386,7 +386,7 @@ function controls() {
     <label class="s13" style="display:flex;align-items:center;gap:5px;cursor:pointer" title="한 걸음씩 볼 때 70% 넘게 그 방향으로 간 것만"><input type="checkbox" id="f-steady" ${st.steady ? 'checked' : ''}> 꾸준히만</label>
     <label class="s13 mut" title="기간을 고르면 자동으로 맞춰져요. 직접 바꿀 때만">가로축 <select class="f" id="f-xw">${Object.entries(XW).map(([k, [l]]) => `<option value="${k}" ${k === st.xw ? 'selected' : ''}>${l} 주가</option>`).join('')}</select></label>
     <label class="s13 mut">시가총액 <select class="f" id="f-cap">${[[0, '전체'], [1e10, '100억 달러 이상'], [1e11, '1,000억 달러 이상']].map(([v, l]) => `<option value="${v}" ${v === st.cap ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-    <div class="mx-seg" aria-label="보기 범위">${[['', '전체'], ['watch', `후보 ${Watch.list().length}`], ['hold', `보유 ${portfolioTickers().length}`], ['earn', '이번 주 실적']].map(([k, l]) => `<button class="${k === st.only ? 'on' : ''}" data-only="${k}">${l}</button>`).join('')}</div>
+    <div class="mx-seg" aria-label="보기 범위">${[['', '전체'], ['watch', `내 종목 ${Watch.list().length}`], ['hold', `보유 ${portfolioTickers().length}`], ['earn', '이번 주 실적']].map(([k, l]) => `<button class="${k === st.only ? 'on' : ''}" data-only="${k}">${l}</button>`).join('')}</div>
   </div></details>`;
 }
 function trackBar() {

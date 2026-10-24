@@ -162,7 +162,7 @@ footer.foot{font-size:12px;color:var(--faint);text-align:center;margin-top:24px;
   background:var(--ink);color:var(--bg);font-size:12px;font-weight:400;line-height:1.5;padding:8px 10px;border-radius:8px;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.18)}
 th .tip:hover::after,th .tip:focus::after{left:auto;right:-8px;transform:none}
 .kv{overflow:visible}
-/* 후보함에 담은 직후 알림창 */
+/* 내 종목에 담은 직후 알림창 */
 #watch-toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,140%);width:min(440px,calc(100vw - 32px));background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:12px 14px;display:flex;flex-direction:column;gap:8px;z-index:60;transition:transform .25s ease;font-size:13.5px}
 #watch-toast:not(.show){visibility:hidden;transition:transform .25s ease,visibility 0s .25s}
 #watch-toast.show{transform:translate(-50%,0)}

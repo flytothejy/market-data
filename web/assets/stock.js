@@ -128,7 +128,7 @@ async function renderStock(U, d, P) {
   const F = U.fields, m = d.m;
   const tabs = [['ov', '개요'], ['cons', '컨센서스'], ['fin', '재무'], ['tech', '차트·수급'], ['doc', '공시·내부자'], ['news', '뉴스']];
   let h = headBlock(m, []);
-  // 탭 줄 오른쪽 끝: 스크롤해도 따라오는 티커·종가·후보함 담기 (담으면 지금 보고 있는 칸이 '담은 곳'으로 기록됨)
+  // 탭 줄 오른쪽 끝: 스크롤해도 따라오는 티커·종가·내 종목 담기 (담으면 지금 보고 있는 칸이 '담은 곳'으로 기록됨)
   h += `<nav class="tabs">${tabs.map(([k, l], i) => `<a href="#${k}" class="${i ? '' : 'on'}">${l}</a>`).join('')}
     <span class="tab-end"><span class="tab-tk"><b>${esc(m.t)}</b>${m.px ? ` <span class="num mut">$${(+m.px).toFixed(2)}</span>` : ''}</span>${starBtn(m.t)}</span></nav>`;
 
@@ -430,7 +430,7 @@ async function renderStock(U, d, P) {
     e.preventDefault(); const s = document.getElementById(a.getAttribute('href').slice(1)); if (s) s.scrollIntoView({ behavior: 'smooth' }); }));
   document.querySelectorAll('.grid a.card[href^="#"]').forEach(a => a.addEventListener('click', e => {
     e.preventDefault(); const s = document.getElementById(a.getAttribute('href').slice(1)); if (s) s.scrollIntoView({ behavior: 'smooth' }); }));
-  let part = 'ov';                                    // 후보함에 담을 때 '보던 부분'으로 기록
+  let part = 'ov';                                    // 내 종목에 담을 때 '보던 부분'으로 기록
   window.watchSrc = () => ({ page: 'stock', part });
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { part = e.target.id; links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id)); } }), { rootMargin: '-120px 0px -60% 0px' });
   document.querySelectorAll('section[id]').forEach(s => io.observe(s));
@@ -485,7 +485,7 @@ async function renderHome(U) {
     popP.then(P => {                                   // 이번 주 티커맵 사용자 수치 (조금이라도 의미 있을 때만)
       const m = P && P.d7 && P.d7[T], el = document.getElementById('pop-line');
       if (!m || !el) return;
-      const bits = [m.w >= 3 ? `후보함에 ${m.w}명이 담음` : '', m.v >= 20 ? `${m.v.toLocaleString()}명이 봄` : ''].filter(Boolean);
+      const bits = [m.w >= 3 ? `내 종목에 ${m.w}명이 담음` : '', m.v >= 20 ? `${m.v.toLocaleString()}명이 봄` : ''].filter(Boolean);
       if (bits.length) el.innerHTML = `<span class="tag" title="최근 7일 티커맵 사용자 합계 (같은 기기는 하루 한 번)">이번 주 ${bits.join(' · ')}</span>`;
     });
   } catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; console.error(e); }

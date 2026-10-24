@@ -41,7 +41,7 @@ function miniMap(P, W, H) {
   return `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="오늘의 티커맵 미리보기: 가로 최근 1개월 주가, 세로 내년 EPS 전망 변화">${g}</svg>`;
 }
 
-// ---- 오늘의 소식: 그날 볼거리를 골라 보여 줌 (후보함 알림의 '모두에게' 버전) — 전부 화면용 데이터에서 계산
+// ---- 오늘의 소식: 그날 볼거리를 골라 보여 줌 (내 종목 알림의 '모두에게' 버전) — 전부 화면용 데이터에서 계산
 const WDK = '일월화수목금토';
 const dayK = d => `${+d.slice(5, 7)}/${+d.slice(8, 10)}(${WDK[new Date(d + 'T12:00:00Z').getUTCDay()]})`;
 const addD = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -106,7 +106,7 @@ function briefCards(U, F) {
   const showBrief = Prefs.get('home.brief');
   let h = '';
   if (showBrief) {
-    h += `<div class="hero"><h1>오늘의 소식</h1><p>미국 ${dayK(U.asof)} 마감 기준 · 매일 아침 새로 골라요 · 종목을 누르면 자세히, ☆로 후보함에</p></div>${mkt(false)}<div class="bf" id="brief">${briefCards(U, null).map(c => c.html).join('')}</div>`;
+    h += `<div class="hero"><h1>오늘의 소식</h1><p>미국 ${dayK(U.asof)} 마감 기준 · 매일 아침 새로 골라요 · 종목을 누르면 자세히, ☆로 내 종목에</p></div>${mkt(false)}<div class="bf" id="brief">${briefCards(U, null).map(c => c.html).join('')}</div>`;
     h += `<div class="sec-head map-head"><h2>티커맵</h2><span class="desc" id="map-desc"></span><div class="mx-seg" role="tablist" aria-label="지도 모양"><button data-mode="bubble">● 버블</button><button data-mode="heat">▦ 히트맵</button></div></div>`;
   } else {
     h += `<div class="hero map-head"><div><h1>주가와 신호가 어긋난 종목, 티커맵에서</h1><p id="map-desc"></p></div><div class="mx-seg" role="tablist" aria-label="지도 모양"><button data-mode="bubble">● 버블</button><button data-mode="heat">▦ 히트맵</button></div></div>`;
@@ -121,7 +121,7 @@ function briefCards(U, F) {
   // 내 관심 종목
   const Wl = Watch.list().map(t => U.rows.find(r => r.t === t)).filter(Boolean);
   if (Wl.length) {
-    h += `<div class="sec-head"><h2>내 후보함</h2><span class="desc">${Wl.length}개 · <a href="watch.html">후보함 →</a></span>
+    h += `<div class="sec-head"><h2>내 종목</h2><span class="desc">${Wl.length}개 · <a href="watch.html">내 종목 →</a></span>
       <a class="more" href="matrix.html?t=${encodeURIComponent(Wl.filter(r => r.k === 'stock').slice(0, 5).map(r => r.t).join(','))}">티커맵에서 보기 →</a></div>
       <div class="card"><div class="tbl-wrap"><table class="t"><thead><tr><th>종목</th><th>종가</th><th>1일</th><th>1개월</th><th>다음 실적</th><th class="l">한 줄 요약</th><th></th></tr></thead><tbody>
       ${Wl.map(r => `<tr><td><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.ko || r.n || '').slice(0, 16))}</span></td><td class="num">${fmt(r.px, 'px')}</td><td>${pctS(r.r1d)}</td><td>${pctS(r.r1m)}</td>

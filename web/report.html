@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>티커맵 — 포트폴리오 리포트</title>
+<title>주간 리포트 | 티커맵</title>
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/app.css">
 <script src="assets/data.js"></script>
@@ -66,11 +66,11 @@
 <div class="rep wrap" id="app"><div class="loading">리포트 만드는 중…</div></div>
 <div class="tip" id="tip"></div>
 <script>
-header('포트폴리오');
+header('주간 리포트');
 const DEMO = [{ t: 'NVDA', sh: 50, cost: 120 }, { t: 'AAPL', sh: 20, cost: 200 }, { t: 'QQQ', sh: 5, cost: 500 }, { t: 'JPM', sh: 10 }, { t: 'GME', sh: 100, cost: 25 }];
 function loadItems() {
   if (qs('demo')) return { items: DEMO, demo: true };
-  if (Auth.hint()) { try { const p = JSON.parse(localStorage.getItem('hub.portfolio.v1')); if (p && p.items && p.items.length) return { items: p.items, demo: false }; } catch (e) { } }
+  if (Auth.hint()) { try { const p = JSON.parse(localStorage.getItem('hub.portfolio.v1')); const it = (p && p.items || []).filter(x => x.sh > 0); if (it.length) return { items: it, demo: false }; } catch (e) { } }
   return { items: [], demo: false, empty: true };
 }
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -169,8 +169,8 @@ function perfChart(dates, a, b) {
 (async () => {
   const { items, demo, empty } = loadItems();
   if (empty) {
-    $('#app').innerHTML = `<div class="hero"><h1>주간 리포트</h1></div><div class="card" style="gap:10px"><b style="font-size:16px">등록된 포트폴리오가 없습니다</b>
-      <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="portfolio.html" style="text-decoration:none">포트폴리오 등록</a><a class="btn" href="report.html?demo=1" style="text-decoration:none">주간 리포트 예시 보기</a></div></div>`;
+    $('#app').innerHTML = `<div class="hero"><h1>주간 리포트</h1></div><div class="card" style="gap:10px"><b style="font-size:16px">수량을 넣은 보유 종목이 없습니다</b><span class="s13 mut">내 종목에서 ‘보유’로 표시하고 주식 수를 넣으면 리포트가 만들어져요</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="watch.html?f=hold" style="text-decoration:none">보유 종목 넣기</a><a class="btn" href="report.html?demo=1" style="text-decoration:none">주간 리포트 예시 보기</a></div></div>`;
     footer(); return;
   }
   let U, M;
@@ -231,7 +231,7 @@ function perfChart(dates, a, b) {
   const asof = dates[dates.length - 1];
   const cats = [['cons', '컨센서스'], ['fin', '재무'], ['tech', '차트·수급'], ['doc', '공시·내부자'], ['news', '뉴스']];
   const maxAbs = Math.max(...contrib.map(c => Math.abs(c.c))) || 1;
-  let h = `<div class="tools">${demo ? '<span class="tag" style="margin-right:auto">예시</span>' : ''}<a class="btn" href="portfolio.html">포트폴리오로</a><button class="btn dark" onclick="print()">PDF로 저장 · 인쇄</button></div>
+  let h = `<div class="tools">${demo ? '<span class="tag" style="margin-right:auto">예시</span>' : ''}<a class="btn" href="watch.html?f=hold">내 종목으로</a><button class="btn dark" onclick="print()">PDF로 저장 · 인쇄</button></div>
   <article class="sheet">
     <div class="r-head"><div><div class="small mut">주간 포트폴리오 리포트</div><h1>내 포트폴리오 · ${rows.length}종목</h1></div>
       <div class="meta">${esc(asof)} 종가 기준<br>티커맵</div></div>

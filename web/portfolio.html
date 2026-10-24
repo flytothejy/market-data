@@ -2,106 +2,11 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>티커맵 — 포트폴리오</title>
-<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="assets/app.css">
-<script src="assets/data.js"></script>
-<script src="assets/ui.js"></script>
+<meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="0; url=watch.html?f=hold">
+<link rel="canonical" href="watch.html">
+<title>내 종목 | 티커맵</title>
+<script>location.replace('watch.html?f=hold');</script>
 </head>
-<body>
-<div class="wrap" id="app"><div class="skel" role="status" aria-label="불러오는 중"><i class="sk sk-h"></i><i class="sk sk-p"></i><div class="sk-grid"><i class="sk sk-c"></i><i class="sk sk-c"></i><i class="sk sk-c"></i></div><i class="sk sk-b"></i></div></div>
-<script>
-header('포트폴리오');
-// 저장: 이 브라우저 + 로그인하면 계정에도 (ui.js PF — 다른 기기에서 로그인하면 같은 포트폴리오)
-const store = PF;
-document.addEventListener('portfolio-change', () => { P = store.load(); if (U) render(); });
-let P = store.load(), U, byT;
-const money = v => v == null ? '-' : (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: Math.abs(v) < 1000 ? 2 : 0 });
-
-function render() {
-  const items = P.items.filter(x => byT[x.t]);
-  let val = 0, cost = 0, day = 0;
-  const rows = items.map(x => {
-    const r = byT[x.t], v = (r.px || 0) * x.sh, c = x.cost ? x.cost * x.sh : null;
-    val += v; if (c != null) cost += c; day += r.r1d != null ? v - v / (1 + r.r1d) : 0;
-    return { ...x, r, v, c };
-  });
-  const costed = rows.filter(x => x.c != null), pnlAmt = costed.reduce((s, x) => s + x.v - x.c, 0), pnlBase = costed.reduce((s, x) => s + x.c, 0);
-  const left = Plan.PORTFOLIO_MAX - P.items.length;
-  let h = `<div class="hero"><h1>${esc(P.name)}</h1><p>보유 종목을 넣으면 다섯 카테고리에서 생긴 변화를 한 곳에 모아 보여줘요 · 종목 ${Plan.PORTFOLIO_MAX}개까지</p></div>`;
-  h += `<div class="grid g4">
-    <div class="card"><span class="mut s13">평가액</span><b style="font-size:22px" class="num">${money(val)}</b></div>
-    <div class="card"><span class="mut s13">오늘 변동</span><b style="font-size:22px" class="num ${cls(day)}">${day >= 0 ? '+' : ''}${money(day)}</b><span class="small">${pctS(val ? day / (val - day) : null)}</span></div>
-    <div class="card"><span class="mut s13">평가 손익 (매입가 입력분)</span><b style="font-size:22px" class="num ${cls(pnlAmt)}">${pnlBase ? (pnlAmt >= 0 ? '+' : '') + money(pnlAmt) : '-'}</b><span class="small">${pnlBase ? pctS(pnlAmt / pnlBase) : ''}</span></div>
-    <div class="card"><span class="mut s13">종목 수</span><b style="font-size:22px">${P.items.length} <span class="mut" style="font-size:14px">/ ${Plan.PORTFOLIO_MAX}</span></b></div></div>`;
-
-  h += `<div class="card"><h3>종목 추가</h3><div class="filters" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <input class="f" id="at" placeholder="티커 (예: AAPL)" style="width:140px;text-transform:uppercase" list="tick">
-    <input class="f" id="as" type="number" step="any" min="0" placeholder="주식 수" style="width:110px">
-    <input class="f" id="ac" type="number" step="any" min="0" placeholder="평균 매입가($, 선택)" style="width:170px">
-    <button class="btn dark" id="add" ${left <= 0 ? 'disabled' : ''}>추가</button>
-    <span class="mut s13" id="msg">${left <= 0 ? '무료 한도(10종목)에 도달했어요' : `${left}종목 더 넣을 수 있어요`}</span>
-    <span style="margin-left:auto;display:flex;gap:6px"><a class="btn dark" href="report.html" style="text-decoration:none">주간 리포트 보기</a></span></div>
-    <datalist id="tick">${U.rows.map(r => `<option value="${r.t}">${esc(r.n)}</option>`).join('')}</datalist></div>`;
-
-  if (!rows.length) {
-    h += `<div class="card"><div class="mut" style="padding:24px;text-align:center">아직 종목이 없어요. 위에서 티커와 주식 수를 넣어 시작하세요.</div></div>`;
-  } else {
-    rows.sort((a, b) => b.v - a.v);
-    h += `<div class="card"><h3>보유 종목</h3><div class="tbl-wrap"><table class="t"><thead><tr><th>티커</th><th class="l">이름</th><th>종가</th><th>1일</th><th>주식 수</th><th>평가액</th><th>비중</th><th>매입가</th><th>손익</th><th></th></tr></thead><tbody>
-      ${rows.map(x => `<tr><td><a href="${stockUrl(x.t)}"><b>${x.t}</b></a></td><td class="l nm" title="${esc(x.r.s1 || '')}">${esc(x.r.n)}${x.r.s1 ? `<div class="small mut" style="white-space:normal;max-width:360px">${esc(x.r.s1)}</div>` : ''}</td><td class="num">${fmt(x.r.px, 'px')}</td><td>${pctS(x.r.r1d)}</td>
-        <td class="num">${x.sh.toLocaleString()}</td><td class="num">${money(x.v)}</td><td class="num">${fmt(val ? x.v / val : null, 'pct')}</td><td class="num">${x.cost ? fmt(x.cost, 'px') : '-'}</td>
-        <td>${x.c ? pctS(x.v / x.c - 1) : '-'}</td><td><button class="btn" data-del="${x.t}" style="min-height:28px;padding:2px 8px">삭제</button></td></tr>`).join('')}</tbody></table></div></div>`;
-
-    // 업종 비중
-    const sec = {};
-    rows.forEach(x => { const s = x.r.k === 'etf' ? 'ETF' : secKo(x.r.sec); sec[s] = (sec[s] || 0) + x.v; });
-    h += `<div class="grid g2"><div class="card"><h3>업종 비중</h3>${Object.entries(sec).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div style="display:grid;grid-template-columns:100px 1fr 48px;gap:8px;align-items:center;font-size:13px"><span>${esc(k)}</span><div class="bar"><i style="width:${v / val * 100}%"></i></div><span class="num" style="text-align:right">${(v / val * 100).toFixed(1)}%</span></div>`).join('')}</div>`;
-
-    // 이벤트 모음
-    const ev = [];
-    const today = new Date().toISOString().slice(0, 10), in14 = new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10);
-    rows.forEach(({ t, r }) => {
-      if (r.c_next && r.c_next >= today && r.c_next <= in14) ev.push(['cons', r.c_next, t, `실적 발표 예정`]);
-      if (r.k8 > 0 && r.k8_last) ev.push(['doc', new Date().getFullYear() + '-' + r.k8_last.slice(0, 5), t, `8-K ${r.k8_last.slice(6)}`]);
-      if (r.ib > 0) ev.push(['doc', r.ib_last || '', t, `내부자 매수 ${fmtUsd(r.ib)} (90일, ${r.ibn}명)`]);
-      if (r.f144 > 0) ev.push(['doc', '', t, `매도 예정 신고 ${r.f144}건 (30일)`]);
-      if (r.c_n && Math.abs(r.c_ratio || 0) >= 0.2) ev.push(['cons', '', t, `전망 ${r.c_ratio > 0 ? '상향' : '하향'} 우세 (순상향률 ${fmt(r.c_ratio, 'pct', { sign: true })})`]);
-      if (r.hi52 != null && r.hi52 >= -0.01) ev.push(['tech', '', t, '52주 신고가 부근']);
-      if (r.vr >= 1.5) ev.push(['tech', '', t, `거래량 증가 (${fmt(r.vr, 'x')})`]);
-      if (r.nw7 >= 5) ev.push(['news', '', t, `뉴스 ${r.nw7}건 (7일)`]);
-    });
-    h += `<div class="card"><h3>내 종목에 생긴 일</h3><div class="sub">다섯 카테고리에서 눈에 띄는 변화</div>${ev.length ? `<div class="rank">${ev.sort((a, b) => (b[1] || '').localeCompare(a[1] || '')).map(([c, d, t, s]) => `<a class="r" href="${stockUrl(t)}" style="grid-template-columns:14px 56px minmax(0,1fr) auto"><span class="cat-dot c-${c}"></span><b>${t}</b><span class="nm mut s13">${esc(s)}</span><span class="faint small">${esc((d || '').slice(5))}</span></a>`).join('')}</div>` : '<div class="mut s13">특별한 변화가 없어요</div>'}</div></div>`;
-
-    // 카테고리 점검표
-    h += `<div class="card"><h3>카테고리 점검표</h3><div class="sub">보유 종목을 다섯 카테고리 지표로 나란히</div><div class="tbl-wrap"><table class="t"><thead><tr><th>티커</th>
-      <th><span class="cat-dot c-cons"></span>순상향률</th><th>목표가 여력</th><th><span class="cat-dot c-fin"></span>매출 성장</th><th>영업이익률</th><th>PER</th>
-      <th><span class="cat-dot c-tech"></span>1개월</th><th>200일선</th><th>공매도 비중</th><th><span class="cat-dot c-doc"></span>내부자 순매수(90일)</th><th>8-K(30일)</th><th><span class="cat-dot c-news"></span>뉴스(7일)</th></tr></thead><tbody>
-      ${rows.map(({ t, r }) => `<tr><td><a href="${stockUrl(t)}"><b>${t}</b></a></td><td>${pctS(r.c_ratio)}</td><td>${pctS(r.c_upside)}</td><td>${pctS(r.rev_g)}</td><td class="num">${fmt(r.om, 'pct')}</td><td class="num">${fmt(r.pe, 'x')}</td>
-        <td>${pctS(r.r1m)}</td><td>${pctS(r.d200)}</td><td class="num">${fmt(r.sv, 'pct')}</td><td class="num ${cls((r.ib || 0) - (r.is || 0))}">${r.ib != null || r.is != null ? fmtUsd((r.ib || 0) - (r.is || 0)) : '-'}</td><td class="num">${r.k8 ?? '-'}</td><td class="num">${r.nw7 ?? '-'}</td></tr>`).join('')}</tbody></table></div></div>`;
-    // (성과 분석 카드는 유료 기능 공개 전까지 숨김)
-  }
-  $('#app').innerHTML = h;
-  $('#add').onclick = () => {
-    const t = $('#at').value.trim().toUpperCase().replace('.', '-'), sh = +$('#as').value, c = +$('#ac').value || null;
-    if (!byT[t]) { $('#msg').textContent = `${t || '티커'}: 추적 대상이 아니에요`; return; }
-    if (!(sh > 0)) { $('#msg').textContent = '주식 수를 입력하세요'; return; }
-    const ex = P.items.find(x => x.t === t);
-    if (ex) { const tot = ex.sh + sh; ex.cost = ex.cost && c ? (ex.cost * ex.sh + c * sh) / tot : ex.cost || c; ex.sh = tot; }
-    else { if (P.items.length >= Plan.PORTFOLIO_MAX) return; P.items.push({ t, sh, cost: c }); }
-    store.save(P); render();
-  };
-  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { P.items = P.items.filter(x => x.t !== b.dataset.del); store.save(P); render(); });
-  footer();
-}
-
-(async () => {
-  if (!Auth.hint()) { loginWall('포트폴리오', ['보유 종목·수량·평균단가로 평가액과 손익을 한눈에', '업종 비중과 내 종목에 생긴 일', '1페이지 주간 리포트']); footer(); return; }
-  U = await Data.universe();
-  byT = Object.fromEntries(U.rows.map(r => [r.t, r]));
-  render();
-})();
-</script>
-</body>
+<body><a href="watch.html?f=hold">내 종목으로 이동</a></body>
 </html>

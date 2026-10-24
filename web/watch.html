@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="티커맵 후보함 — 담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었는지 한눈에.">
-<title>후보함 | 티커맵</title>
+<meta name="description" content="티커맵 내 종목 — 담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었는지 한눈에.">
+<title>내 종목 | 티커맵</title>
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/app.css">
 <script src="assets/data.js"></script>
@@ -25,6 +25,15 @@
 .warn{background:color-mix(in srgb,var(--warn) 12%,var(--card));color:var(--warn);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
 .wi textarea{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--bg);color:var(--ink);resize:vertical;min-height:34px}
 .src{font-size:12px;color:var(--faint)}
+.hs{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.hs button{border:0;background:none;font:inherit;font-size:12.5px;padding:3px 11px;color:var(--muted);cursor:pointer;min-height:28px}
+.hs button.on{background:var(--ink);color:var(--bg);font-weight:600}
+.wi-pos{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13.5px;background:var(--soft);border-radius:10px;padding:8px 10px}
+.wi-pos label{display:flex;gap:6px;align-items:center}
+.wi-pos span{color:var(--muted)}
+.wi-pos input{width:96px;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--bg);color:var(--ink)}
+.wl-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.wl-add input{width:200px;text-transform:uppercase}
 .wi-ck summary{cursor:pointer;color:var(--muted);padding:2px 0}
 .wi-ck[open] summary{margin-bottom:8px}
 .al{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -37,16 +46,16 @@
 <body>
 <div class="wrap" id="app"><div class="skel" role="status" aria-label="불러오는 중"><i class="sk sk-h"></i><i class="sk sk-p"></i><div class="sk-grid"><i class="sk sk-c"></i><i class="sk sk-c"></i><i class="sk sk-c"></i></div><i class="sk sk-b"></i></div></div>
 <script>
-header('후보함');
+header('내 종목');
 const PART_KO = { ov: '개요', cons: '컨센서스', fin: '재무', tech: '차트·수급', doc: '공시·내부자', news: '뉴스' };
 const SPAN_KO = { '3m': '3개월', '1y': '1년', '3y': '3년' };
-const st = { p: qs('p') || '', sort: 'at' };
+const st = { f: ['watch', 'hold'].includes(qs('f')) ? qs('f') : '', sort: 'at' };
 let U, P;
 
 function srcLabel(s) {
   if (!s) return '';
-  if (s.page === 'matrix') return `티커맵 · ${LENS_SNAP[s.lens] ? LENS_SNAP[s.lens].name : ''}${s.span ? ' · ' + SPAN_KO[s.span] + ' 트레일' : ''}`;
-  if (s.page === 'stock') return `종목 화면 · ${PART_KO[s.part] || s.part || ''}`;
+  if (s.page === 'matrix') return ['티커맵', LENS_SNAP[s.lens] && LENS_SNAP[s.lens].name, s.span && SPAN_KO[s.span] + ' 트레일'].filter(Boolean).join(' · ');
+  if (s.page === 'stock') return ['종목 화면', PART_KO[s.part] || s.part].filter(Boolean).join(' · ');
   if (s.page === 'legacy') return '예전 관심 종목에서 옮김';
   return [s.label, s.part].filter(Boolean).join(' · ');
 }
@@ -76,14 +85,23 @@ function changes(rec, r) {
   }
   return { lines, warn };
 }
+const money = v => v == null ? '-' : (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: Math.abs(v) < 1000 ? 2 : 0 });
+function pos(t) {                                         // 보유 정보 + 평가액·손익 (수량을 넣은 경우)
+  const x = PF.get(t); if (!x) return null;
+  const r = U.rows.find(y => y.t === t), v = x.sh > 0 && r && r.px ? r.px * x.sh : null, c = v != null && x.cost ? x.cost * x.sh : null;
+  return { ...x, r, v, c, day: v != null && r.r1d != null ? v - v / (1 + r.r1d) : 0 };
+}
 function item(rec) {
-  const r = U.rows.find(x => x.t === rec.t);
+  const r = U.rows.find(x => x.t === rec.t), ps = pos(rec.t);
   const ret = rec.px && r && r.px ? r.px / rec.px - 1 : null;
   const { lines, warn } = changes(rec, r);
   return `<div class="card wi" data-t="${esc(rec.t)}">
     <div class="wi-top"><h3><a href="${stockUrl(rec.t)}">${esc(rec.t)}</a></h3><span class="mut s13">${esc(r ? (r.ko || r.n) : '')}</span>
-      <span style="display:flex;gap:6px;flex-wrap:wrap">${Object.entries(PURPOSE).map(([k, l]) => `<button class="pchip ${rec.purpose === k ? 'on' : ''}" data-p="${k}">${l}</button>`).join('')}</span>
-      <button class="x" data-del aria-label="${esc(rec.t)} 빼기" title="후보함에서 빼기">×</button></div>
+      <span class="hs"><button class="${ps ? '' : 'on'}" data-h="0">관심</button><button class="${ps ? 'on' : ''}" data-h="1">보유</button></span>
+      <button class="x" data-del aria-label="${esc(rec.t)} 빼기" title="내 종목에서 빼기">×</button></div>
+    ${ps ? `<div class="wi-pos"><label><span>주식 수</span><input type="number" step="any" min="0" value="${ps.sh ?? ''}" placeholder="0" data-sh></label>
+      <label><span>평균 매입가($)</span><input type="number" step="any" min="0" value="${ps.cost ?? ''}" placeholder="선택" data-cost></label>
+      ${ps.v != null ? `<div><span>평가액</span> <b class="num">${money(ps.v)}</b></div>` : ''}${ps.c ? `<div><span>손익</span> <b class="num ${cls(ps.v - ps.c)}">${(ps.v >= ps.c ? '+' : '') + money(ps.v - ps.c)}</b> ${pctS(ps.v / ps.c - 1)}</div>` : ''}</div>` : ''}
     <div class="wi-why"><span class="mut">담은 이유</span><input value="${esc(rec.why || '')}" maxlength="80" placeholder="왜 담았는지 한 줄" data-why></div>
     <div class="src">${esc(srcLabel(rec.src))}${rec.at ? ` · ${esc(rec.at)} 담음` : ''}</div>
     <div class="wi-kv">${rec.px ? `<div><span>담을 때</span> <b class="num">$${(+rec.px).toFixed(2)}</b></div>` : ''}${r && r.px ? `<div><span>지금</span> <b class="num">$${(+r.px).toFixed(2)}</b></div>` : ''}
@@ -95,6 +113,35 @@ function item(rec) {
     <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="${stockUrl(rec.t)}" style="text-decoration:none">종목 화면 →</a>${againLink(rec)}</div>
   </div>`;
 }
+// 보유 탭 아래: 업종 비중 · 보유 종목에 생긴 일 · 카테고리 점검표
+function holdExtras(rows) {
+  if (!rows.length) return '';
+  let h = '';
+  const valued = rows.filter(x => x.v), val = valued.reduce((s, x) => s + x.v, 0);
+  if (val) {
+    const sec = {};
+    valued.forEach(x => { const s = x.r.k === 'etf' ? 'ETF' : secKo(x.r.sec); sec[s] = (sec[s] || 0) + x.v; });
+    h += `<div class="card"><h3>업종 비중</h3>${Object.entries(sec).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div style="display:grid;grid-template-columns:100px 1fr 48px;gap:8px;align-items:center;font-size:13px"><span>${esc(k)}</span><div class="bar"><i style="width:${v / val * 100}%"></i></div><span class="num" style="text-align:right">${(v / val * 100).toFixed(1)}%</span></div>`).join('')}</div>`;
+  }
+  const ev = [], today = new Date().toISOString().slice(0, 10), in14 = new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10);
+  rows.forEach(({ t, r }) => {
+    if (r.c_next && r.c_next >= today && r.c_next <= in14) ev.push(['cons', r.c_next, t, '실적 발표 예정']);
+    if (r.k8 > 0 && r.k8_last) ev.push(['doc', new Date().getFullYear() + '-' + r.k8_last.slice(0, 5), t, `8-K ${r.k8_last.slice(6)}`]);
+    if (r.ib > 0) ev.push(['doc', r.ib_last || '', t, `내부자 매수 ${fmtUsd(r.ib)} (90일, ${r.ibn}명)`]);
+    if (r.f144 > 0) ev.push(['doc', '', t, `매도 예정 신고 ${r.f144}건 (30일)`]);
+    if (r.c_n && Math.abs(r.c_ratio || 0) >= 0.2) ev.push(['cons', '', t, `전망 ${r.c_ratio > 0 ? '상향' : '하향'} 우세 (순상향률 ${fmt(r.c_ratio, 'pct', { sign: true })})`]);
+    if (r.hi52 != null && r.hi52 >= -0.01) ev.push(['tech', '', t, '52주 신고가 부근']);
+    if (r.vr >= 1.5) ev.push(['tech', '', t, `거래량 증가 (${fmt(r.vr, 'x')})`]);
+    if (r.nw7 >= 5) ev.push(['news', '', t, `뉴스 ${r.nw7}건 (7일)`]);
+  });
+  h += `<div class="card"><h3>보유 종목에 생긴 일</h3>${ev.length ? `<div class="rank">${ev.sort((a, b) => (b[1] || '').localeCompare(a[1] || '')).map(([c, d, t, s]) => `<a class="r" href="${stockUrl(t)}" style="grid-template-columns:14px 56px minmax(0,1fr) auto"><span class="cat-dot c-${c}"></span><b>${t}</b><span class="nm mut s13">${esc(s)}</span><span class="faint small">${esc((d || '').slice(5))}</span></a>`).join('')}</div>` : '<div class="mut s13">특별한 변화가 없어요</div>'}</div>`;
+  h += `<div class="card"><h3>카테고리 점검표</h3><div class="tbl-wrap"><table class="t"><thead><tr><th>티커</th>
+      <th><span class="cat-dot c-cons"></span>순상향률</th><th>목표가 여력</th><th><span class="cat-dot c-fin"></span>매출 성장</th><th>영업이익률</th><th>PER</th>
+      <th><span class="cat-dot c-tech"></span>1개월</th><th>200일선</th><th>공매도 비중</th><th><span class="cat-dot c-doc"></span>내부자 순매수(90일)</th><th>8-K(30일)</th><th><span class="cat-dot c-news"></span>뉴스(7일)</th></tr></thead><tbody>
+      ${rows.map(({ t, r }) => `<tr><td><a href="${stockUrl(t)}"><b>${t}</b></a></td><td>${pctS(r.c_ratio)}</td><td>${pctS(r.c_upside)}</td><td>${pctS(r.rev_g)}</td><td class="num">${fmt(r.om, 'pct')}</td><td class="num">${fmt(r.pe, 'x')}</td>
+        <td>${pctS(r.r1m)}</td><td>${pctS(r.d200)}</td><td class="num">${fmt(r.sv, 'pct')}</td><td class="num ${cls((r.ib || 0) - (r.is || 0))}">${r.ib != null || r.is != null ? fmtUsd((r.ib || 0) - (r.is || 0)) : '-'}</td><td class="num">${r.k8 ?? '-'}</td><td class="num">${r.nw7 ?? '-'}</td></tr>`).join('')}</tbody></table></div></div>`;
+  return h;
+}
 // ---- 텔레그램 알림 연결
 let waiting = 0;
 function alertPanel() {
@@ -102,13 +149,13 @@ function alertPanel() {
   const me = Sync.st().me;
   if (me && me.linked) {
     el.innerHTML = `<div class="al"><div class="al-t"><b><span class="on-dot"></span>텔레그램 알림 ${me.mode === 'off' ? '꺼짐' : '켜짐'}</b>${me.tg ? ` <span class="mut s13">· ${esc(me.tg)}</span>` : ''}
-        <div class="small mut">${me.mode === 'off' ? '다시 켜면 매일 아침 후보함 소식을 모아 보내요' : '매일 아침 8~9시(한국 시간)에 후보함 종목의 새 소식을 한 번에 · ' + (Auth.hint() ? '다른 기기에서는 같은 계정으로 로그인하면 돼요' : '다른 기기는 봇에게 /기기')}</div></div>
+        <div class="small mut">${me.mode === 'off' ? '다시 켜면 매일 아침 내 종목 소식을 모아 보내요' : '매일 아침 8~9시(한국 시간)에 내 종목의 새 소식을 한 번에 · ' + (Auth.hint() ? '다른 기기에서는 같은 계정으로 로그인하면 돼요' : '다른 기기는 봇에게 /기기')}</div></div>
       <button class="btn" data-al="mode">${me.mode === 'off' ? '알림 켜기' : '알림 끄기'}</button><button class="btn" data-al="unlink">연결 끊기</button></div>
-      <div class="small faint" style="margin-top:8px">후보함·텔레그램 연결 정보가 서버(Cloudflare)에 저장돼 있어요 · <a href="privacy.html">개인정보처리방침</a> · ${Auth.hint() ? '<a href="account.html">내 계정</a>에서 계정째 지울 수 있어요' : '<a href="#" data-al="wipe">서버에서 내 데이터 지우기</a>'}</div>`;
+      <div class="small faint" style="margin-top:8px">내 종목·텔레그램 연결 정보가 서버(Cloudflare)에 저장돼 있어요 · <a href="privacy.html">개인정보처리방침</a> · ${Auth.hint() ? '<a href="account.html">내 계정</a>에서 계정째 지울 수 있어요' : '<a href="#" data-al="wipe">서버에서 내 데이터 지우기</a>'}</div>`;
   } else {
-    el.innerHTML = `<div class="al"><div class="al-t"><b>📨 후보함 소식을 텔레그램으로 받기</b>
+    el.innerHTML = `<div class="al"><div class="al-t"><b>📨 내 종목 소식을 텔레그램으로 받기</b>
         <ul><li>실적 발표 하루 전, 발표 뒤 주가 반응</li><li>종목 점검표에 새로 생긴 경고</li><li>임원 장내 매수</li></ul>
-        <div class="small faint" style="margin-top:6px">매일 아침 한 번 모아서 · ${Auth.hint() ? '내 계정에 연결돼요 — 기기를 바꿔도 알림이 이어져요' : '로그인 없이도 연결할 수 있어요 (연결하면 후보함과 대화방 정보가 서버에 저장돼요) · <a href="account.html">로그인</a>하면 기기를 바꿔도 알림이 이어져요'} · <a href="privacy.html">개인정보처리방침</a></div></div>
+        <div class="small faint" style="margin-top:6px">매일 아침 한 번 모아서 · ${Auth.hint() ? '내 계정에 연결돼요 — 기기를 바꿔도 알림이 이어져요' : '로그인 없이도 연결할 수 있어요 (연결하면 내 종목과 대화방 정보가 서버에 저장돼요) · <a href="account.html">로그인</a>하면 기기를 바꿔도 알림이 이어져요'} · <a href="privacy.html">개인정보처리방침</a></div></div>
       <button class="btn dark" data-al="link">${waiting ? '연결 기다리는 중…' : '텔레그램 연결'}</button></div>`;
   }
   el.querySelectorAll('[data-al]').forEach(b => b.onclick = async ev => {
@@ -122,8 +169,8 @@ function alertPanel() {
         if (w) w.location = url; else location.href = url;
         waiting = Date.now(); poll();
       } else if (a === 'mode') await Sync.mode(me.mode === 'off' ? 'digest' : 'off');
-      else if (a === 'unlink') { if (confirm('텔레그램 연결을 끊을까요? 후보함은 그대로 남아요')) await Sync.unlink(); }
-      else if (a === 'wipe') { if (confirm('서버에 있는 후보함·텔레그램 연결 정보를 모두 지울까요? 되돌릴 수 없어요')) { await Sync.wipe(); notice('서버에서 모두 지웠어요'); } }
+      else if (a === 'unlink') { if (confirm('텔레그램 연결을 끊을까요? 내 종목은 그대로 남아요')) await Sync.unlink(); }
+      else if (a === 'wipe') { if (confirm('서버에 있는 내 종목·텔레그램 연결 정보를 모두 지울까요? 되돌릴 수 없어요')) { await Sync.wipe(); notice('서버에서 모두 지웠어요'); } }
     } catch (e) { notice('실패: ' + e.message); }
     alertPanel();
   });
@@ -138,39 +185,68 @@ document.addEventListener('watch-change', () => { if (U && !document.activeEleme
 
 function render() {
   if (qs('tab') === 'alert') {                            // 알림 탭: 텔레그램 알림 연결·설정만
-    $('#app').innerHTML = `<div class="hero"><h1>알림</h1><p>후보함 종목의 새 소식을 매일 아침 받아요</p></div><div class="card" id="alert"></div>`;
+    $('#app').innerHTML = `<div class="hero"><h1>알림</h1><p>내 종목의 새 소식을 매일 아침 받아요</p></div><div class="card" id="alert"></div>`;
     alertPanel(); return;
   }
-  const all = Watch.records();
-  let rs = all.filter(r => !st.p || (st.p === 'none' ? !r.purpose : r.purpose === st.p));
+  const all = Watch.records(), isH = rec => PF.held(rec.t);
+  const nH = all.filter(isH).length;
+  let rs = all.filter(rec => !st.f || (st.f === 'hold' ? isH(rec) : !isH(rec)));
   const ret = rec => { const r = U.rows.find(x => x.t === rec.t); return rec.px && r && r.px ? r.px / rec.px - 1 : null; };
   if (st.sort === 'ret') rs = rs.slice().sort((a, b) => (ret(b) ?? -9) - (ret(a) ?? -9));
-  const rets = all.map(ret).filter(v => v != null), avg = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
+  if (st.sort === 'val') rs = rs.slice().sort((a, b) => ((pos(b.t) || {}).v || 0) - ((pos(a.t) || {}).v || 0));
+  const hp = all.filter(isH).map(rec => pos(rec.t)).filter(x => x && x.r);
+  const val = hp.reduce((s, x) => s + (x.v || 0), 0), day = hp.reduce((s, x) => s + (x.day || 0), 0);
+  const cst = hp.filter(x => x.c), pnl = cst.reduce((s, x) => s + x.v - x.c, 0), base = cst.reduce((s, x) => s + x.c, 0);
   const nwarn = all.filter(rec => changes(rec, U.rows.find(x => x.t === rec.t)).warn.length).length;
-  const cnt = k => all.filter(r => k === 'none' ? !r.purpose : r.purpose === k).length;
-  $('#app').innerHTML = `<div class="hero"><h1>후보함</h1><p>담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었나</p></div>
-    ${all.length ? `<div class="card"><div class="kv"><div><span>담은 종목</span><b>${all.length}개</b></div>${avg != null ? `<div><span>담은 뒤 평균</span><b>${pctS(avg)}</b></div>` : ''}<div><span>오른쪽 아래로 들어간 종목</span><b>${nwarn}개</b></div></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="mx-seg seg">${[['', `전체 ${all.length}`], ['hold', `${PURPOSE.hold} ${cnt('hold')}`], ['consider', `${PURPOSE.consider} ${cnt('consider')}`], ['watch', `${PURPOSE.watch} ${cnt('watch')}`], ['none', `목적 미정 ${cnt('none')}`]].map(([k, l]) => `<button class="btn ${st.p === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')}</div>
-      <label class="s13 mut" style="margin-left:auto">정렬 <select class="f" id="sort"><option value="at">담은 순</option><option value="ret" ${st.sort === 'ret' ? 'selected' : ''}>담은 뒤 수익률</option></select></label></div>
-    <div class="wl">${rs.map(item).join('') || '<div class="card mut s13">해당하는 종목이 없어요</div>'}</div>`
-    : `<div class="card"><p class="s13" style="margin:0">아직 담은 종목이 없어요. <a href="matrix.html">티커맵</a>·종목 화면·<a href="ranking.html">티커랭킹</a>·<a href="earnings.html">실적 달력</a>에서 ☆를 누르면, 그때의 렌즈 위치·트레일 모양·가격이 담은 이유와 함께 여기에 모여요.</p></div>`}
+  const sum = `<div class="card"><div class="kv"><div><span>종목</span><b>${all.length}개 <small class="mut">관심 ${all.length - nH} · 보유 ${nH}</small></b></div>
+      ${val ? `<div><span>평가액</span><b class="num">${money(val)}</b></div><div><span>오늘 변동</span><b class="num ${cls(day)}">${day >= 0 ? '+' : ''}${money(day)}</b></div>` : ''}
+      ${base ? `<div><span>평가 손익</span><b class="num ${cls(pnl)}">${(pnl >= 0 ? '+' : '') + money(pnl)} <small>${pctS(pnl / base)}</small></b></div>` : ''}
+      <div><span>오른쪽 아래로 들어간 종목</span><b>${nwarn}개</b></div></div></div>`;
+  const add = `<div class="wl-add"><input class="f" id="at" placeholder="티커로 추가 (예: AAPL)" list="tick" autocomplete="off"><button class="btn dark" id="add">추가</button><span class="mut s13" id="msg"></span>
+      <a class="btn" href="report.html" style="margin-left:auto;text-decoration:none">주간 리포트</a><datalist id="tick">${U.rows.map(r => `<option value="${r.t}">${esc(r.n)}</option>`).join('')}</datalist></div>`;
+  $('#app').innerHTML = `<div class="hero"><h1>내 종목</h1><p>관심 종목은 담은 뒤 무엇이 바뀌었는지, 보유 종목은 평가액과 손익까지</p></div>
+    ${all.length ? `${sum}${add}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="mx-seg seg">${[['', `전체 ${all.length}`], ['watch', `관심 ${all.length - nH}`], ['hold', `보유 ${nH}`]].map(([k, l]) => `<button class="btn ${st.f === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')}</div>
+      <label class="s13 mut" style="margin-left:auto">정렬 <select class="f" id="sort"><option value="at">담은 순</option><option value="ret" ${st.sort === 'ret' ? 'selected' : ''}>담은 뒤 수익률</option>${nH ? `<option value="val" ${st.sort === 'val' ? 'selected' : ''}>평가액</option>` : ''}</select></label></div>
+    <div class="wl">${rs.map(item).join('') || `<div class="card mut s13">${st.f === 'hold' ? '보유로 표시한 종목이 없어요. 종목 카드에서 ‘보유’를 누르면 주식 수와 매입가를 넣을 수 있어요' : '해당하는 종목이 없어요'}</div>`}</div>
+    ${st.f === 'hold' ? holdExtras(hp) : ''}`
+    : `${add}<div class="card"><p class="s13" style="margin:0">아직 담은 종목이 없어요. 위에서 티커로 추가하거나, <a href="matrix.html">티커맵</a>·종목 화면·<a href="ranking.html">티커랭킹</a>·<a href="earnings.html">실적 달력</a>에서 ☆를 누르면 여기에 모여요.</p></div>`}
     <div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 담은 뒤 수익률은 담을 때 화면 데이터의 종가 기준</div>`;
-  alertPanel();
-  document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { st.p = b.dataset.f; render(); });
+  document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { st.f = b.dataset.f; history.replaceState(null, '', st.f ? '?f=' + st.f : location.pathname); render(); });
   const so = $('#sort'); if (so) so.onchange = e => { st.sort = e.target.value; render(); };
+  const doAdd = async () => {
+    const t = $('#at').value.trim().toUpperCase().replace('.', '-');
+    if (!U.rows.some(r => r.t === t)) { $('#msg').textContent = `${t || '티커'}: 추적 대상이 아니에요`; return; }
+    if (Watch.has(t)) { $('#msg').textContent = `${t}: 이미 담겨 있어요`; return; }
+    await captureWatch(t, null, { page: 'watch', label: '직접 추가' });
+    if (st.f === 'hold') PF.hold(t, true);
+    render();
+  };
+  const ab = $('#add'); if (ab) { ab.onclick = doAdd; $('#at').onkeydown = e => { if (e.key === 'Enter') doAdd(); }; }
   document.querySelectorAll('.wi').forEach(c => {
     const t = c.dataset.t;
-    c.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const rec = Watch.get(t); Watch.update(t, { purpose: rec.purpose === b.dataset.p ? '' : b.dataset.p }); render(); });
+    c.querySelectorAll('[data-h]').forEach(b => b.onclick = () => {
+      const on = b.dataset.h === '1';
+      if (PF.held(t) === on) return;
+      if (!PF.hold(t, on)) { notice(`보유 종목은 ${Plan.PORTFOLIO_MAX}개까지예요`); return; }
+      render(); if (on) { const i = $(`.wi[data-t="${CSS.escape(t)}"] [data-sh]`); if (i) i.focus(); }
+    });
+    const sh = c.querySelector('[data-sh]'), co = c.querySelector('[data-cost]');
+    if (sh) sh.onchange = e => { PF.setPos(t, { sh: +e.target.value > 0 ? +e.target.value : null }); render(); };
+    if (co) co.onchange = e => { PF.setPos(t, { cost: +e.target.value > 0 ? +e.target.value : null }); render(); };
     c.querySelector('[data-del]').onclick = () => { Watch.remove(t); render(); };
     c.querySelector('[data-why]').onchange = e => Watch.update(t, { why: e.target.value.trim() });
     c.querySelector('[data-note]').onchange = e => Watch.update(t, { note: e.target.value });
   });
 }
+document.addEventListener('portfolio-change', () => { if (U && !document.activeElement.matches('input,textarea')) render(); });
 (async () => {
-  if (!Auth.hint() && qs('tab') === 'alert') { loginWall('알림', ['후보함 종목의 실적 발표·발표 뒤 주가 반응', '종목 점검표에 새로 생긴 경고', '임원 장내 매수를 매일 아침 텔레그램으로']); footer(); return; }
-  if (!Auth.hint()) { loginWall('후보함', ['관심 종목을 담고, 담은 뒤 무엇이 바뀌었는지 한눈에', '새 소식은 텔레그램 아침 알림으로']); footer(); return; }
+  if (!Auth.hint() && qs('tab') === 'alert') { loginWall('알림', ['내 종목의 실적 발표·발표 뒤 주가 반응', '종목 점검표에 새로 생긴 경고', '임원 장내 매수를 매일 아침 텔레그램으로']); footer(); return; }
+  if (!Auth.hint()) { loginWall('내 종목', ['관심 종목을 담고, 담은 뒤 무엇이 바뀌었는지 한눈에', '보유 종목은 수량·매입가로 평가액과 손익까지', '새 소식은 텔레그램 아침 알림으로']); footer(); return; }
   try { [U, P] = await Promise.all([Data.universe(), patterns()]); }
   catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
+  // 예전 포트폴리오에만 있던 종목은 내 종목에도 넣어 둠 (보유 = 내 종목 안의 표시)
+  for (const x of PF.load().items || []) if (!Watch.has(x.t)) Watch.add({ t: x.t, at: null, px: null, why: '', note: '', src: { page: 'portfolio', label: '포트폴리오에서 옮김' }, snap: null });
   // 예전 관심 종목에서 옮긴 것: 지금 상태를 스냅샷으로 채워 둠 (담은 날·가격은 모름)
   for (const rec of Watch.records()) if (!rec.snap) { const r = U.rows.find(x => x.t === rec.t); if (r) Watch.update(rec.t, { snap: snapOf(r, P) }); }
   render();

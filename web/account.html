@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="티커맵 로그인 — 구글·카카오·네이버로 여러 기기에서 후보함을 이어 써요.">
+<meta name="description" content="티커맵 로그인 — 구글·카카오·네이버로 여러 기기에서 내 종목을 이어 써요.">
 <title>로그인 | 티커맵</title>
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/app.css">
@@ -54,13 +54,13 @@ const EV = { login: '로그인', device_link: '이 기기 연결', logout: '로�
 function loginView(note) {
   $('#app').innerHTML = `<div class="ac"><div class="hero"><h1>로그인</h1><p>로그인하지 않아도 모든 기능을 쓸 수 있어요</p></div>
     ${note ? `<div class="msg">${note}</div>` : ''}
-    <div class="card"><ul class="benefit"><li>휴대폰·PC 어디서든 같은 <b>후보함</b></li><li>브라우저를 지워도 후보함·텔레그램 알림 유지</li><li>앞으로 나올 검색 조건 저장·알림</li></ul>
+    <div class="card"><ul class="benefit"><li>휴대폰·PC 어디서든 같은 <b>내 종목</b></li><li>브라우저를 지워도 내 종목·텔레그램 알림 유지</li><li>앞으로 나올 검색 조건 저장·알림</li></ul>
       ${ON_SITE ? `<div class="sso">
         <button class="g" data-p="google">${ICONS.google}구글로 계속하기</button>
         <button class="k" data-p="kakao">${ICONS.kakao}카카오로 계속하기</button>
         <button class="n" data-p="naver">${ICONS.naver}네이버로 계속하기</button></div>`
       : `<div class="msg">로그인은 <a href="https://tickermap.kr/hub/account">tickermap.kr</a>에서만 돼요</div>`}
-      <div class="small faint">이 브라우저에 담아 둔 후보함은 로그인하면 계정으로 합쳐져요 · 계속하면 <a href="terms.html">이용약관</a>과 <a href="privacy.html">개인정보처리방침</a>에 동의하는 것으로 봅니다</div></div></div>`;
+      <div class="small faint">이 브라우저에 담아 둔 내 종목은 로그인하면 계정으로 합쳐져요 · 계속하면 <a href="terms.html">이용약관</a>과 <a href="privacy.html">개인정보처리방침</a>에 동의하는 것으로 봅니다</div></div></div>`;
   document.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
     document.querySelectorAll('[data-p]').forEach(x => x.disabled = true);
     try { await Auth.signIn(b.dataset.p); } catch (e) { notice('로그인을 시작하지 못했어요: ' + e.message); document.querySelectorAll('[data-p]').forEach(x => x.disabled = false); }
@@ -74,16 +74,16 @@ async function accountView(me, note) {
     <div class="card"><div class="prof">${u.image ? `<img src="${esc(u.image)}" alt="" referrerpolicy="no-referrer">` : `<span class="acct-i">${esc((u.name || '나').slice(0, 1))}</span>`}
       <div><b style="font-size:17px">${esc(u.name || '이름 없음')}</b><div class="small mut">${u.email ? esc(u.email) + ' · ' : ''}${esc(String(u.since || '').slice(0, 10))} 가입</div>
       <div class="prov" style="margin-top:4px">${me.providers.map(p => `<span class="tag">${PROV[p] || p}</span>`).join('')}</div></div></div></div>
-    <div class="card"><div class="kv"><div><span>후보함</span><b>${items}종목</b></div><div><span>텔레그램 알림</span><b>${me.tg && me.tg.linked ? (me.tg.mode === 'off' ? '꺼짐' : '켜짐') : '연결 안 됨'}</b></div></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="watch.html" style="text-decoration:none">후보함 →</a><a class="btn" href="settings.html" style="text-decoration:none">설정 →</a></div></div>
+    <div class="card"><div class="kv"><div><span>내 종목</span><b>${items}종목</b></div><div><span>텔레그램 알림</span><b>${me.tg && me.tg.linked ? (me.tg.mode === 'off' ? '꺼짐' : '켜짐') : '연결 안 됨'}</b></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="watch.html" style="text-decoration:none">내 종목 →</a><a class="btn" href="settings.html" style="text-decoration:none">설정 →</a></div></div>
     <div class="card"><h3>로그인된 기기</h3><div class="lst" id="sess"><div class="mut">불러오는 중…</div></div>
       <div><button class="btn" id="others">다른 기기 모두 로그아웃</button></div></div>
     <div class="card"><h3>최근 보안 기록</h3><div class="sub">로그인·기기 연결·로그아웃 (1년 보관 · IP는 저장하지 않음)</div><div class="lst" id="log"></div></div>
     <div class="card" style="flex-direction:row;gap:8px;flex-wrap:wrap"><button class="btn" id="out">로그아웃</button><button class="btn danger" id="del" style="margin-left:auto">계정 삭제</button></div>
-    <div class="small faint">로그아웃하면 이 브라우저에서 후보함·포트폴리오가 사라지고, 다시 로그인하면 돌아와요 · 계정을 삭제하면 서버의 후보함·기기·텔레그램 연결·로그인 정보가 모두 지워져요</div></div>`;
+    <div class="small faint">로그아웃하면 이 브라우저에서 내 종목가 사라지고, 다시 로그인하면 돌아와요 · 계정을 삭제하면 서버의 내 종목·기기·텔레그램 연결·로그인 정보가 모두 지워져요</div></div>`;
   $('#out').onclick = async () => { await Auth.signOut(); location.href = 'account.html'; };
   $('#del').onclick = async () => {
-    if (!confirm('계정을 삭제할까요? 서버의 후보함·텔레그램 연결·로그인 정보가 모두 지워지고 되돌릴 수 없어요.')) return;
+    if (!confirm('계정을 삭제할까요? 서버의 내 종목·텔레그램 연결·로그인 정보가 모두 지워지고 되돌릴 수 없어요.')) return;
     try { await Auth.remove(); location.href = 'account.html?deleted=1'; } catch (e) { notice('삭제하지 못했어요: ' + e.message); }
   };
   $('#others').onclick = async () => { try { await Auth.revokeOthers(); notice('다른 기기를 모두 로그아웃했어요'); loadSessions(); } catch (e) { notice('실패: ' + e.message); } };

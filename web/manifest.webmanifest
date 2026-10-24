@@ -15,7 +15,7 @@
   ],
   "shortcuts": [
     { "name": "티커맵", "url": "matrix.html" },
-    { "name": "후보함", "url": "watch.html" },
+    { "name": "내 종목", "url": "watch.html" },
     { "name": "실적 달력", "url": "earnings.html" }
   ]
 }

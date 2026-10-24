@@ -1,4 +1,4 @@
-"""후보함 알림 엔진 — 매일 아침 묶음 (daily 묶음의 check 다음에 실행)
+"""내 종목 알림 엔진 — 매일 아침 묶음 (daily 묶음의 check 다음에 실행)
 
   python -m hub run alerts
 
@@ -7,7 +7,7 @@
    - er_res  실적 발표 뒤 주가 반응 (er.hist에 새 발표가 생김)
    - w:<k>   종목 점검표에 새로 생긴 경고 (최근 20일 안에 같은 경고가 없었을 때만 — 경계선에서 들락날락하는 소음 막기)
    - ins     임원 장내 매수 (최근 내부자 매수일이 새로 생김, 합계 5만 달러 이상)
-2) 구독자(텔레그램 연결된 후보함)별로 묶어 메시지 한 통 → Cloudflare Worker(/internal/send)가 텔레그램으로 전달
+2) 구독자(텔레그램 연결된 내 종목)별로 묶어 메시지 한 통 → Cloudflare Worker(/internal/send)가 텔레그램으로 전달
    - 목적이 '그냥 관찰'인 종목은 검증된 신호·실적만
    - 같은 이벤트는 한 번만 (_alerts/state.json의 sent)
 환경변수: ALERT_API (Worker 주소), ALERT_KEY (Worker와 같은 비밀값), SITE_URL — 없으면 감지·기록만 하고 보내지 않음
@@ -148,7 +148,7 @@ def detect(U, prev, init):
                                            f"최근 8번 평균 ±{r['er_avg'] * 100:.1f}%" if r.get("er_avg") else ""] if x)
             out.append({"k": f"er_d1:{nxt}", "kind": "er", "ord": 1, "title": f"실적 발표 임박 — 미국 {kday(nxt)} {r.get('c_when') or ''}".strip(),
                         "desc": f"한국 시간 {kst}" + (f" · {extra}" if extra else "")})
-        # 실적 뒤 주가 반응 + 내부자 매수는 종목 파일에서 (후보함에 있을 만한 종목만 읽으면 되지만 단순하게 필요할 때만)
+        # 실적 뒤 주가 반응 + 내부자 매수는 종목 파일에서 (내 종목에 있을 만한 종목만 읽으면 되지만 단순하게 필요할 때만)
         # 실적 결과 (build.py er_result → 종목 파일 er.last). 같은 이벤트는 사용자별 sent로 한 번만
         sj = None
         if r.get("er_d") and r["er_d"] >= (date.fromisoformat(asof) - timedelta(days=14)).isoformat():
@@ -242,8 +242,8 @@ def message(asof, items, ev, R):
         blocks.append("\n".join(lines))
     if not blocks:
         return None, []
-    top = f"<b>티커맵 아침 브리핑</b> · 미국 {kday(asof)} 종가 기준\n후보함 {len(items)}종목 중 {len(blocks)}종목에 새 소식"
-    foot = (f'<a href="{SITE_URL}/watch.html">후보함 열기</a> · 알림 멈춤 /끄기\n'
+    top = f"<b>티커맵 아침 브리핑</b> · 미국 {kday(asof)} 종가 기준\n내 종목 {len(items)}개 중 {len(blocks)}종목에 새 소식"
+    foot = (f'<a href="{SITE_URL}/watch.html">내 종목 열기</a> · 알림 멈춤 /끄기\n'
             "점수나 추천이 아니라 확인할 거리예요")
     return [top] + blocks + [foot], keys
 
@@ -272,7 +272,7 @@ def _api(path, body=None):
 
 
 PAGE_KO = {"INDEX": "홈", "MATRIX": "티커맵", "RANKING": "랭킹", "STOCK": "종목", "SCREEN": "검색", "COMPARE": "비교", "EARNINGS": "실적 달력",
-           "INVESTORS": "유명 투자자", "WATCH": "후보함", "PORTFOLIO": "포트폴리오", "ACCOUNT": "계정"}
+           "INVESTORS": "유명 투자자", "WATCH": "내 종목", "PORTFOLIO": "포트폴리오", "ACCOUNT": "계정"}
 
 
 def ops_report(m):
@@ -289,7 +289,7 @@ def ops_report(m):
     txt = (f"<b>티커맵 운영 지표</b> · {m.get('yesterday', '')} (한국 날짜)\n"
            f"방문 기기 {m.get('visits_y', 0):,} (7일 {m.get('visits_7', 0):,}) · 종목 조회 {m.get('views_y', 0):,} · 담기 {m.get('adds_y', 0):,}\n"
            f"계정 {m.get('accounts', 0):,} (+{m.get('accounts_new', 0)}){f' — {prov}' if prov else ''} · 로그인 {m.get('logins_y', 0)}\n"
-           f"텔레그램 연결 {m.get('telegram', 0)} (끔 {m.get('telegram_off', 0)}) · 후보함 쓰는 사람 {m.get('watch_users', 0)} (평균 {m.get('watch_avg', 0)}종목)"
+           f"텔레그램 연결 {m.get('telegram', 0)} (끔 {m.get('telegram_off', 0)}) · 내 종목 쓰는 사람 {m.get('watch_users', 0)} (평균 {m.get('watch_avg', 0)}종목)"
            + (f"\n화면별 방문: {pages}" if pages else ""))
     requests.post(f"https://api.telegram.org/bot{tok}/sendMessage", json={"chat_id": chat, "text": txt, "parse_mode": "HTML"}, timeout=20)
 
@@ -332,9 +332,9 @@ def run(limit=0, full=False, **_):
                 parts, keys = message(U["asof"], u["items"], ev, rows)
                 if not parts and full:                      # 수동 실행(--full)은 새 소식이 없어도 연결 시험 겸 다가오는 실적을 보냄
                     up = sorted((rows[i["t"]]["c_next"], i["t"]) for i in u["items"] if rows.get(i["t"], {}).get("c_next") and rows[i["t"]]["c_next"] > U["asof"])[:5]
-                    parts = [f"<b>티커맵 알림 시험</b> · 미국 {kday(U['asof'])} 종가 기준\n후보함 {len(u['items'])}종목 · 오늘은 새 소식이 없어요",
+                    parts = [f"<b>티커맵 알림 시험</b> · 미국 {kday(U['asof'])} 종가 기준\n내 종목 {len(u['items'])}개 · 오늘은 새 소식이 없어요",
                              "다가오는 실적\n" + ("\n".join(f"📅 <b>{html.escape(t)}</b> {kday(d)}" for d, t in up) if up else "(없음)"),
-                             f'<a href="{SITE_URL}/watch.html">후보함 열기</a> · 매일 아침 새 소식이 있을 때만 보내요']
+                             f'<a href="{SITE_URL}/watch.html">내 종목 열기</a> · 매일 아침 새 소식이 있을 때만 보내요']
                     keys = []
                 if not parts:
                     continue

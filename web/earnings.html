@@ -43,7 +43,7 @@ function render(U) {
   const ranges = { w0: ['이번 주', w0, addDays(w0, 6)], w1: ['다음 주', addDays(w0, 7), addDays(w0, 13)], m1: ['4주', today, addDays(today, 27)] };
   const [rl, from, to] = ranges[state.range] || ranges.w0;
   const watch = new Set(Watch.list()), hold = new Set(portfolioTickers());
-  const scopes = { all: ['전체', () => true], big: ['시가총액 100억 달러 이상', r => (r.mcap || 0) >= 1e10], watch: [`후보 종목 ${watch.size}`, r => watch.has(r.t)], hold: [`포트폴리오 ${hold.size}`, r => hold.has(r.t)] };
+  const scopes = { all: ['전체', () => true], big: ['시가총액 100억 달러 이상', r => (r.mcap || 0) >= 1e10], watch: [`내 종목 ${watch.size}`, r => watch.has(r.t)], hold: [`보유 ${hold.size}`, r => hold.has(r.t)] };
   const inScope = (scopes[state.scope] || scopes.all)[1];
   const S = U.rows.filter(r => r.k === 'stock' && r.c_next && r.c_next >= from && r.c_next <= to && inScope(r));
   const byDay = {};
