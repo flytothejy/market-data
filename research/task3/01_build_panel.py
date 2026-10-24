@@ -24,7 +24,18 @@ norm = lambda t: alias.get(t.replace(".", "-"), t.replace(".", "-"))
 h = pd.read_csv(os.path.join(SB, "sp500_hist.csv"), parse_dates=["date"])
 h = h[h["date"] >= "2009-01-01"].reset_index(drop=True)
 hs = [set(norm(x) for x in s.split(",")) for s in h["tickers"]]
-hd = h["date"].values
+hd = list(h["date"].values)
+# 구성 종목 파일은 2025-08-23에서 멈춤 → 이후는 위키백과 변경 내역(2026-05-23 판본)으로 이어 붙인다 (PLAN 변경 이력)
+HIST_END = pd.Timestamp(hd[-1]); TRUTH_END = pd.Timestamp("2026-05-23")
+wc = pd.read_csv(os.path.join(SB, "wiki_changes.csv")); wc["date"] = pd.to_datetime(wc["date"], errors="coerce")
+wc = wc[(wc["date"] > HIST_END) & (wc["date"] <= TRUTH_END)].sort_values("date")
+for d, g in wc.groupby("date"):
+    s = set(hs[-1])
+    s -= {norm(x) for x in g["rem_t"].dropna()}
+    s |= {norm(x) for x in g["add_t"].dropna()}
+    hs.append(s); hd.append(np.datetime64(d))
+hd = np.array(hd, dtype="datetime64[ns]")
+print("membership through", TRUTH_END.date(), "| appended wiki change dates:", wc["date"].nunique())
 
 def members_at(d):
     i = np.searchsorted(hd, np.datetime64(d), side="right") - 1
@@ -96,7 +107,7 @@ dates = []
 for y in range(2010, 2027):
     for m in (1, 4, 7, 10):
         d = pd.Timestamp(y, m, 1)
-        if pd.Timestamp("2010-07-01") <= d <= pd.Timestamp("2026-07-01"):
+        if pd.Timestamp("2010-07-01") <= d <= pd.Timestamp("2026-01-01"):     # 3개월 정답 창이 TRUTH_END 안에 들어오는 날까지
             dates.append(cal[cal.searchsorted(d)])
 nxt = {d: (dates[i + 1] if i + 1 < len(dates) else d + pd.Timedelta(days=91)) for i, d in enumerate(dates)}
 
@@ -107,7 +118,7 @@ for d in dates:
     mem = members_at(d - pd.Timedelta(days=1))
     pos = cal.get_loc(d); e3 = cal[min(cal.searchsorted(nxt[d]), len(cal) - 1)]
     a3 = set(adds[(adds["date"] > d) & (adds["date"] <= nxt[d])]["t"])
-    a12 = set(adds[(adds["date"] > d) & (adds["date"] <= d + pd.Timedelta(days=365))]["t"])
+    a12 = set(adds[(adds["date"] > d) & (adds["date"] <= d + pd.Timedelta(days=365))]["t"])   # 2025-05 이후 예측일은 12개월 창이 잘림
     for t in pool_t:
         if t in mem:
             continue
