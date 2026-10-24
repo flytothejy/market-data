@@ -160,12 +160,16 @@ async function renderStock(U, d, P) {
     const hist = (er.hist || []).slice(-8);
     const mx = Math.max(0.05, ...hist.map(x => Math.abs(x[1])));
     const hasS = hist.some(x => x[2] != null);
-    const bars8 = hist.length ? `<div style="display:flex;align-items:center;gap:4px;height:120px;position:relative;border-bottom:0">
-        ${hist.map(([dd, v, sp]) => `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;height:100%" title="${dd} 주가 ${fmt(v, 'pct', { sign: true })}${sp != null ? ' · EPS 서프라이즈 ' + fmt(sp, 'pct', { sign: true }) : ''}">
-          <div style="height:50%;display:flex;align-items:flex-end">${v > 0 ? `<i style="display:block;width:100%;height:${v / mx * 100}%;background:var(--up);border-radius:3px 3px 0 0"></i>` : ''}</div>
-          <div style="height:50%;display:flex;align-items:flex-start;border-top:1px solid var(--line)">${v < 0 ? `<i style="display:block;width:100%;height:${-v / mx * 100}%;background:var(--dn);border-radius:0 0 3px 3px"></i>` : ''}</div></div>`).join('')}</div>
-      <div class="er-lab">${hist.map(([dd, v, sp]) => `<span><span class="${cls(v)}">${fmt(v, 'pct', { sign: true })}</span>${hasS ? `<em class="${sp == null ? 'faint' : sp > 0 ? 'up' : sp < 0 ? 'dn' : 'mut'}">${sp == null ? '-' : fmt(sp, 'pct', { sign: true })}</em>` : ''}<br>${dd.slice(2, 7).replace('-', '.')}</span>`).join('')}</div>
-      ${hasS ? '<div class="small faint">위 = 다음 날 주가 · 아래 = EPS 서프라이즈(예상 대비 실제, 최근 4분기만)</div>' : ''}` : '';
+    const mxS = Math.max(mx, ...hist.map(x => Math.abs(x[2] || 0)));
+    const half = (v, sc, upCol, dnCol, w) => `<div style="width:${w};display:flex;flex-direction:column;height:100%">
+          <div style="height:50%;display:flex;align-items:flex-end">${v > 0 ? `<i style="display:block;width:100%;height:${v / sc * 100}%;background:${upCol};border-radius:3px 3px 0 0"></i>` : ''}</div>
+          <div style="height:50%;display:flex;align-items:flex-start;border-top:1px solid var(--line)">${v < 0 ? `<i style="display:block;width:100%;height:${-v / sc * 100}%;background:${dnCol};border-radius:0 0 3px 3px"></i>` : ''}</div></div>`;
+    const bars8 = hist.length ? `${hasS ? '<div class="leg-row"><span><i style="background:var(--up)"></i>다음 날 주가(오름)</span><span><i style="background:var(--dn)"></i>(내림)</span><span><i style="background:#d9a21b"></i>EPS 서프라이즈</span></div>' : ''}
+      <div style="display:flex;align-items:center;gap:6px;height:120px;position:relative">
+        ${hist.map(([dd, v, sp]) => `<div style="flex:1;display:flex;gap:2px;height:100%" title="${dd} · 주가 ${fmt(v, 'pct', { sign: true })}${sp != null ? ' · EPS 서프라이즈 ' + fmt(sp, 'pct', { sign: true }) : ''}">
+          ${half(v, hasS ? mxS : mx, 'var(--up)', 'var(--dn)', hasS ? '58%' : '100%')}${hasS ? half(sp || 0, mxS, '#d9a21b', '#b98a16', '42%') : ''}</div>`).join('')}</div>
+      <div class="er-lab">${hist.map(([dd, v, sp]) => `<span><span class="${cls(v)}">${fmt(v, 'pct', { sign: true })}</span>${hasS ? `<em style="color:${sp == null ? 'var(--faint)' : '#b98a16'}">${sp == null ? '-' : fmt(sp, 'pct', { sign: true })}</em>` : ''}<br>${dd.slice(2, 7).replace('-', '.')}</span>`).join('')}</div>
+      ${hasS ? '<div class="small faint">EPS 서프라이즈 = 예상 대비 실제 (최근 4분기만 제공)</div>' : ''}` : '';
     const ratio = er.imp && er.avg ? er.imp / er.avg : null;
     const verdict = ratio == null ? '' : ratio > 1.5 ? '옵션 시장은 이번 발표에서 평소보다 큰 움직임을 예상하고 있어요' : ratio < 0.8 ? '옵션 시장은 이번 발표에서 평소보다 작은 움직임을 예상하고 있어요' : '옵션 시장의 예상은 과거 평균과 비슷한 수준이에요';
     erCard = card('실적 발표', '과거 발표 때 주가 반응과 옵션 시장이 예상하는 이번 변동폭',
@@ -366,7 +370,7 @@ async function renderStock(U, d, P) {
         out += `<a class="pc-r ${me ? 'me' : ''}" href="${stockUrl(r.t)}"><span class="pc-n">${i + 1}</span><b>${esc(r.t)}</b><span class="pc-t"><i style="left:${(v >= 0 ? zp : zp - w).toFixed(1)}%;width:${Math.max(0.8, w).toFixed(1)}%;background:${me ? 'var(--accent)' : v < 0 ? 'color-mix(in srgb,var(--dn) 55%,var(--card))' : 'color-mix(in srgb,var(--ink) 30%,var(--card))'}"></i>${lo < 0 ? `<em style="left:${zp.toFixed(1)}%"></em>` : ''}${myP != null ? `<s style="left:${myP.toFixed(1)}%"></s>` : ''}</span><span class="pc-v">${shw(k, v)}</span></a>`;
       }
       const rank = 1 + xs.filter(r => r[k] > (myV ?? -Infinity)).length;
-      return `<div class="pc">${out}</div><div class="small faint">${esc(G.name)} ${xs.length}종목 · ${m.t} ${myV != null ? `${rank}위` : '자료 없음'} · 중간값 ${shw(k, med)} · 점선 = ${esc(m.t)} 수준</div>`;
+      return `<div class="pc">${out}</div><div class="small faint">${esc(G.name)} ${xs.length}종목 · ${m.t} ${myV != null ? `${rank}위` : '자료 없음'} · 중간값 ${shw(k, med)} · 세로선 = ${esc(m.t)} 수준</div>`;
     };
     // 애널리스트 수: 투자의견 분포(매수·보유·매도)로 나눈 막대
     const recChart = () => {
@@ -379,10 +383,11 @@ async function renderStock(U, d, P) {
       for (const { r, i } of rows) {
         if (prev >= 0 && i > prev + 1) out += gapRow; prev = i;
         const n = tot(r), seg = (c, col) => c ? `<i style="position:static;display:inline-block;height:100%;width:${(c / mx * 100).toFixed(2)}%;background:${col}"></i>` : '';
-        out += `<a class="pc-r ${r.t === m.t ? 'me' : ''}" href="${stockUrl(r.t)}"><span class="pc-n">${i + 1}</span><b>${esc(r.t)}</b><span class="pc-t pc-st">${seg(r.c_rb, 'var(--up)')}${seg(r.c_rh, 'color-mix(in srgb,var(--ink) 25%,var(--card))')}${seg(r.c_rs, 'var(--dn)')}<s style="left:${myP.toFixed(1)}%"></s></span><span class="pc-v">${r.c_rb || 0}·${r.c_rh || 0}·${r.c_rs || 0}</span></a>`;
+        const pc = c => `${c || 0}명 (${Math.round((c || 0) / n * 100)}%)`;
+        out += `<a class="pc-r ${r.t === m.t ? 'me' : ''}" href="${stockUrl(r.t)}" title="${esc(r.t)} · 매수 ${pc(r.c_rb)} · 보유 ${pc(r.c_rh)} · 매도 ${pc(r.c_rs)}"><span class="pc-n">${i + 1}</span><b>${esc(r.t)}</b><span class="pc-t pc-st">${seg(r.c_rb, 'var(--up)')}${seg(r.c_rh, 'color-mix(in srgb,var(--ink) 25%,var(--card))')}${seg(r.c_rs, 'var(--dn)')}<s style="left:${myP.toFixed(1)}%"></s></span><span class="pc-v"><span class="up">${r.c_rb || 0}</span>·<span class="mut">${r.c_rh || 0}</span>·<span class="dn">${r.c_rs || 0}</span></span></a>`;
       }
       return `<div class="leg-row"><span><i style="background:var(--up)"></i>매수</span><span><i style="background:color-mix(in srgb,var(--ink) 25%,var(--card))"></i>보유</span><span><i style="background:var(--dn)"></i>매도</span></div><div class="pc">${out}</div>
-        <div class="small faint">${esc(G.name)} · 막대 길이 = 의견을 낸 애널리스트 수 · 오른쪽 숫자 = 매수·보유·매도 · 점선 = ${esc(m.t)} 수준</div>`;
+        <div class="small faint">${esc(G.name)} · 막대 길이 = 투자의견을 낸 애널리스트 수(${esc(m.t)} ${tot(m)}명) · 위 '애널리스트 수'(${m.c_n ?? '-'}명)는 내년 EPS 전망을 낸 수라 다를 수 있어요 · 세로선 = ${esc(m.t)} 수준</div>`;
     };
     const box = cc.closest('.card');
     box.querySelectorAll('.kv>div[data-k]').forEach(el => {

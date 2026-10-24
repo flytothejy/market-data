@@ -381,3 +381,4 @@ tr.xr{display:none}
 .er-lab{display:flex;gap:4px;font-size:11px;color:var(--faint)}
 .er-lab>span{flex:1;text-align:center;line-height:1.35}
 .er-lab em{display:block;font-style:normal;font-size:10.5px}
+.pc-t s{border-left:1.5px solid var(--accent);opacity:.75}
