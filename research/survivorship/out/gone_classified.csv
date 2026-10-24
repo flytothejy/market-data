@@ -1,0 +1,323 @@
+t,first,last,names,cik,cik_how,wiki_reason,name_sec,former,tickers_now,last_filing,last_10k,form15,form25,bankr_dates,class,rule
+ABC,2006-01-03,2023-09-01,AmerisourceBergen Corp. | AmerisourceBergen Corp | AmerisourceBergen,1140859,wiki_cik,,"Cencora, Inc.",AMERISOURCEBERGEN CORP; AMERISOURCE BERGEN CORP,COR,2026-10-21,2025-11-25,False,False,,같은 회사(이름·티커 변경),cik
+ABI,2006-01-03,2008-11-20,Applera Corp-Applied Biosystems Group,,none,,,,,,,,,,미상,-
+ABKFQ,2006-01-03,2008-06-10,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+ABS,2006-01-03,2006-05-31,Albertsons,1284719,name_unique,Albertsons acquired by SuperValu and CVS Corp.[267],ALBERTSONS INC,,,2006-02-14,,False,False,,인수·합병,위키 사유
+ACS,2006-01-03,2010-02-02,Affiliated Computer | Affiliated Computer Services,2135,name_unique,,AFFILIATED COMPUTER SERVICES INC,,,2010-02-16,2009-08-27,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+ACV,2006-01-03,2006-11-16,,,none,,,,,,,,,,미상,-
+ADCT,2006-01-03,2007-06-26,ADC Telecommunications,61478,name_unique,Discover Financial Services debuts on New York Stock Exchange.[264],ADC TELECOMMUNICATIONS INC,,,2010-12-20,2010-11-23,True,True,,미상,-
+AET,2006-01-03,2018-11-28,Aetna Inc. | Aetna Inc | Aetna,1122304,wiki_cik,CVS acquired Aetna[98],AETNA INC /PA/,AETNA U S HEALTHCARE INC,,2019-02-14,2018-02-23,True,True,,인수·합병,위키 사유
+AIV,2006-01-03,2020-11-17,Apartment Investment & Mgmt | Apartment Investment & MgmtA | AIMCO,922864,wiki_cik,Apartment Investment and Management (Aimco) spun off Apartment Income REIT.[66],APARTMENT INVESTMENT & MANAGEMENT CO,,AIV,2026-10-07,2026-03-02,True,True,,강등(아직 상장),SEC 현재 티커
+AMCC,2006-01-03,2006-05-10,,,none,,,,,,,,,,미상,-
+ANDW,2006-01-03,2006-09-28,,,none,,,,,,,,,,미상,-
+ANTM,2006-01-03,2022-06-21,Anthem Inc. | Anthem,1156039,wiki_cik,,"Elevance Health, Inc.","Anthem, Inc.; WELLPOINT, INC; WELLPOINT INC; ANTHEM INC",ELV,2026-10-23,2026-02-06,False,True,,같은 회사(이름·티커 변경),cik
+APC,2006-01-03,2019-08-08,Anadarko Petroleum | Anadarko Petroleum Corp | Anadarko Petroleum Corporation,773910,wiki_cik,S&P 500 & 100 constituent Occidental Petroleum Corp. (NYSE:OXY) acquired Anadarko Petroleum.[85],ANADARKO PETROLEUM CORP,,,2026-02-05,2019-02-14,True,True,,인수·합병,위키 사유
+APCC,2006-01-03,2007-02-14,,,none,,,,,,,,,,미상,-
+APOL,2006-01-03,2013-06-27,Apollo Group | Apollo Group Inc | Apollo Education Group,929887,name_unique,Apollo Group's market cap more representative of a mid-cap[201],APOLLO EDUCATION GROUP INC,APOLLO GROUP INC,,2017-02-14,2016-10-20,True,True,,강등,위키 사유
+ASH,2006-01-03,2008-11-13,Ashland Inc.,"7694,1305014,1674862",name_multi,,,,,,,,,,미상,-
+ASN,2006-01-03,2007-10-04,Archstone-Smith Trust,1156826,name_unique,,ARCHSTONE SMITH TRUST,,,2008-02-12,2007-03-01,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+ASO,2006-01-03,2006-10-31,,,none,,,,,,,,,,미상,-
+AT,2006-01-03,2007-11-16,ALLTEL Corp.,65873,name_multi_picked,,ALLTEL CORP,,,2008-11-14,2008-03-20,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+AV,2006-01-03,2007-10-25,Avaya Inc. | Avaya,1116521,name_multi_picked,Taken private[261],AVAYA INC,LUCENT EN CORP,,2017-08-07,2015-11-23,True,True,2017-01-19,인수·합병,위키 사유
+AVP,2006-01-03,2015-03-19,Avon Products,8868,wiki_cik,Market Capitalization Changes.,AVON PRODUCTS INC,,,2023-08-09,2023-03-14,True,True,,강등,위키 사유
+AW,2006-01-03,2008-12-04,Allied Waste Industries,848865,name_multi_picked,,"Allied Waste Industries, LLC",ALLIED WASTE INDUSTRIES INC,,2012-07-26,2008-02-21,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+AYE,2006-01-03,2011-02-23,Allegheny Energy | Allegheny Energy Inc,3673,name_unique,Acquired by First Energy (FE).[239],"ALLEGHENY ENERGY, INC",ALLEGHENY ENERGY INC; ALLEGHENY POWER SYSTEM INC,,2012-02-13,2011-02-23,True,True,,인수·합병,위키 사유
+BBBY,2006-01-03,2017-07-25,Bed Bath & Beyond,886158,wiki_cik,Market capitalization change.[119],"20230930-DK-Butterfly-1, Inc.",BED BATH & BEYOND INC,,2023-12-04,2023-06-14,True,True,2023-09-29;2023-09-20;2023-06-22;2023-04-24,강등,위키 사유
+BBT,2006-01-03,2019-12-05,BB&T Corporation | BB&T,92230,wiki_cik,,TRUIST FINANCIAL CORP,BB&T CORP; SOUTHERN NATIONAL CORP /NC/,"TFC,TFC-PI,TFC-PO,TFC-PR",2026-10-22,2026-02-24,False,True,,같은 회사(이름·티커 변경),cik
+BCR,2006-01-03,2017-12-27,Bard (C.R.) Inc. | CR Bard,9892,wiki_cik,Becton Dickinson acquired BCR.[114],BARD C R INC /NJ/,,,2018-02-13,2017-02-13,True,True,,인수·합병,위키 사유
+BDK,2006-01-03,2010-03-11,Black & Decker Corp.,12355,name_unique,,BLACK & DECKER CORP,,,2012-11-02,2010-02-19,True,True,2004-11-04,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+BIG,2006-01-03,2013-02-06,"Big Lots, Inc. | Big Lots Inc. | Big Lots",768835,name_unique,Market capitalization changes[207],FORMER BL STORES INC,BIG LOTS INC; CONSOLIDATED STORES CORP /DE/,,2025-11-13,2024-04-18,False,True,2025-10-30;2024-09-10,강등,위키 사유
+BJS,2006-01-03,2010-04-21,BJ Services | BJ Services Company,864328,name_multi_picked,Acquired by Baker Hughes[247],BJ SERVICES CO LLC,BJ SERVICES CO,,2011-02-11,2009-11-23,True,True,,인수·합병,위키 사유
+BLL,2006-01-03,2022-04-11,Ball Corp. | Ball Corp,9389,wiki_cik,,BALL Corp,,BALL,2026-10-19,2026-02-19,False,False,,같은 회사(이름·티커 변경),cik
+BLS,2006-01-03,2006-12-29,,,none,,,,,,,,,,미상,-
+BMET,2006-01-03,2007-07-10,"Biomet, Inc.",351346,name_multi_picked,,BIOMET INC,,,2015-08-13,2014-08-20,True,True,,미상,-
+BMS,2006-01-03,2014-12-04,Bemis Company | Bemis,11199,wiki_cik,BMS changed to AMCR post merger with Amcor;[88] subsequently renamed to Amcor[89],"Amcor Flexibles North America, Inc.",BEMIS CO INC,,2026-03-09,2019-02-15,True,True,,인수·합병,위키 사유
+BNI,2006-01-03,2010-02-10,Burlington Northern Santa Fe | Burlington Northern Santa Fe C | Burlington Northern Santa Fe Corp.,934612,name_unique,,"BURLINGTON NORTHERN SANTA FE, LLC",BURLINGTON NORTHERN SANTA FE CORP; BURLINGTON NORTHERN SANTE FE CORP; BNSF CORP,,2026-08-10,2026-03-02,True,True,,미상,-
+BOL,2006-01-03,2007-10-26,Bausch & Lomb,10427,name_multi_picked,,BAUSCH & LOMB INC,,,2012-04-24,2007-04-25,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+BRCM,2006-01-03,2016-01-26,Broadcom Corporation,1054374,wiki_cik,FRT replaces BRCM[154],BROADCOM CORP,,,2020-07-06,2015-01-29,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+BSC,2006-01-03,2008-05-29,Bear Stearns Cos.,,none,,,,,,,,,,미상,-
+BUD,2006-01-03,2008-11-17,Anheuser-Busch,6627,name_unique,,ANHEUSER BUSCH INC,,,2000-12-18,,False,False,,미상,-
+CA,2006-01-03,2018-10-31,"CA, Inc. | CA Inc. | CA Technologies",356028,wiki_cik,CA acquired by Broadcom.[100],"CA, INC.",COMPUTER ASSOCIATES INTERNATIONAL INC,,2018-11-15,2018-05-09,True,True,,인수·합병,위키 사유
+CBE,2006-01-03,2012-11-27,"Cooper Industries, Ltd. | Cooper Industries Ltd. | Cooper Industries",1141982,name_multi_picked,Acquired by Eaton Corp. (ETN)[211],Cooper Industries plc,COOPER INDUSTRIES LTD,,2013-02-11,2012-02-21,True,True,,인수·합병,위키 사유
+CBS,2006-01-03,2019-11-21,CBS Corp.,813828,wiki_cik,,Paramount Global,ViacomCBS Inc.; CBS CORP; VIACOM INC,,2026-07-31,2025-02-26,True,True,,미상,-
+CBSS,2006-01-03,2007-09-04,Compass Bancshares,18568,name_unique,,COMPASS BANCSHARES INC,,,2013-05-07,2007-02-27,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+CCTYQ,2006-01-03,2008-03-18,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+CCU,2006-01-03,2008-07-29,Clear Channel Communications,739708,name_unique,,"iHeartCommunications, Inc.",CLEAR CHANNEL COMMUNICATIONS INC,,2019-05-02,2018-05-03,True,True,2018-03-15,미상,-
+CFC,2006-01-03,2008-06-30,Countrywide Financial Corp. | Countrywide Financial Corp,25191,name_unique,Ak Steel replaced Countrywide Financial.[257],COUNTRYWIDE FINANCIAL CORP,COUNTRYWIDE CREDIT INDUSTRIES INC,,2009-02-13,2008-02-29,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+CHIR,2006-01-03,2006-04-19,,,none,,,,,,,,,,미상,-
+CIN,2006-01-03,2006-03-30,,,none,,,,,,,,,,미상,-
+CITGQ,2006-01-03,2009-07-17,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+CMA,2006-01-03,2024-06-22,Comerica Inc. | Comerica,28412,wiki_cik,Market capitalization change.[28],COMERICA INC,COMERICA INC /NEW/,,2026-02-12,2025-02-24,True,True,,강등,위키 사유
+CMVT,2006-01-03,2007-01-24,,,none,,,,,,,,,,미상,-
+CMX,2006-01-03,2007-03-22,,,none,,,,,,,,,,미상,-
+COL,2006-01-03,2018-11-15,Rockwell Collins,1137411,wiki_cik,UTX acquired COL[98],ROCKWELL COLLINS INC,NEW ROCKWELL COLLINS INC,,2018-12-07,2018-11-26,True,True,,인수·합병,위키 사유
+CTB,2006-01-03,2006-07-11,,,none,,,,,,,,,,미상,-
+CTL,2006-01-03,2020-06-22,CenturyTel | Century Telephone | CenturyLink Inc,18926,wiki_cik,,"Lumen Technologies, Inc.","CENTURYLINK, INC; CENTURYTEL INC; CENTURY TELEPHONE ENTERPRISES INC",LUMN,2026-10-23,2026-02-20,True,True,,강등(아직 상장),SEC 현재 티커
+CTX,2006-01-03,2009-08-18,Centex Corp.,18532,name_multi_picked,Centex acquired by Pulte Homes.[250],CENTEX LLC,CENTEX CORP,,2026-02-11,2009-05-21,True,True,,인수·합병,위키 사유
+CTXS,2006-01-03,2022-09-19,Citrix Systems | Citrix,877890,wiki_cik,Vista Equity Partners acquired Citrix Systems.[47],CITRIX SYSTEMS INC,,,2022-10-12,2022-02-16,True,True,,인수·합병,위키 사유
+CVG,2006-01-03,2009-12-17,Convergys Corp. | Convergys,1062047,name_unique,Market capitalization change.[citation needed],CONCENTRIX CVG Corp,CONVERGYS CORP,,2018-11-13,2018-02-21,True,True,,강등,위키 사유
+DCNAQ,2006-01-03,2006-03-02,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+DJ,2006-01-03,2007-12-12,Dow Jones & Co. | Dow Jones,29924,name_unique,Acquired by News Corporation,DOW JONES & CO INC,,,2008-02-11,2007-03-01,True,True,,인수·합병,위키 사유
+DXC,2006-01-03,2023-10-05,DXC Technology,1688568,wiki_cik,Market capitalization change.[34],DXC Technology Co,"Everett SpinCo, Inc.",DXC,2026-09-17,2026-05-08,False,True,,강등(아직 상장),위키 사유
+DYN,2006-01-03,2009-12-17,Dynegy Inc. | Dynegy,1105055,name_multi_picked,Market capitalization change.[citation needed],"DYNEGY HOLDINGS, LLC",DYNEGY HOLDINGS INC,,2012-10-02,2012-09-18,True,False,2012-09-13;2011-11-08,강등,위키 사유
+EC,2006-01-03,2006-06-05,,,none,,,,,,,,,,미상,-
+EDS,2006-01-03,2008-08-25,Electronic Data Systems,1007456,name_multi_picked,,ELECTRONIC DATA SYSTEMS CORP /DE/,ELECTRONIC DATA SYSTEMS HOLDING CORP,,2008-09-29,2008-02-27,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+EKDKQ,2006-01-03,2010-12-17,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+EOP,2006-01-03,2007-02-09,,,none,,,,,,,,,,미상,-
+EP,2006-01-03,2012-05-23,El Paso Corp. | El Paso Corporation,1066107,name_multi_picked,Acquired by Kinder Morgan (KMI)[220],EL PASO LLC,EL PASO CORP/DE; EL PASO ENERGY CORP/DE,,2026-07-29,2012-02-27,True,True,,인수·합병,위키 사유
+ESRX,2006-01-03,2018-12-19,Express Scripts,1532063,wiki_cik,S&P 500 constituent Cigna (NYSE: CI) acquired ESRX[97],Express Scripts Holding Co.,"Aristotle Holding, Inc.",,2019-07-26,2018-02-27,True,True,,인수·합병,위키 사유
+ETFC,2006-01-03,2020-09-21,E*Trade Financial Corp. | E-Trade | E*Trade,1015780,wiki_cik,Morgan Stanley acquired E*Trade.[68],E TRADE FINANCIAL CORP,E TRADE GROUP INC,,2020-10-13,2020-02-19,True,True,,인수·합병,위키 사유
+FDC,2006-01-03,2007-09-24,First Data,883980,name_multi_picked,FDC acquired by KKR.[262],FIRST DATA CORP,FIRST DATA CORPORATION,,2019-08-08,2019-02-27,True,True,,인수·합병,위키 사유
+FDO,2006-01-03,2015-07-06,Family Dollar Stores | Family Dollar,34408,wiki_cik,Family Dollar acquired.[167],FAMILY DOLLAR STORES INC,,,2016-06-27,2014-10-29,True,True,,인수·합병,위키 사유
+FII,2006-01-03,2012-12-28,Federated Investors Inc. | Federated Investors,,none,ABBV spun off from Abbott Labs (ABT)[208],,,,,,,,,미상,-
+FLR,2006-01-03,2019-06-01,Fluor Corp. | Fluor Corp. (New) | Fluor Corporation,1124198,wiki_cik,CTVA spun off from DWDP (which then changed symbol to DD)[90],FLUOR CORP,,FLR,2026-08-10,2026-02-17,True,True,,강등(아직 상장),SEC 현재 티커
+FMCC,2006-01-03,2008-09-08,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+FNMA,2006-01-03,2008-09-08,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+FRX,2006-01-03,2014-06-24,Forest Laboratories,38074,name_multi_picked,Actavis acquires Forest Laboratories[185],"Forest Laboratories, LLC",Tango Merger Sub 2 LLC; FOREST LABORATORIES INC,,2014-07-15,2014-05-30,True,True,,인수·합병,위키 사유
+FSH,2006-01-03,2006-11-07,,,none,,,,,,,,,,미상,-
+FSL,2006-01-03,2006-12-01,,,none,,,,,,,,,,미상,-
+FTR,2006-01-03,2017-03-17,Frontier Communications,20520,wiki_cik,Market capitalization change.[127],"Frontier Communications Parent, Inc.",FRONTIER COMMUNICATIONS CORP; CITIZENS COMMUNICATIONS CO; CITIZENS UTILITIES CO,,2026-02-12,2025-02-20,True,True,2020-08-27;2020-04-15,강등,위키 사유
+GDT,2006-01-03,2006-04-21,,,none,,,,,,,,,,미상,-
+GDW,2006-01-03,2006-09-28,,,none,,,,,,,,,,미상,-
+GENZ,2006-01-03,2011-04-01,Genzyme Corp. | Genzyme,732485,name_unique,Acquired by Sanofi Aventis (SNY)[236],GENZYME CORP,,,2011-04-18,2011-03-01,True,True,,인수·합병,위키 사유
+GNW,2006-01-03,2015-11-17,Genworth Financial Inc. | Genworth Financial,1276520,wiki_cik,GE spinning off Synchrony Financial[161],GENWORTH FINANCIAL INC,,GNW,2026-10-21,2026-02-27,False,False,,분할,위키 사유
+GPS,2006-01-03,2022-01-20,Gap (The) | Gap Inc. | Gap,39911,wiki_cik,Market capitalization change.[54],GAP INC,,GAP,2026-10-08,2026-03-17,False,False,,같은 회사(이름·티커 변경),cik
+GR,2006-01-03,2012-07-26,Goodrich Corporation,42542,name_unique,Goodrich acquired by United Technologies (UTX).[215],GOODRICH CORP,GOODRICH B F CO,,2012-08-23,2012-02-23,True,True,,인수·합병,위키 사유
+GT,2006-01-03,2019-02-15,Goodyear Tire & Rubber | The Goodyear Tire & Rubber Company,42582,wiki_cik,WAB acquired GE transportation business[93],GOODYEAR TIRE & RUBBER CO /OH/,,GT,2026-10-19,2026-02-10,False,False,,인수·합병,위키 사유
+GTW,2006-01-03,2006-07-31,,,none,,,,,,,,,,미상,-
+HCR,2006-01-03,2007-11-05,Manor Care Inc.,878736,name_unique,,MANOR CARE INC,HCR MANOR CARE INC; HEALTH CARE & RETIREMENT CORP / DE,,2008-02-14,2007-02-21,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+HES,2006-01-03,2025-07-21,Hess Corporation,4447,wiki_cik,S&P 500 and S&P 100 constituent Chevron Corp. acquired Hess Corporation[18],HESS CORP,AMERADA HESS CORP,,2026-03-04,2025-02-27,True,True,,인수·합병,위키 사유
+HET,2006-01-03,2008-01-24,Harrah's Entertainment,,none,,,,,,,,,,미상,-
+HMA,2006-01-03,2007-02-26,,,none,,,,,,,,,,미상,-
+HNZ,2006-01-03,2013-06-06,Heinz (H.J.) | Heinz,,none,HNZ acquired by consortium[203],,,,,,,,,인수·합병,위키 사유
+HOG,2006-01-03,2020-05-22,Harley-Davidson,793952,wiki_cik,Market capitalization change.[70],"HARLEY-DAVIDSON, INC.",HARLEY DAVIDSON INC,HOG,2026-10-05,2026-02-26,True,False,,강등(아직 상장),위키 사유
+HPC,2006-01-03,2008-11-13,"Hercules, Inc. | Hercules Inc.",46989,name_unique,,HERCULES INC,,,2009-03-16,2008-02-28,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+HSP,2006-01-03,2015-09-01,Hospira Inc. | Hospira,1274057,wiki_cik,Hospira taken over[164],HOSPIRA INC,,,2015-10-06,2015-02-12,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+IGT,2006-01-03,2014-06-19,International Game Technology,353944,name_multi_picked,Market capitalization changes[186],INTERNATIONAL GAME TECHNOLOGY,,,2015-04-17,2014-11-25,True,True,,강등,위키 사유
+JCP,2006-01-03,2013-11-27,Penney (J.C.) | JCPenney,,none,Allegion spun off by Ingersoll Rand.[195],,,,,,,,,미상,-
+JNS,2006-01-03,2011-11-18,Janus Capital Group,1065865,name_multi_picked,Janus Capital Group's market capitalization is less than $1.2 billion  and is no longer representative of the large cap market space.[228],JANUS CAPITAL GROUP INC,STILWELL FINANCIAL INC,,2018-02-09,2017-02-16,True,True,,강등,위키 사유
+JNY,2006-01-03,2009-03-02,Jones Apparel Group,874016,name_multi_picked,Capitalization rebalance.,JONES GROUP INC,JONES APPAREL GROUP INC,,2015-02-05,2014-02-18,True,True,,강등,위키 사유
+JP,2006-01-03,2006-03-30,,,none,,,,,,,,,,미상,-
+JWN,2006-01-03,2020-05-22,Nordstrom,72333,wiki_cik,Market capitalization change.[70],NORDSTROM INC,,,2025-06-02,2025-03-21,True,True,,강등,위키 사유
+KATE,2006-01-03,2008-11-28,,,none,,,,,,,,,,미상,-
+KBH,2006-01-03,2009-12-17,KB Home,795266,name_unique,Market capitalization change.[citation needed],KB HOME,KAUFMAN & BROAD HOME CORP,KBH,2026-10-14,2026-01-23,True,True,,강등(아직 상장),위키 사유
+KMG,2006-01-03,2006-08-10,,,none,,,,,,,,,,미상,-
+KRI,2006-01-03,2006-06-20,,,none,,,,,,,,,,미상,-
+KSE,2006-01-03,2007-08-24,Keyspan Energy | KeySpan,1022916,name_unique,Acquired by National Grid plc[263],KEYSPAN ENERGY CORP /NY/,KEYSPAN ENERGY CORP,,2000-02-17,1997-12-19,True,False,,인수·합병,위키 사유
+KSS,2006-01-03,2020-09-18,Kohl's Corp. | Kohl's,885639,wiki_cik,Market capitalization change.[69],KOHLS Corp,KOHLS CORPORATION,KSS,2026-10-23,2026-03-19,False,False,,강등(아직 상장),위키 사유
+LB,2006-01-03,2021-07-21,L Brands Inc. | L Brands,701985,wiki_cik,,"Bath & Body Works, Inc.","L Brands, Inc.; LIMITED BRANDS INC; LIMITED INC",BBWI,2026-10-20,2026-03-12,True,False,,같은 회사(이름·티커 변경),cik
+LEG,2006-01-03,2021-12-14,Leggett & Platt,58492,wiki_cik,Market capitalization change.[55],LEGGETT & PLATT INC,,,2026-09-08,2026-02-26,True,True,,강등,위키 사유
+LEHMQ,2006-01-03,2008-09-16,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+LLTC,2006-01-03,2017-03-10,Linear Technology Corp. | Linear Technology,791907,wiki_cik,S&P 500 constituent Analog Devices (NASD:ADI) acquired Linear Technology.[129],LINEAR TECHNOLOGY CORP /CA/,,,2018-02-08,2016-08-25,True,True,,인수·합병,위키 사유
+LSI,2006-01-03,2014-05-06,LSI Logic | LSI Corporation,703360,name_unique,Avago acquires LSI[187],LSI CORP,LSI LOGIC CORP,,2015-02-12,2014-02-26,True,True,,인수·합병,위키 사유
+LU,2006-01-03,2006-11-22,,,none,,,,,,,,,,미상,-
+LXK,2006-01-03,2012-09-25,Lexmark Int'l Inc | Lexmark,,none,Tyco spun off ADT,,,,,,,,,미상,-
+MBI,2006-01-03,2009-12-17,MBIA Inc. | MBIA,814585,name_unique,Market capitalization change.[citation needed],MBIA INC,,MBI,2026-08-14,2026-02-26,False,False,,강등(아직 상장),위키 사유
+MDP,2006-01-03,2010-12-31,Meredith Corp. | Meredith Corp,65011,name_multi_picked,S&P constituent Motorola spun off Motorola Mobility.[240],"Hawkeye Acquisition, Inc.",MEREDITH CORP,,2022-02-09,2021-09-10,True,True,,미상,-
+MEDI,2006-01-03,2007-05-31,,,none,,,,,,,,,,미상,-
+MEL,2006-01-03,2007-06-26,Mellon Bank Corp.,64782,name_unique,,MELLON FINANCIAL CORP,MELLON BANK CORP,,2008-02-12,2007-02-23,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+MER,2006-01-03,2008-12-29,Merrill Lynch,"1294237,1377846",name_multi,,,,,,,,,,미상,-
+MERQ,2006-01-03,2006-01-03,,,none,,,,,,,,,,미상,-
+MHS,2006-01-03,2012-03-22,Medco Health Solutions Inc. | Medco Health Solutions,1170650,name_unique,Acquired by Express Scripts (ESRX)[222],MEDCO HEALTH SOLUTIONS INC,MERCK MEDCO MANAGED CARE LLC,,2017-11-22,2012-02-21,True,True,,인수·합병,위키 사유
+MOLX,2006-01-03,2013-12-03,Molex Inc. | Molex,67472,name_unique,MOLX acquired by Koch Industries.[194],MOLEX INC,,,2014-02-14,2013-08-08,True,True,,인수·합병,위키 사유
+MRO,2006-01-03,2024-11-22,Marathon Oil Corp. | Marathon Oil,101778,wiki_cik,S&P 500 & 100 constituent ConocoPhillips acquired Marathon Oil.[25],MARATHON OIL CORP,USX CORP,,2025-02-07,2024-02-22,True,True,,인수·합병,위키 사유
+MTLQQ,2006-01-03,2009-05-29,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+MUR,2006-01-03,2017-07-25,Murphy Oil,717423,wiki_cik,Market capitalization change.[119],MURPHY OIL CORP,MURPHY OIL CORP /DE,MUR,2026-10-13,2026-02-25,False,False,,강등(아직 상장),위키 사유
+MWV,2006-01-03,2015-07-01,MeadWestvaco Corporation,1159297,wiki_cik,,MEADWESTVACO Corp,MW HOLDING CORP,,2015-08-10,2015-02-23,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+MWW,2006-01-03,2011-12-14,Monster Worldwide,1020416,name_unique,Market capitalization changes,"MONSTER WORLDWIDE, INC.",MONSTER WORLDWIDE INC; TMP WORLDWIDE INC; TMP WORLDWIDE INC /FA/,,2017-02-14,2016-02-11,True,True,,강등,위키 사유
+MXIM,2006-01-03,2021-08-03,Maxim Integrated Prod | Maxim Integrated Products Inc | Maxim Integrated,743316,wiki_cik,S&P 500 constituent Analog Devices acquired Maxim Integrated Products.[58],MAXIM INTEGRATED PRODUCTS INC,,,2021-09-07,2021-08-20,True,True,,인수·합병,위키 사유
+MYG,2006-01-03,2006-03-30,,,none,,,,,,,,,,미상,-
+MYL,2006-01-03,2020-10-12,Mylan Laboratories | Mylan Inc. | Mylan N.V.,69499,wiki_cik,,MYLAN INC.,MYLAN LABORATORIES INC,,2026-06-15,2015-03-02,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+NAV,2006-01-03,2006-12-11,,,none,,,,,,,,,,미상,-
+NBR,2006-01-03,2015-03-19,Nabors Industries Ltd. | Nabors Industries,1163739,wiki_cik,Market Capitalization Changes.,NABORS INDUSTRIES LTD,,NBR,2026-10-02,2026-02-13,False,True,,강등(아직 상장),위키 사유
+NCC,2006-01-03,2008-12-29,National City Corp.,69970,name_unique,,NATIONAL CITY CORP,,,2012-12-13,2008-02-13,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+NCR,2006-01-03,2007-09-28,NCR Corp. | NCR Corporation,70866,name_unique,Teradata spun off by NCR Corporation.[262],NCR Voyix Corp,NCR CORP,"VYX,NCRRP",2026-09-02,2026-02-26,False,False,,강등(아직 상장),SEC 현재 티커
+NFB,2006-01-03,2006-11-22,,,none,,,,,,,,,,미상,-
+NOVL,2006-01-03,2011-04-25,"Novell, Inc. | Novell Inc. | Novell",758004,name_unique,Acquired by private equity firms.[235],NOVELL INC,,,2012-02-08,2010-12-13,True,True,,인수·합병,위키 사유
+NWL,2006-01-03,2023-09-17,Newell Rubbermaid Co. | Newell Brands,814453,wiki_cik,Market capitalization change.[35],NEWELL BRANDS INC.,"NEWELL BRANDS, INC.; NEWELL BRANDS INC; NEWELL RUBBERMAID INC; NEWELL CO",NWL,2026-10-20,2026-02-13,False,True,,강등(아직 상장),위키 사유
+ODP,2006-01-03,2010-12-17,Office Depot,800240,name_unique,Market Cap changes.,ODP Corp,OFFICE DEPOT INC,,2026-01-21,2025-02-26,True,True,,강등,위키 사유
+OMX,2006-01-03,2008-06-18,OfficeMax Inc. | OfficeMax,12978,name_unique,Market capitalization change.[258],MAPLEBY HOLDINGS MERGER Corp,OFFICEMAX INC; BOISE CASCADE CORP,,2018-02-08,2013-02-25,True,True,,강등,위키 사유
+PBG,2006-01-03,2010-02-26,Pepsi Bottling Group,1076405,name_unique,,PEPSI BOTTLING GROUP INC,,,2010-03-11,2010-02-22,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+PBI,2006-01-03,2017-02-28,Pitney-Bowes | Pitney Bowes,78814,wiki_cik,CBOE acquires BATS[130],PITNEY BOWES INC /DE/,,"PBI,PBI-PB",2026-10-05,2026-02-19,False,True,,인수·합병,위키 사유
+PD,2006-01-03,2007-03-16,Phelps Dodge,78066,name_unique,,PHELPS DODGE CORP,,,2008-06-26,2007-02-27,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+PDCO,2006-01-03,2018-03-16,Patterson Cos. Inc. | Patterson Companies | Patterson Cos Inc,891024,wiki_cik,Market capitalization change.[112],"PATTERSON COMPANIES, INC.",PATTERSON DENTAL CO,,2025-04-28,2024-06-18,True,True,,강등,위키 사유
+PGL,2006-01-03,2007-02-16,,,none,,,,,,,,,,미상,-
+PKI,2006-01-03,2023-05-17,PerkinElmer,31791,wiki_cik,,"REVVITY, INC.",PERKINELMER INC; EG&G INC,RVTY,2026-10-07,2026-02-24,False,True,,같은 회사(이름·티커 변경),cik
+PMCS,2006-01-03,2007-06-26,PMC-Sierra Inc.,767920,name_unique,,PMC SIERRA INC,SIERRA SEMICONDUCTOR CORP; SIERRA SEMICONDUCTOR CORPORATION,,2017-02-07,2015-02-24,True,True,,미상,-
+QLGC,2006-01-03,2011-01-12,QLogic Corp.,918386,name_multi_picked,,QLOGIC CORP,Q LOGIC CORP,,2017-02-13,2016-05-26,True,True,,미상,-
+RAI,2006-01-03,2017-07-20,Reynolds American Inc. | Reynolds American,1275283,wiki_cik,British American Tobacco (NYSE MKT:BTI) acquired Reynolds American.[119],REYNOLDS AMERICAN INC,,,2026-09-08,2017-02-09,True,True,,인수·합병,위키 사유
+RBK,2006-01-03,2006-01-30,,,none,,,,,,,,,,미상,-
+RDC,2006-01-03,2014-08-13,Rowan Cos. | Rowan Companies,85408,wiki_cik,Market cap changes[182],ROWAN COMPANIES PLC,ROWAN COMPANIES INC,,2019-04-22,2019-02-27,True,True,,강등,위키 사유
+ROH,2006-01-03,2009-04-01,Rohm & Haas,84792,name_unique,,ROHM & HAAS CO,,,2011-11-03,2009-02-27,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+RRD,2006-01-03,2012-12-07,Donnelley (R.R.) & Sons | RR Donnelley,,none,Market capitalization changes[210],,,,,,,,,강등,위키 사유
+RTN,2006-01-03,2020-04-03,Raytheon Co. | Raytheon Co. (New) | Raytheon Company,1047122,wiki_cik,United Technologies spun off Otis and Carrier and acquired Raytheon Company.[73],RAYTHEON CO/,HE HOLDINGS INC,,2020-04-13,2020-02-12,True,True,,인수·합병,위키 사유
+RX,2006-01-03,2010-02-23,IMS Health Inc. | IMS Health,1058083,name_multi_picked,Taken private,IMS HEALTH INC,,,2010-03-09,2010-02-17,True,True,,인수·합병,위키 사유
+SAF,2006-01-03,2008-09-22,SAFECO Corp.,86104,name_multi_picked,,SAFECO CORP,,,2008-09-24,2008-02-28,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+SBL,2006-01-03,2007-01-05,Symbol Technologies,278352,name_unique,Acquired by Motorola[266],SYMBOL TECHNOLOGIES INC,,,2007-02-15,2006-03-03,True,True,,인수·합병,위키 사유
+SEBL,2006-01-03,2006-01-30,,,none,,,,,,,,,,미상,-
+SEE,2006-01-03,2023-12-16,Sealed Air Corp. | Sealed Air Corp.(New) | Sealed Air,1012100,wiki_cik,Market capitalization change.[32],SEALED AIR CORP/DE,WR GRACE & CO/DE; GRACE HOLDING INC; GRACE HOLDINGING INC,,2026-04-30,2026-03-02,True,True,,강등,위키 사유
+SFA,2006-01-03,2006-02-17,,,none,,,,,,,,,,미상,-
+SGP,2006-01-03,2009-10-29,Schering-Plough,310158,name_unique,Acquired by Merck & Co. (MRK)[248],"Merck & Co., Inc.",Merck & Co. Inc.; SCHERING PLOUGH CORP,MRK,2026-10-22,2026-02-24,False,True,,같은 회사(이름·티커 변경),cik
+SIAL,2006-01-03,2015-11-17,Sigma-Aldrich,90185,wiki_cik,Sigma-Aldrich acquired by Merck KGaA (MKGAY)[160],SIGMA ALDRICH CORP,,,2016-02-02,2015-02-12,True,True,,인수·합병,위키 사유
+SLR,2006-01-03,2007-10-01,Solectron,835541,name_unique,Solectron acquired by Flextronics.[262],SOLECTRON CORP,,,2008-02-08,2006-11-08,True,True,,인수·합병,위키 사유
+SNV,2006-01-03,2007-12-31,Synovus Financial,18349,name_unique,,SYNOVUS FINANCIAL CORP,,,2026-01-12,2025-02-21,True,True,,미상,-
+SOV,2006-01-03,2009-01-28,Sovereign Bancorp,811830,name_multi_picked,,"Santander Holdings USA, Inc.",SOVEREIGN BANCORP INC,"SNUS-PH,SNUS-PI",2026-10-15,2026-03-02,True,True,,강등(아직 상장),SEC 현재 티커
+SPLS,2006-01-03,2017-09-12,Staples Inc. | Staples,791519,wiki_cik,Sycamore Partners acquired Staples.[116],STAPLES INC,,,2021-11-08,2017-03-09,True,True,,인수·합병,위키 사유
+SSP,2006-01-03,2008-06-30,Scripps (E. W.) | Scripps (E. W.) 'A',,none,,,,,,,,,,미상,-
+STI,2006-01-03,2019-12-05,SunTrust Banks,750556,wiki_cik,BB&T acquired SunTrust to form Truist Financial.[79],SUNTRUST BANKS INC,,,2019-12-19,2019-02-22,True,True,,인수·합병,위키 사유
+STJ,2006-01-03,2017-01-03,St Jude Medical,203077,wiki_cik,S&P 100 & 500 constituent Abbott Laboratories (NYSE:ABT) acquired St. Jude Medical.[131],"ST JUDE MEDICAL, LLC",ST JUDE MEDICAL INC,,2017-03-07,2016-02-23,True,True,,인수·합병,위키 사유
+SVU,2006-01-03,2012-04-30,Supervalu Inc. | Supervalu,95521,name_unique,ConocoPhillips spun off Phillips 66[221],SUPERVALU INC,,,2018-11-06,2018-04-24,True,True,,미상,-
+SWY,2006-01-03,2015-01-15,Safeway Inc. | Safeway,86144,wiki_cik,Safeway acquired by private equity consortium[177],SAFEWAY INC,,,2017-06-29,2015-03-04,True,True,,인수·합병,위키 사유
+SYMC,2006-01-03,2019-10-18,Symantec Corp.,849399,wiki_cik,,Gen Digital Inc.,NortonLifeLock Inc.; SYMANTEC CORP,"GEN,GENVR",2026-10-09,2026-05-21,False,False,,같은 회사(이름·티커 변경),cik
+TE,2006-01-03,2016-06-27,TECO Energy,350563,wiki_cik,TE acquired by EMA[137],TECO ENERGY INC,,,2016-12-16,2016-02-26,True,True,,인수·합병,위키 사유
+TEK,2006-01-03,2007-11-13,"Tektronix, Inc.",96879,name_unique,,TEKTRONIX INC,,,2008-02-14,2007-07-24,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+TGNA,2006-01-03,2017-05-23,Tegna,39899,wiki_cik,TGNA spins off Cars.com[123],TEGNA INC,GANNETT CO INC /DE/,,2026-04-09,2026-03-02,True,True,,분할,위키 사유
+TIF,2006-01-03,2020-12-21,Tiffany & Co. | Tiffany & Co,98246,wiki_cik,LVMH Moet Hennessy-Louis Vuitton SE acquired Tiffany & Co.[65],TIFFANY & CO,,,2021-02-10,2020-03-20,True,True,,인수·합병,위키 사유
+TIN,2006-01-03,2007-12-27,Temple-Inland,731939,name_unique,,TEMPLE INLAND INC,,,2012-02-23,2011-02-22,True,True,,미상,-
+TLAB,2006-01-03,2011-12-20,"Tellabs, Inc. | Tellabs Inc. | Tellabs",317771,name_unique,Expedia spun off TripAdvisor.[225],TELLABS INC,,,2013-12-13,2013-02-22,True,True,,미상,-
+TMK,2006-01-03,2019-07-15,Torchmark Corp.,320335,wiki_cik,,GLOBE LIFE INC.,TORCHMARK CORP,"GL,GL-PD",2026-10-21,2026-02-25,False,True,,같은 회사(이름·티커 변경),cik
+TRB,2006-01-03,2007-12-17,Tribune Co. | Tribune Media,726513,name_unique,Taken private[260],TRIBUNE MEDIA CO,TRIBUNE CO,,2019-09-30,2019-03-01,True,True,2008-12-11,인수·합병,위키 사유
+TSG,2006-01-03,2007-03-30,Sabre Holding Corp. | Sabre Corporation,1020265,name_multi_picked,Taken Private[265],SABRE HOLDINGS CORP,SABRE HOLDING CORP; SABRE GROUP HOLDINGS INC,,2007-05-17,2007-02-23,True,True,,인수·합병,위키 사유
+TWX,2006-01-03,2018-06-14,Time Warner Inc. | Time Warner,1105705,wiki_cik,AT&T acquired Time Warner.[106],"WARNER MEDIA, LLC",TIME WARNER LLC; TIME WARNER INC.; TIME WARNER INC; AOL TIME WARNER INC,,2020-10-23,2018-02-22,True,True,,인수·합병,위키 사유
+TXU,2006-01-03,2007-10-09,TXU Corp.,,none,,,,,,,,,,미상,-
+UIS,2006-01-03,2008-11-07,Unisys Corp.,746838,name_unique,,UNISYS CORP,,UIS,2026-09-04,2026-02-25,True,True,,강등(아직 상장),SEC 현재 티커
+UST,2006-01-03,2009-01-05,UST Inc.,811669,name_multi_picked,,UST INC,,,2009-04-20,2008-02-22,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+UTX,2006-01-03,2020-03-03,United Technologies,101829,wiki_cik,,RTX Corp,RAYTHEON TECHNOLOGIES CORP; UNITED TECHNOLOGIES CORP /DE/,RTX,2026-10-20,2026-02-06,True,True,,같은 회사(이름·티커 변경),cik
+UVN,2006-01-03,2007-03-28,Univision Communications,1017008,name_unique,,UNIVISION COMMUNICATIONS INC,,,2009-07-15,2009-03-30,True,True,,미상,-
+VIAB,2006-01-03,2019-11-21,Viacom Inc. | Viacom,1339947,wiki_cik,CBS acquired Viacom to form ViacomCBS.[80],Viacom Inc.,New Viacom Corp.,,2019-12-16,2019-11-14,True,True,,인수·합병,위키 사유
+WAMUQ,2006-01-03,2008-09-26,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+WB,2006-01-03,2008-12-29,Wachovia Corp. | Wachovia Corp. (New) | Wachovia Bank,104019,name_unique,Wachovia Bank acquired by Wells Fargo.[254],WACHOVIA CORP,,,2007-12-12,,False,False,,인수·합병,위키 사유
+WEN,2006-01-03,2008-09-26,Wendy's International,,none,,,,,,,,,,미상,-
+WFM,2006-01-03,2017-08-17,Whole Foods Market,865436,wiki_cik,Amazon acquired Whole Foods Market.[117],WHOLE FOODS MARKET INC,,,2017-11-17,2017-11-17,True,True,,인수·합병,위키 사유
+WFT,2006-01-03,2009-02-25,Weatherford International Ltd.,1170565,name_multi_picked,,WEATHERFORD INTERNATIONAL LTD,,,2025-06-13,2009-02-24,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+WWY,2006-01-03,2008-10-06,Wrigley (Wm) Jr.,,none,,,,,,,,,,미상,-
+WYE,2006-01-03,2009-10-15,Wyeth,5187,name_unique,,WYETH,AMERICAN HOME PRODUCTS CORP,,2012-03-06,2009-02-27,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+X,2006-01-03,2014-07-01,United States Steel Corp. | United States Steel,1163302,wiki_cik,Market capitalization changes[184],UNITED STATES STEEL CORP,UNITED STATES STEEL LLC,,2025-08-14,2025-01-31,True,True,,강등,위키 사유
+XLNX,2006-01-03,2022-02-02,"Xilinx, Inc | Xilinx Inc | Xilinx",743988,wiki_cik,S&P 500 constituent Advanced Micro Devices acquired Xilinx.[53],XILINX INC,"XILINX, INCORPORATED",,2022-03-11,2021-05-14,True,True,,인수·합병,위키 사유
+XRX,2006-01-03,2021-02-12,Xerox Corp. | Xerox,108772,wiki_cik,Market capitalization change.[62],XEROX CORP,,,2026-08-06,2026-03-17,True,True,,강등,위키 사유
+XTO,2006-01-03,2010-06-21,XTO Energy Inc. | XTO Energy,868809,name_unique,Acquired by ExxonMobil[246],XTO ENERGY INC,CROSS TIMBERS OIL CO,,2020-05-28,2010-02-25,True,True,,인수·합병,위키 사유
+BRL,2006-02-27,2008-12-22,"Barr Pharmaceuticals, Inc. | Barr Pharmaceuticals Inc.",10081,name_unique,,BARR PHARMACEUTICALS INC,BARR LABORATORIES INC,,2009-02-18,2008-02-29,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+DF,2006-04-03,2013-05-17,Dean Foods,931336,name_multi_picked,DF too small after spinoff of White Wave Foods[204],DEAN FOODS CO,DEAN FOODS CO/; SUIZA FOODS CORP,,2021-06-01,2020-03-20,True,True,2021-04-29;2021-04-14;2019-11-12,분할,위키 사유
+LM,2006-04-24,2016-11-29,Legg Mason,704051,wiki_cik,Market capitalization change.[132],"LEGG MASON, INC.",LEGG MASON INC,,2021-08-05,2020-05-29,True,True,,강등,위키 사유
+EQ,2006-05-18,2009-06-30,Embarq Corporation,1350031,name_unique,,Embarq CORP,LTD Holding CO,,2009-08-07,2009-02-13,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+JNPR,2006-06-02,2025-07-03,Juniper Networks,1043604,wiki_cik,S&P 500 constituent Hewlett Packard Enterprise Co. acquired Juniper Networks.[20],JUNIPER NETWORKS INC,JUNIPER NETWORKS INC,,2025-07-14,2025-02-21,True,True,,인수·합병,위키 사유
+CBH,2006-06-06,2008-03-18,Commerce Bancorp,"839217,1171313,1620686,1643881",name_multi,,,,,,,,,,미상,-
+CNX,2006-06-28,2016-03-03,CONSOL Energy Inc. | Consol Energy,1070412,wiki_cik,AWK replaces CNX[151],CNX Resources Corp,CONSOL ENERGY INC; CONSOL Energy Inc,CNX,2026-09-28,2026-02-10,False,False,,강등(아직 상장),SEC 현재 티커
+WIN,2006-07-18,2015-03-31,Windstream Corporation | Windstream Communications,1282266,wiki_cik,Market capitalization change.[173],"WINDSTREAM HOLDINGS, INC.",WINDSTREAM CORP; VALOR COMMUNICATIONS GROUP INC,,2020-09-22,2020-05-19,True,True,2020-09-22;2020-07-01;2019-02-28,강등,위키 사유
+CELG,2006-11-06,2019-11-05,Celgene Corp. | Celgene,816284,wiki_cik,Bristol-Myers Squibb (NYSE:BMY) acquired Celgene.[81],CELGENE CORP /DE/,,,2020-07-13,2019-02-26,True,True,,인수·합병,위키 사유
+BTUUQ,2006-11-20,2014-09-19,,,none,,,,,,,,,,파산·부진,Q접미사/정부관리
+IAC,2006-12-01,2008-08-18,,,none,,,,,,,,,,미상,-
+TEX,2006-12-20,2008-11-05,Terex Corp.,97216,name_unique,,TEREX CORP,,TEX,2026-10-22,2026-02-13,False,False,,강등(아직 상장),SEC 현재 티커
+ESV,2007-01-04,2016-03-29,ENSCO Int'l | Ensco plc | Ensco,314808,wiki_cik,Centene acquired Health Net.[149],Valaris Ltd,Valaris plc; Ensco Rowan plc; Ensco plc; Ensco International plc,"VAL,VAL-WT",2026-10-23,2026-02-20,True,True,2021-03-05;2020-08-19,인수·합병,위키 사유
+VAR,2007-02-12,2021-03-22,Varian Medical Systems,203527,wiki_cik,Siemens Healthineers acquired Varian Medical Systems.[61],VARIAN MEDICAL SYSTEMS INC,VARIAN ASSOCIATES INC /DE/,,2021-04-26,2020-11-25,True,True,,인수·합병,위키 사유
+HCBK,2007-02-15,2015-10-28,Hudson City Bancorp,921847,wiki_cik,HPQ spins off HPE[162],HUDSON CITY BANCORP INC,,,2015-11-09,2015-03-02,True,True,,분할,위키 사유
+DDR,2007-03-23,2009-03-27,Developers Diversified Rlty,,none,,,,,,,,,,미상,-
+ANF,2007-03-29,2013-12-18,Abercrombie & Fitch Co. | Abercrombie & Fitch Company A | Abercrombie & Fitch,1848,name_unique,Market capitalization changes.[193],ABERCROMBIE & FITCH CO,,,2008-03-26,,False,False,,강등,위키 사유
+COV,2007-07-02,2015-01-15,Covidien Ltd. | Covidien plc | Covidien,1385187,wiki_cik,Covidien acquired by Medtronic[178],Covidien plc,Covidien Ltd.; Tyco Healthcare Ltd.,,2015-02-27,2014-11-24,True,True,,인수·합병,위키 사유
+DFS,2007-07-02,2025-05-16,Discover Financial Services | Discover Financial,1393612,wiki_cik,S&P 500 constituent Capital One Financial Corp. acquired Discover Financial Services.[21],Discover Financial Services,,,2025-08-13,2025-02-20,True,True,,인수·합병,위키 사유
+GGP,2007-07-02,2018-08-20,Genl Growth Properties | General Growth Properties Inc. | GGP,895648,wiki_cik,GGP acquired by Brookfield Property Partners.[104],"GGP, Inc. (fka General Growth Properties Inc. & predecessor to General Growth Properties, Inc.)",GENERAL GROWTH PROPERTIES INC,,2015-02-02,2010-03-01,True,True,2010-10-27;2009-04-16,인수·합병,위키 사유
+ACAS,2007-07-09,2009-03-02,American Capital Strategies Ltd | American Capital,817473,name_unique,Capitalization rebalance.[253],"AMERICAN CAPITAL, LTD",AMERICAN CAPITAL STRATEGIES LTD,,2017-02-07,2016-02-17,True,True,,강등,위키 사유
+ANDV,2007-09-27,2018-09-24,Andeavor,50104,wiki_cik,ANDV acquired by Marathon Petroleum.[102],ANDEAVOR LLC,ANDEAVOR; TESORO CORP /NEW/; TESORO PETROLEUM CORP /NEW/,,2021-02-03,2018-02-21,True,True,,인수·합병,위키 사유
+TDC,2007-10-01,2017-06-16,Teradata Corp. | Teradata,816761,wiki_cik,Market capitalization changes.[121],TERADATA CORP /DE/,TERADATA CORP /DE/,TDC,2026-09-17,2026-02-27,True,False,,강등(아직 상장),위키 사유
+NBL,2007-10-08,2020-10-07,Noble Energy Inc | Noble Energy,72207,wiki_cik,Chevron acquired Noble Energy.[67],NOBLE ENERGY INC,NOBLE AFFILIATES INC,,2021-05-11,2020-02-12,True,True,,인수·합병,위키 사유
+NYX,2007-10-25,2013-11-07,NYSE Euronext,1368007,name_unique,ICE Exchange acquired NYSE Euronext.[196],NYSE Euronext,"NYSE Euronext, Inc.",,2014-06-23,2013-02-26,True,True,,인수·합병,위키 사유
+JEC,2007-10-26,2019-12-09,Jacobs Engineering Group,52988,wiki_cik,,JACOBS SOLUTIONS INC.,JACOBS ENGINEERING GROUP INC /DE/,J,2026-09-23,2025-11-20,False,True,,같은 회사(이름·티커 변경),cik
+TIE,2007-10-29,2012-12-21,Titanium Metals Corp | Titanium Metals,1011657,name_unique,TIE acquired by Precision Cast Parts (PCP)[209],TITANIUM METALS CORP,,,2013-01-18,2012-02-29,True,True,,인수·합병,위키 사유
+MTW,2007-11-16,2009-08-31,Manitowoc Co.,"61986,1949265",name_multi,,,,,,,,,,미상,-
+GHC,2007-12-31,2014-09-19,Graham Holdings Company | Graham Holdings,104889,wiki_cik,Market cap changes,Graham Holdings Co,WASHINGTON POST CO,GHC,2026-10-02,2026-02-25,False,False,,강등(아직 상장),위키 사유
+TSS,2008-01-02,2019-08-09,Total System Services | TSYS,721683,wiki_cik,S&P 500 constituent Global Payments (NYSE: GPN) acquired TSS.[84],TOTAL SYSTEM SERVICES INC,,,2019-09-30,2019-02-21,True,True,,인수·합병,위키 사유
+CAM,2008-01-29,2016-03-31,Cameron International Corp. | Cameron International,941548,wiki_cik,Schlumberger acquired Cameron[148],CAMERON INTERNATIONAL CORP,COOPER CAMERON CORP,,2016-04-14,2016-01-29,True,True,,인수·합병,위키 사유
+SWN,2008-06-06,2017-03-30,Southwestern Energy,7332,wiki_cik,"HPE spins off Everett, merged with CSC to form DXC[125][126]",SOUTHWESTERN ENERGY CO,,,2024-10-11,2024-02-22,True,True,,인수·합병,위키 사유
+LO,2008-06-11,2015-06-11,Lorillard Inc. | Lorillard Tobacco Company,1424847,wiki_cik,Lorillard gets acquired.[172],"LORILLARD, LLC","LORILLARD, INC.",,2015-06-25,2015-02-12,True,True,,인수·합병,위키 사유
+COG,2008-06-23,2021-09-20,Cabot Oil & Gas,858470,wiki_cik,,Coterra Energy Inc.,CABOT OIL & GAS CORP,,2026-06-05,2026-02-27,True,True,,미상,-
+MEE,2008-06-23,2011-05-23,Massey Energy Company | Massey Energy,37748,name_unique,Alpha Natural Resources acquired Massey Energy.[234],"Alpha Appalachia Holdings, Inc.",MASSEY ENERGY CO; FLUOR CORP/DE/,,2013-12-13,2011-03-01,True,True,,인수·합병,위키 사유
+SNI,2008-07-01,2018-02-28,Scripps Networks Interactive Inc. | Scripps Networks Interactive,1430602,wiki_cik,Discovery Communications acquired SNI.[113],"Scripps Networks Interactive, Inc.",,,2026-10-16,2018-02-27,True,True,,인수·합병,위키 사유
+HRS,2008-09-22,2019-04-02,Harris Corporation,202058,wiki_cik,,"L3HARRIS TECHNOLOGIES, INC. /DE/",HARRIS CORP /DE/,LHX,2026-10-23,2026-02-12,True,False,,같은 회사(이름·티커 변경),cik
+PXD,2008-09-24,2024-05-03,Pioneer Natural Resources,1038357,wiki_cik,S&P 500 and S&P 100 constituent ExxonMobil acquired Pioneer Natural Resources.[29],PIONEER NATURAL RESOURCES CO,,,2024-06-20,2024-02-22,True,True,,인수·합병,위키 사유
+PBCT,2008-11-13,2022-03-02,People's United Bank | People's United Financial,1378946,wiki_cik,S&P 500 constituent M&T Bank Corp. acquired People's United Financial.[51],"People's United Financial, Inc.",,,2023-02-13,2022-03-01,True,True,,인수·합병,위키 사유
+XRAY,2008-11-14,2024-04-03,Dentsply International | Dentsply Sirona | Dentsply Intl,818479,wiki_cik,Market capitalization change.[30],DENTSPLY SIRONA Inc.,DENTSPLY INTERNATIONAL INC /DE/,XRAY,2026-10-09,2026-02-26,False,False,,강등(아직 상장),위키 사유
+CEPH,2008-11-17,2011-10-11,Cephalon Inc | Cephalon,873364,name_unique,Acquired by Teva Pharmaceutical Industries (TEVA).[230],CEPHALON INC,,,2017-03-31,2011-02-11,True,True,,인수·합병,위키 사유
+SRCL,2008-11-19,2018-11-29,Stericycle Inc | Stericycle Inc. | Stericycle,861878,wiki_cik,Market Capitalization change[98],STERICYCLE INC,,,2025-05-14,2024-02-28,True,True,,강등,위키 사유
+FLIR,2009-01-02,2021-04-20,FLIR Systems,354908,wiki_cik,S&P 500 constituent Teledyne Technologies acquired FLIR Systems.[60],"Teledyne FLIR, LLC",FLIR SYSTEMS INC,,2021-05-24,2021-02-25,True,True,,인수·합병,위키 사유
+OI,2009-01-02,2016-11-29,Owens-Illinois Inc | Owens-Illinois Inc. | Owens-Illinois,812074,wiki_cik,Market capitalization change.[132],"O-I Glass, Inc. /DE/",OWENS ILLINOIS INC /DE/,OI,2026-10-08,2026-02-12,True,True,,강등(아직 상장),위키 사유
+SCG,2009-01-02,2018-12-24,SCANA Corp | SCANA Corp. | SCANA,754737,wiki_cik,Dominion Energy acquired SCANA Corporation[96],SCANA CORP,,,2019-03-01,2019-02-28,True,True,,인수·합병,위키 사유
+TWC,2009-03-30,2016-05-17,Time Warner Cable Inc. | Time Warner Cable,1377013,wiki_cik,TWC acquired by CHTR[143],"SPECTRUM MANAGEMENT HOLDING COMPANY, LLC",TIME WARNER CABLE INC.,,2026-08-21,2016-02-12,True,True,,인수·합병,위키 사유
+DNR,2009-04-02,2015-03-19,Denbury Resources Inc. | Denbury Resources,945764,wiki_cik,Market Capitalization Changes.[175],DENBURY INC,DENBURY RESOURCES INC,,2024-02-07,2023-02-23,True,True,2020-09-04;2020-07-31,강등,위키 사유
+ATGE,2009-06-09,2012-09-25,,,none,,,,,,,,,,미상,-
+RHT,2009-07-27,2019-07-01,Red Hat Inc. | Red Hat,1087423,wiki_cik,S&P 500 & 100 constituent IBM acquired Red Hat.[86],RED HAT INC,,,2019-07-19,2019-04-24,True,True,,인수·합병,위키 사유
+FMC,2009-08-19,2025-03-24,FMC Corporation,37785,wiki_cik,Market capitalization change.[22],FMC CORP,,FMC,2026-10-21,2026-02-27,False,False,,강등(아직 상장),위키 사유
+CFN,2009-09-01,2015-03-13,Carefusion | Carefusion Corporation,1457543,wiki_cik,Carefusion acquired by Becton Dickinson[175],CAREFUSION Corp,,,2015-04-27,2014-08-11,True,True,,인수·합병,위키 사유
+ARG,2009-09-09,2016-05-20,Airgas Inc | Airgas,804212,wiki_cik,ARG acquired by Air Liquide[142],AIRGAS INC,,,2016-06-02,2016-05-10,True,True,,인수·합병,위키 사유
+MJN,2009-12-21,2017-06-07,Mead Johnson,1452575,wiki_cik,Reckitt Benckiser acquired Mead Johnson Nutrition.[122],Mead Johnson Nutrition Co,,,2018-02-14,2017-02-27,True,True,,인수·합병,위키 사유
+DISCA,2010-03-01,2022-04-04,Discovery Communications | Discovery Communications-A | Discovery Inc. Class A,1437107,wiki_cik,WarnerMedia and Discovery merge to create Warner Bros. Discovery.[50],"Warner Bros. Discovery, Inc.","Discovery, Inc.; Discovery Communications, Inc.",WBD,2026-10-16,2026-02-27,True,True,,인수·합병,위키 사유
+HP,2010-03-01,2020-05-12,Helmerich & Payne,46765,wiki_cik,Market capitalization change.[71],"Helmerich & Payne, Inc.",HELMERICH & PAYNE INC,HP,2026-10-19,2025-11-21,False,False,,강등(아직 상장),위키 사유
+CERN,2010-04-30,2022-05-10,Cerner,804753,wiki_cik,S&P 500 constituent Oracle Corp. acquired Cerner.[49],CERNER Corp,CERNER CORP /MO/,,2022-06-23,2022-02-22,True,True,,인수·합병,위키 사유
+QEP,2010-07-01,2015-06-30,QEP Resources,1108827,wiki_cik,Baxalta spun off by Baxter.[171],"QEP RESOURCES, INC.",QUESTAR MARKET RESOURCES INC,,2022-02-11,2021-02-24,True,True,,미상,-
+CVC,2010-12-20,2016-06-20,Cablevision Systems Corp. | Cablevision Systems,1053112,wiki_cik,CVC acquired by Altice NV[139],CABLEVISION SYSTEMS CORP /NY,CABLEVISIONS SYSTEM CORP /NY; CSC PARENT CORP,,2016-07-06,2016-02-25,True,True,,인수·합병,위키 사유
+NFX,2010-12-20,2019-01-18,Newfield Exploration Co | Newfield Exploration,912750,wiki_cik,ECA acquired NFX[94],NEWFIELD EXPLORATION CO /DE/,,,2019-02-25,2018-02-20,True,True,,인수·합병,위키 사유
+MMI,2011-01-04,2012-05-15,Motorola Mobility Holdings Inc. | Motorola Mobility,1495569,name_unique,Acquired by Google (GOOG)[219],"Motorola Mobility Holdings, Inc",Motorola SpinCo Holdings Corp,,2012-06-01,2012-02-17,True,True,,인수·합병,위키 사유
+JOY,2011-02-28,2015-10-05,Joy Global Inc. | Joy Global,801898,wiki_cik,Market capitalization change.[163],JOY GLOBAL INC,HARNISCHFEGER INDUSTRIES INC,,2017-04-17,2016-12-16,True,True,,강등,위키 사유
+PRGO,2011-12-19,2021-08-30,Perrigo,1585364,wiki_cik,Market capitalization change.[57],PERRIGO Co plc,PERRIGO Co Ltd,PRGO,2026-09-15,2026-02-26,False,True,,강등(아직 상장),위키 사유
+TRIP,2011-12-21,2019-12-10,TripAdvisor,1526520,wiki_cik,Market capitalization change.[78],"TripAdvisor, Inc.",,TRIP,2026-09-04,2026-02-13,False,False,,강등(아직 상장),위키 사유
+WPX,2012-01-03,2014-03-12,"WPX Energy, Inc. | WPX Energy",1518832,name_unique,Market capitalization changes[191],"WPX ENERGY, INC.",,,2026-06-24,2020-02-28,True,True,,강등,위키 사유
+ALXN,2012-05-25,2021-06-04,Alexion Pharmaceuticals,899866,wiki_cik,AstraZeneca acquired Alexion Pharmaceuticals.[59],"ALEXION PHARMACEUTICALS, INC.",ALEXION PHARMACEUTICALS INC,,2022-11-16,2021-02-08,True,True,,인수·합병,위키 사유
+KRFT,2012-10-02,2015-07-02,Kraft Foods Group | Kraft Foods,1545158,wiki_cik,Kraft merger with Heinz.[168],"Kraft Foods Group, Inc.",,,2016-02-23,2015-02-19,True,True,,인수·합병,위키 사유
+PETM,2012-10-05,2015-03-11,"PetSmart, Inc. | PetSmart",863157,wiki_cik,PetSmart acquired by private equity consortium[176],PETSMART INC,,,2020-05-12,2014-03-27,True,True,,인수·합병,위키 사유
+MAC,2013-05-09,2019-12-10,Macerich,912242,wiki_cik,Market capitalization change.[78],MACERICH CO,,MAC,2026-09-09,2026-02-20,True,True,,강등(아직 상장),위키 사유
+KSU,2013-05-24,2021-10-04,Kansas City Southern,54480,wiki_cik,Canadian Pacific acquired Kansas City Southern.[56],KANSAS CITY SOUTHERN,KANSAS CITY SOUTHERN INDUSTRIES INC,,2023-04-24,2023-02-03,True,True,,인수·합병,위키 사유
+NLSN,2013-07-09,2022-10-03,Nielsen Holdings,1492633,wiki_cik,Elliot Management Corp acquired Nielsen Holdings.[46],Nielsen Holdings plc,Nielsen N.V.; Nielsen Holdings N.V.; Nielsen Holdings B.V.,,2022-10-27,2022-02-28,True,True,,인수·합병,위키 사유
+KORS,2013-11-13,2018-09-18,Michael Kors | Michael Kors Holdings,1530721,wiki_cik,,Capri Holdings Ltd,Michael Kors Holdings Ltd,CPRI,2026-09-16,2026-05-27,False,False,,강등(아직 상장),SEC 현재 티커
+ADS,2013-12-23,2020-05-22,Alliance Data Systems,1101215,wiki_cik,Market capitalization change.[70],"BREAD FINANCIAL HOLDINGS, INC.",ALLIANCE DATA SYSTEMS CORP,"BFH,BFH-PA,BFH-PB",2026-10-22,2026-02-13,False,False,,강등(아직 상장),위키 사유
+FB,2013-12-23,2022-06-08,"Facebook | Facebook, Inc. | Meta Platforms",1326801,wiki_cik,,"Meta Platforms, Inc.",Facebook Inc,META,2026-10-22,2026-01-29,False,False,,같은 회사(이름·티커 변경),cik
+GMCR,2014-03-24,2016-02-26,Keurig Green Mountain,909954,wiki_cik,JAB Holding Company acquired Keurig Green Mountain[150],"KEURIG GREEN MOUNTAIN, INC.",GREEN MOUNTAIN COFFEE ROASTERS INC; GREEN MOUNTAIN COFFEE INC,,2016-04-11,2015-11-19,True,True,,인수·합병,위키 사유
+NAVI,2014-05-01,2018-06-01,Navient Corp | Navient,1084750,wiki_cik,Westar Energy (NYSE: WR) acquired Great Plains Energy (NYSE: GXP) and changed name to Evergy.[109],NAVISITE LLC,NAVISITE INC,,2019-06-27,2010-10-22,True,True,,인수·합병,위키 사유
+UAA,2014-05-01,2022-06-21,Under Armour Class A | Under Armour (Class A),1336917,wiki_cik,Market capitalization change.[49],"Under Armour, Inc.",,"UAA,UA",2026-10-02,2026-05-19,False,False,,강등(아직 상장),위키 사유
+XEC,2014-06-20,2020-01-28,Cimarex Energy,1168054,wiki_cik,"Gardner Denver acquired Ingersoll Rand's industrial businesses then changed its name to the ""new"" Ingersoll Rand Inc.[75][76]",CIMAREX ENERGY CO,HELMERICH & PAYNE EXPLORATION & PRODUCTION CO,,2021-10-12,2021-02-23,True,True,,인수·합병,위키 사유
+DISCK,2014-08-07,2022-04-04,"Discovery Communications-C | Discovery Inc. Class C | Discovery, Inc. (Class C)",1437107,wiki_cik,WarnerMedia and Discovery merge to create Warner Bros. Discovery.[50],"Warner Bros. Discovery, Inc.","Discovery, Inc.; Discovery Communications, Inc.",WBD,2026-10-16,2026-02-27,True,True,,인수·합병,위키 사유
+LVLT,2014-11-05,2017-10-10,Level 3 Communications,794323,wiki_cik,CenturyLink acquired LVLT.[115],"Level 3 Parent, LLC",LEVEL 3 COMMUNICATIONS INC; KIEWIT PETER SONS INC,,2026-04-30,2026-02-20,True,True,,인수·합병,위키 사유
+ENDP,2015-01-27,2017-03-01,Endo International,1100962,wiki_cik,REG acquires EQY[130],ENDO HEALTH SOLUTIONS INC.,ENDO PHARMACEUTICALS HOLDINGS INC,,2019-06-18,2014-03-03,True,True,,인수·합병,위키 사유
+HBI,2015-03-23,2021-12-14,Hanesbrands Inc | Hanesbrands,1359841,wiki_cik,Market capitalization change.[55],Hanesbrands Inc.,Hanesbrands Inc.,,2026-02-12,2025-02-14,True,True,,강등,위키 사유
+SLG,2015-03-23,2021-02-12,SL Green Realty,1040971,wiki_cik,Market capitalization change.[62],SL GREEN REALTY CORP,,"SLG,SLG-PI",2026-10-22,2026-02-17,False,True,,강등(아직 상장),위키 사유
+QRVO,2015-06-12,2024-12-25,Qorvo,1604778,wiki_cik,Market capitalization change.[23],"Qorvo, Inc.","Rocky Holding, Inc.",QRVO,2026-10-15,2026-05-08,True,True,,강등(아직 상장),위키 사유
+BXLT,2015-07-01,2016-06-01,Baxalta,1620546,name_unique,SHPG acquiring BXLT[140],Baxalta Inc,,,2019-02-07,2016-03-03,True,True,,인수·합병,위키 사유
+CPGX,2015-07-02,2016-06-27,Columbia Pipeline Group Inc | Columbia Pipeline Group,1629995,wiki_cik,CPGX acquired by TRP[137],"Columbia Pipeline Group, Inc.",,,2017-02-27,2017-02-17,True,True,,인수·합병,위키 사유
+WRK,2015-07-02,2024-07-08,WestRock | Westrock Co | WestRock Company,1636023,wiki_cik,,WRKCo Inc.,"WestRock Co; Rome-Milan Holdings, Inc.",,2025-11-19,2017-11-20,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+AAP,2015-07-09,2023-08-28,Advance Auto Parts,1158449,wiki_cik,S&P 500 and S&P 100 constituent Johnson & Johnson offered to exchange the shares of Kenvue held for shares of Johnson & Johnson in a split-off exchange offer.[3,ADVANCE AUTO PARTS INC,,AAP,2026-10-21,2026-02-13,False,False,,분할,위키 사유
+ATVI,2015-08-31,2023-10-12,Activision Blizzard,718877,wiki_cik,S&P 500 and S&P 100 constituent Microsoft acquired Activision Blizzard.[33],"Activision Blizzard, Inc.",ACTIVISION INC /NY,,2024-06-11,2023-02-23,True,True,,인수·합병,위키 사유
+CMCSK,2015-09-21,2015-12-09,Comcast K Corp,,none,CMCSK shares no longer listed[158],,,,,,,,,미상,-
+FCPT,2015-11-10,2015-11-10,,,none,,,,,,,,,,미상,-
+CSRA,2015-11-30,2018-04-02,CSRA Inc. | CSRA,1646383,wiki_cik,S&P 500 constituent General Dynamics (NYSE: GD) acquired CSRA.[111],CSRA Inc.,Computer Sciences Government Services Inc.,,2018-05-10,2017-05-25,True,True,,인수·합병,위키 사유
+CPRI,2016-01-04,2020-04-06,Capri Holdings,1530721,wiki_cik,Market capitalization change.[72],Capri Holdings Ltd,Michael Kors Holdings Ltd,CPRI,2026-09-16,2026-05-27,False,False,,강등(아직 상장),위키 사유
+WLTW,2016-01-05,2021-12-20,Willis Towers Watson,1140536,wiki_cik,,WILLIS TOWERS WATSON PLC,WILLIS GROUP HOLDINGS PLC; WILLIS GROUP HOLDINGS LTD,WTW,2026-10-22,2026-02-25,False,False,,같은 회사(이름·티커 변경),cik
+CXO,2016-02-22,2021-01-07,Concho Resources,1358071,wiki_cik,S&P 500/100 constituent ConocoPhillips acquired Concho Resources.[64],CONCHO RESOURCES INC,CONCO RESOURCES INC,,2021-11-09,2020-02-19,True,True,,인수·합병,위키 사유
+FL,2016-04-04,2019-08-08,Foot Locker Inc | Foot Locker,850209,wiki_cik,Market capitalization change.[85],"FOOT LOCKER, INC.",FOOT LOCKER INC; VENATOR GROUP INC; WOOLWORTH CORPORATION,,2025-11-13,2025-03-27,True,True,,강등,위키 사유
+UA,2016-04-08,2022-06-21,Under Armour | Under Armour Class C | Under Armour (Class C),1336917,wiki_cik,Market capitalization change.[49],"Under Armour, Inc.",,"UAA,UA",2026-10-02,2026-05-19,False,False,,강등(아직 상장),위키 사유
+FBHS,2016-06-24,2022-11-08,Fortune Brands Home & Security,1519751,wiki_cik,Market capitalization change.[44],"Fortune Brands Innovations, Inc.","Fortune Brands Home & Security, Inc.; Fortune Brands Home & Security LLC",FBIN,2026-10-15,2026-02-23,False,False,,같은 회사(이름·티커 변경),cik
+COTY,2016-10-03,2020-09-18,"Coty, Inc | Coty",1024305,wiki_cik,Market capitalization change.[69],COTY INC.,COTY INC /,COTY,2026-10-21,2026-08-20,False,False,,강등(아직 상장),위키 사유
+EVHC,2016-12-02,2018-10-10,Envision Healthcare,895930,wiki_cik,EVHC acquired by KKR.[101],AMSURG CORP,,,2018-02-05,2016-02-25,True,True,,인수·합병,위키 사유
+DISH,2017-03-13,2023-06-19,Dish Network,1001082,wiki_cik,Market capitalization change.[37],DISH Network CORP,ECHOSTAR COMMUNICATIONS CORP,,2026-03-31,2025-03-12,True,True,,강등,위키 사유
+INFO,2017-06-02,2022-02-17,IHS Markit Ltd. | IHS Markit,1598014,wiki_cik,S&P 500 constituent S&P Global Inc. acquired IHS Markit.[52],IHS Markit Ltd.,Markit Ltd.,,2022-03-11,2022-01-24,True,True,,인수·합병,위키 사유
+ANSS,2017-06-19,2025-07-17,Ansys | ANSYS Inc | ANSYS,1013462,wiki_cik,S&P 500 constituent Synopsys Inc. acquired Ansys.[19],ANSYS INC,,,2025-07-30,2025-02-19,True,True,,인수·합병,위키 사유
+RE,2017-06-19,2023-07-10,Everest Re | Everest Re Group Ltd | Everest Re Group Ltd.,1095073,wiki_cik,,"EVEREST GROUP, LTD.",EVEREST RE GROUP LTD; EVEREST REINSURANCE GROUP LTD,EG,2026-10-19,2026-02-26,False,False,,같은 회사(이름·티커 변경),cik
+DRE,2017-07-26,2022-09-19,Duke Realty Corp | Duke Realty,783280,wiki_cik,S&P 500 constituent Prologis Inc. acquired Duke Realty.[47],DUKE REALTY CORP,DUKE WEEKS REALTY CORP; DUKE REALTY INVESTMENTS INC,,2023-02-14,2022-02-18,True,True,,인수·합병,위키 사유
+DWDP,2017-09-01,2019-06-01,DowDuPont | DuPont,1666700,wiki_cik,DWDP changed to DD after spinning off Corteva.[90],"DuPont de Nemours, Inc.",DowDuPont Inc.,DD,2026-09-10,2026-02-17,False,False,,같은 회사(이름·티커 변경),cik
+NKTR,2018-03-19,2019-09-26,Nektar Therapeutics,906709,wiki_cik,Market capitalization change.[82],NEKTAR THERAPEUTICS,INHALE THERAPEUTIC SYSTEMS INC; INHALE THERAPEUTIC SYSTEMS,NKTR,2026-10-20,2026-03-13,False,False,,강등(아직 상장),위키 사유
+SIVB,2018-03-19,2023-01-04,SVB Financial | SVB Financial Group,719739,wiki_cik,"The FDIC placed SVB's main subsidiary, Silicon Valley Bank, into receivership.[41]",SVB FINANCIAL GROUP,SILICON VALLEY BANCSHARES,,2025-11-10,2023-02-24,True,True,2024-11-08;2024-08-23;2023-03-17;2023-03-10,파산·부진,8-K 1.03 (편출 1년 전~90일 뒤)
+ABMD,2018-05-31,2022-12-19,ABIOMED Inc | Abiomed,815094,wiki_cik,S&P 500 constituent Johnson & Johnson acquired Abiomed.[43],ABIOMED INC,,,2023-01-06,2022-05-20,True,True,,인수·합병,위키 사유
+TWTR,2018-06-07,2022-10-12,"Twitter, Inc. | Twitter | Twitter Inc.",1418091,wiki_cik,Elon Musk acquired Twitter.[45],"TWITTER, INC.",Twitter Inc,,2022-12-02,2022-02-16,True,True,,인수·합병,위키 사유
+HFC,2018-06-18,2021-05-14,HollyFrontier Corp | HollyFrontier,48039,wiki_cik,Market capitalization change.[54],HollyFrontier Corp,HOLLY CORP,,2023-02-13,2022-02-23,True,True,,강등,위키 사유
+FLT,2018-06-20,2024-03-25,Fleetcor | FleetCor Technologies Inc,1175454,wiki_cik,,"CORPAY, INC.",FLEETCOR TECHNOLOGIES INC,CPAY,2026-10-15,2026-02-27,False,False,,같은 회사(이름·티커 변경),cik
+WCG,2018-09-17,2019-12-23,WellCare,1279363,wiki_cik,S&P 500 constituent Centene Corp. (NYSE: CNC) acquired Wellcare Health Plans.[77],"WELLCARE HEALTH PLANS, INC.",WELLCARE GROUP INC,,2020-02-14,2019-02-12,True,True,,인수·합병,위키 사유
+FRC,2019-01-02,2023-03-20,First Republic Bank,1132979,wiki_cik,The Federal Deposit Insurance Corporation (FDIC) placed First Republic Bank into FDIC Receivership.[38],FIRST REPUBLIC BANK,,,2024-02-09,,False,False,,파산·부진,위키 사유
+NLOK,2019-11-05,2022-11-01,NortonLifeLock,849399,wiki_cik,,Gen Digital Inc.,NortonLifeLock Inc.; SYMANTEC CORP,"GEN,GENVR",2026-10-09,2026-05-21,False,False,,같은 회사(이름·티커 변경),cik
+PEAK,2019-11-05,2024-03-03,Healthpeak | Healthpeak Properties,765880,wiki_cik,,"HEALTHPEAK PROPERTIES, INC.","HCP, INC.; HEALTH CARE PROPERTY INVESTORS INC",DOC,2026-08-07,2026-02-03,True,True,,같은 회사(이름·티커 변경),cik
+VIAC,2019-12-05,2022-02-15,ViacomCBS,813828,wiki_cik,,Paramount Global,ViacomCBS Inc.; CBS CORP; VIACOM INC,,2026-07-31,2025-02-26,True,True,,미상,-
+LUMN,2020-09-18,2023-03-15,Lumen Technologies,18926,wiki_cik,Market capitalization change.[39],"Lumen Technologies, Inc.","CENTURYLINK, INC; CENTURYTEL INC; CENTURY TELEPHONE ENTERPRISES INC",LUMN,2026-10-23,2026-02-20,True,True,,강등(아직 상장),위키 사유
+CTLT,2020-09-21,2024-12-18,Catalent,1596783,wiki_cik,Novo Holdings A/S acquired Catalent.[24],"Catalent, Inc.",PTS Holdings Corp.,,2024-12-30,2024-09-06,True,True,,인수·합병,위키 사유
+PENN,2021-03-22,2022-06-28,Penn National Gaming | Penn Entertainment,921738,wiki_cik,Market capitalization change.[48],"PENN Entertainment, Inc.",PENN NATIONAL GAMING INC,PENN,2026-08-12,2026-02-26,False,False,,강등(아직 상장),위키 사유
+CDAY,2021-09-20,2024-02-01,Ceridian,1725057,wiki_cik,,"Dayforce, Inc.",Ceridian HCM Holding Inc.,,2026-05-15,2025-02-28,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+SBNY,2021-12-20,2023-01-04,Signature Bank,1288784,wiki_cik,The FDIC placed Signature Bank into FDIC Receivership.[40],Signature Bank Corp,,,2025-02-24,,False,False,,파산·부진,위키 사유
+SEDG,2021-12-20,2023-12-16,SolarEdge,1419612,wiki_cik,Market capitalization change.[32],"SOLAREDGE TECHNOLOGIES, INC.",SolarEdge Technologies Inc,SEDG,2026-10-05,2026-02-25,False,False,,강등(아직 상장),위키 사유
+PARA,2022-02-17,2025-08-08,Paramount Global,813828,wiki_cik,,Paramount Global,ViacomCBS Inc.; CBS CORP; VIACOM INC,,2026-07-31,2025-02-26,True,True,,인수·합병(추정),편출 뒤 1년 안 10-K 중단 + 등록 말소
+BF.B,2023-05-09,2023-05-14,Brown-Forman Corp. | Brown-Forman Corporation | Brown–Forman,14693,wiki_cik,,BROWN FORMAN CORP,,"BF-B,BF-A",2026-09-21,2026-06-12,False,True,,같은 회사(이름·티커 변경),cik
+RVTY (Previously PKI),2023-12-31,2023-12-31,,,none,,,,,,,,,,미상,-
