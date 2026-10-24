@@ -268,6 +268,15 @@ async function account(req, env, path) {
     await log(env, A.id, 'logout', ua);
     return cjson({ ok: true }, h);
   }
+  if (path === '/api/account/prefs') {                  // 설정: GET 읽기 · POST {data, u} — 서버 것보다 최근이면 저장, 늘 최신을 돌려줌
+    const cur = await env.DB.prepare('SELECT data, u FROM prefs WHERE auth_id=?').bind(A.id).first();
+    if (req.method === 'POST' && b && typeof b.data === 'object' && b.data && +b.u > (cur ? cur.u : 0)) {
+      const data = JSON.stringify(b.data).slice(0, 8000);
+      await env.DB.prepare('INSERT INTO prefs (auth_id, data, u) VALUES (?,?,?) ON CONFLICT(auth_id) DO UPDATE SET data=excluded.data, u=excluded.u').bind(A.id, data, +b.u).run();
+      return cjson({ data: JSON.parse(data), u: +b.u }, h);
+    }
+    return cjson(cur ? { data: JSON.parse(cur.data), u: cur.u } : { data: null, u: 0 }, h);
+  }
   if (path === '/api/account/log') {
     const rows = (await env.DB.prepare('SELECT ev, ua, at FROM auth_log WHERE auth_id=? ORDER BY at DESC LIMIT 30').bind(A.id).all()).results;
     return cjson({ log: rows }, h);
@@ -277,6 +286,7 @@ async function account(req, env, path) {
     const u = await accUser(env, A.id);
     if (u) await wipe(env, u.uid);
     await env.DB.batch([
+      env.DB.prepare('DELETE FROM prefs WHERE auth_id=?').bind(A.id),
       env.DB.prepare('DELETE FROM session WHERE userId=?').bind(A.id),
       env.DB.prepare('DELETE FROM account WHERE userId=?').bind(A.id),
       env.DB.prepare('DELETE FROM "user" WHERE id=?').bind(A.id),
