@@ -6,10 +6,17 @@ from scipy.stats import norm
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data"); OUT = os.path.join(ROOT, "task5", "out"); os.makedirs(OUT, exist_ok=True)
-pn = pd.read_csv(os.path.join(DATA, "task5_panel.csv"), parse_dates=["date"])
+import hashlib
+PANEL = os.environ.get("PANEL", "task5_panel.csv")
+pn = pd.read_csv(os.path.join(DATA, PANEL), parse_dates=["date"])
+if os.environ.get("RETCOL") == "s":                       # 부실 상장폐지 −30% 민감도
+    pn["r63"], pn["r252"] = pn["r63s"], pn["r252s"]
 grp = pd.read_csv(os.path.join(DATA, "split_groups.csv"))
 grp["t"] = grp["t"].str.replace(".", "-", regex=False); grp = grp.set_index("t")["grp"]
-pn["grp"] = pn["t"].map(grp); pn = pn[pn["grp"].notna()]
+pn["grp"] = pn["t"].map(grp)
+dk = pn["t"].str.startswith("D:")
+pn.loc[dk, "grp"] = pn.loc[dk, "t"].map(lambda k: "A" if hashlib.md5(k[2:].encode()).digest()[0] % 2 == 0 else "B")
+pn = pn[pn["grp"].notna()]
 pn["parity"] = np.where(pn["date"].dt.year % 2 == 1, "odd", "even")
 # 결과 확인 후 보완 (PLAN 변경 이력): 날짜별 수익률 상·하위 1% 윈저화, 선택적으로 시점 시가총액 하한
 WINS = os.environ.get("WINS", "1") == "1"; MINCAP = float(os.environ.get("MINCAP", "0")); TAG = os.environ.get("TAG", "w")
