@@ -91,7 +91,7 @@ function kvGrid(m, keys, F) {
     let txt = f.fmt === 'pct' && ['r1d', 'r1w', 'r1m', 'r3m', 'r6m', 'r1y', 'rytd', 'r12_1', 'd50', 'd200', 'hi52', 'lo52', 'rev_g', 'rev_qg', 'ni_g', 'c_chg90', 'c_upside', 'c_eps_g', 'c_rev_g', 'c_surp', 'c_ratio'].includes(k) ? pctS(v)
       : k === 'om_chg' || k === 'sv_chg' ? (v == null ? '-' : `<span class="${cls(v)}">${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%p</span>`) : fmt(v, f.fmt);
     if (f.tier === 'pro' && !Plan.isPro()) txt = '<span class="pro">PRO</span>';
-    return `<div><span>${esc(f.label)}${tip(k)}</span><b>${txt}${rankOf(G, m, k)}</b></div>`;
+    return `<div data-k="${k}"><span>${esc(f.label)}${tip(k)}</span><b>${txt}${rankOf(G, m, k)}</b></div>`;
   }).join('')}</div>${G ? `<div class="small faint">작은 숫자 = ${esc(G.name)} ${G.rows.length}종목 안에서 값이 큰 순서 (PER·부채비율처럼 낮을수록 좋은 지표도 '큰 순서')</div>` : ''}`;
 }
 
@@ -113,7 +113,7 @@ function mountChart(id, d, isEtf) {
 function headBlock(m, extraTags) {
   const tags = [m.sec ? secKo(m.sec) : null, m.ind, ...(m.idx ? m.idx.split(',') : []), ...extraTags].filter(Boolean);
   return `<div class="hero"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h1>${esc(m.t)}</h1><span class="mut" style="font-size:17px">${m.ko ? `<b style="color:var(--ink);font-weight:650">${esc(m.ko)}</b> · ` : ''}${esc(m.n)}</span></div>
-    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b style="font-size:28px" class="num">${fmt(m.px, 'px')}</b>${pctS(m.r1d)}
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b style="font-size:28px" class="num">${fmt(m.px, 'px')}</b><span class="hd-chg"><span><small>1일</small>${pctS(m.r1d)}</span><span><small>1개월</small>${pctS(m.r1m)}</span></span>
     <span class="mut s13">${m.mcap ? '시가총액 ' + fmtUsd(m.mcap) : m.aum ? '순자산 ' + fmtUsd(m.aum) : ''}</span></div>
     <div class="pill-row" style="align-items:center">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}<span id="pop-line"></span>
       <span style="margin-left:auto;display:flex;gap:6px">${watchBtn(m.t)}<a class="btn" href="compare.html?t=${encodeURIComponent(m.t)}" style="text-decoration:none" title="비슷한 종목을 추천받아 나란히 비교">비교하기</a></span></div>
@@ -154,7 +154,7 @@ async function renderStock(U, d, P) {
 
   // 실적 발표
   const er = d.er || {};
-  let erCard = '';
+  let erCard = '', erBars = '';
   if (er.next || (er.hist && er.hist.length)) {
     const hist = (er.hist || []).slice(-8);
     const mx = Math.max(0.05, ...hist.map(x => Math.abs(x[1])));
@@ -171,7 +171,8 @@ async function renderStock(U, d, P) {
         <div><span>과거 평균 변동${tip('er_avg')}</span><b>${er.avg != null ? '±' + fmt(er.avg, 'pct') : '-'}</b></div>
         <div><span>최근 서프라이즈${tip('c_surp')}</span><b>${pctS(m.c_surp)}</b></div></div>
       ${verdict ? `<div class="s13">${verdict}${er.exp ? ` <span class="faint">(만기 ${esc(er.exp)} 옵션 기준)</span>` : ''}</div>` : er.next && er.imp == null ? '<div class="small faint">옵션 예상 변동폭은 옵션을 수집하는 시가총액 상위 종목만, 발표 직후 끝나는 만기가 생기면(보통 발표 주간) 보여요</div>' : ''}
-      ${hist.length ? `<div class="small mut">최근 ${hist.length}번의 실적 발표 때 주가 변동 (발표 전날 → 다음 날 종가)</div>${bars8}` : ''}`);
+`);
+    erBars = hist.length ? `<div class="small mut">최근 ${hist.length}번의 실적 발표 때 주가 변동 (발표 전날 → 다음 날 종가)</div>${bars8}` : '';
   }
 
   // 최근 실적 결과 (발표 뒤 75일)
@@ -181,7 +182,8 @@ async function renderStock(U, d, P) {
   const consKeys = ['c_n', 'c_up', 'c_dn', 'c_ratio', 'c_chg90', 'c_eps_g', 'c_rev_g', 'c_fpe', 'c_upside', 'c_buy', 'c_surp', 'c_beats', 'c_next'];
   const fakeHist = `<div style="height:140px;background:linear-gradient(180deg,transparent 40%,var(--soft));border-radius:10px"></div>`;
   h += sec('cons', 'cons', '컨센서스', '애널리스트 전망과 그 변화',
-    erRes + erCard + (m.c_n ? card('', '', kvGrid(m, consKeys, F)) : card('', '', `<div class="mut s13">이 종목은 애널리스트 컨센서스 자료가 없어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
+    erRes + erCard + (m.c_n ? `<div class="card cons-ck"><div class="cc-head"><b id="cc-title">실적 발표 때 주가 변동</b><button class="btn" id="cc-reset" style="display:none;min-height:28px;padding:2px 10px;font-size:12.5px">← 실적 반응</button></div><div id="cons-chart">${erBars || '<div class="mut s13">실적 발표 이력이 없어요</div>'}</div>
+      ${kvGrid(m, consKeys, F)}<div class="small faint">숫자 칸을 누르면 같은 산업 종목과 나란히 비교한 차트로 바뀌어요</div></div>` : card('', '', `<div class="mut s13">이 종목은 애널리스트 컨센서스 자료가 없어요.${m.c_next ? ` 다음 실적 발표 예정일: <b>${m.c_next}</b>` : ''}</div>`)) +
     (!isPro ? '' : card('전망치 일별 이력', '내년 EPS 전망과 30일 상향·하향 건수를 날마다 쌓은 기록',
         P.cons_hist ? `<div class="small mut">내년 EPS 전망 ($)</div><div class="chart sm" id="ch-eps"></div><div class="small mut">30일 상향(위) · 하향(아래) 건수</div><div class="chart sm" id="ch-rev" style="height:130px"></div>
           <div class="small faint">${P.cons_hist.d.length}일째 쌓는 중 (${esc(P.cons_hist.d[0])}부터) — 날마다 한 점씩 늘어납니다</div>`
@@ -258,28 +260,43 @@ async function renderStock(U, d, P) {
     const show = (v, t) => v == null ? '-' : t === 'pct' ? fmt(v, 'pct') : t === 'eps' ? '$' + v.toFixed(2) : fmtUsd(v);
     let curK = 'annual', selM = 4;
     const chart = rows => {
-      const [lab, typ, get] = MET[selM], W = 100 / rows.length;
-      const rev = rows.map(r => r.rev || 0), sv = rows.map(get);
-      const sameAxis = typ === 'usd';
-      const mx = Math.max(...rev.map(Math.abs), ...(sameAxis ? sv.map(v => Math.abs(v || 0)) : [0])) || 1;
-      const neg = sameAxis && sv.some(v => (v || 0) < 0), base = neg ? 70 : 100, sc = neg ? 68 : 96;
-      const bar = (v, j, i, n, col) => { const h = Math.abs(v) / mx * sc, bw = W * 0.7 / n, x = j * W + W * 0.15 + i * bw; return `<rect x="${x}" y="${v >= 0 ? base - h : base}" width="${bw * 0.9}" height="${h}" fill="${col}" rx="0.4"></rect>`; };
+      // 화면 폭에 맞춘 픽셀 좌표 (값 글자를 차트 위에 바로 씀)
+      const [lab, typ, get] = MET[selM];
+      const Wd = Math.max(300, ($('#fin-box') || {}).clientWidth || 600), Ht = 210, top = 22, bot = 22, n = rows.length, cw = Wd / n;
+      const rev = rows.map(r => r.rev || 0), sv = rows.map(get), sameAxis = typ === 'usd' || selM === 0;
+      const short = (v, t) => v == null ? '' : t === 'pct' ? (v * 100).toFixed(Math.abs(v) < 0.1 ? 1 : 0) + '%' : t === 'eps' ? '$' + v.toFixed(2) : fmtUsd(v).replace('$', '');
+      const fs = Wd < 420 ? 9.5 : 11;
       let g = '';
-      if (selM === 0) g = rev.map((v, j) => bar(v, j, 0, 1, css('--accent'))).join('');
-      else if (sameAxis) g = rows.map((r, j) => bar(rev[j], j, 0, 2, css('--line')) + (sv[j] != null ? bar(sv[j], j, 1, 2, css('--accent')) : '')).join('');
-      else {
-        g = rev.map((v, j) => bar(v, j, 0, 1, css('--line'))).join('');
+      if (sameAxis) {
+        const vals = selM === 0 ? rev : [...rev, ...sv.map(v => v || 0)];
+        const hi = Math.max(0, ...vals), lo = Math.min(0, ...vals), rg = (hi - lo) || 1, y = v => top + (hi - v) / rg * (Ht - top - bot), y0 = y(0);
+        rows.forEach((r, j) => {
+          const two = selM !== 0, bw = cw * (two ? 0.34 : 0.56), x0 = j * cw + cw * (two ? 0.14 : 0.22);
+          const bar = (v, x, col) => `<rect x="${x.toFixed(1)}" y="${Math.min(y(v), y0).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, Math.abs(y(v) - y0)).toFixed(1)}" fill="${col}" rx="2"/>`;
+          if (!two) { g += bar(rev[j], x0, css('--accent')) + `<text x="${(x0 + bw / 2).toFixed(1)}" y="${(rev[j] >= 0 ? y(rev[j]) - 5 : y(rev[j]) + 12).toFixed(1)}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--ink)">${short(rev[j], 'usd')}</text>`; return; }
+          g += bar(rev[j], x0, css('--line'));
+          if (sv[j] != null) {
+            const x1 = x0 + bw + cw * 0.04;
+            g += bar(sv[j], x1, css('--accent')) + `<text x="${(x1 + bw / 2).toFixed(1)}" y="${(sv[j] >= 0 ? y(sv[j]) - 5 : y(sv[j]) + 12).toFixed(1)}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--ink)">${short(sv[j], typ)}</text>`;
+          }
+        });
+        g += `<line x1="0" x2="${Wd}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="var(--muted)" stroke-width="1"/>`;
+      } else {
+        // 비율·EPS: 매출은 옅은 막대(배경), 지표는 점 + 값, 0 기준선
+        const rh = Math.max(...rev.map(Math.abs)) || 1;
+        rows.forEach((r, j) => { const h = Math.abs(rev[j]) / rh * (Ht - top - bot) * 0.9; g += `<rect x="${(j * cw + cw * 0.25).toFixed(1)}" y="${(Ht - bot - h).toFixed(1)}" width="${(cw * 0.5).toFixed(1)}" height="${h.toFixed(1)}" fill="${css('--line2')}" rx="2"/>`; });
         const ok = sv.map((v, j) => [v, j]).filter(([v]) => v != null);
         if (ok.length) {
-          const lo = Math.min(...ok.map(x => x[0]), 0), hi = Math.max(...ok.map(x => x[0])), rg = (hi - lo) || 1;
-          const pt = ([v, j]) => `${j * W + W / 2},${96 - (v - lo) / rg * 86}`;
-          g += `<polyline points="${ok.map(pt).join(' ')}" fill="none" stroke="${css('--accent')}" stroke-width="0.8" vector-effect="non-scaling-stroke" style="stroke-width:2px"/>` +
-            ok.map(x => `<circle cx="${x[1] * W + W / 2}" cy="${96 - (x[0] - lo) / rg * 86}" r="1" fill="${css('--accent')}"/>`).join('');
+          const hi = Math.max(0, ...ok.map(x => x[0])), lo = Math.min(0, ...ok.map(x => x[0])), rg = (hi - lo) || 1;
+          const y = v => top + 6 + (hi - v) / rg * (Ht - top - bot - 18), y0 = y(0);
+          g += `<line x1="0" x2="${Wd}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/><text x="2" y="${(y0 - 3).toFixed(1)}" font-size="9.5" fill="var(--faint)">0</text>`;
+          g += ok.map(([v, j]) => { const cx = j * cw + cw / 2, cy = y(v), col = v < 0 ? css('--dn') : css('--accent');
+            return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="${col}" stroke="var(--card)" stroke-width="1.5"/><text x="${cx.toFixed(1)}" y="${(cy - 9).toFixed(1)}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--ink)">${short(v, typ)}</text>`; }).join('');
         }
       }
-      return `<div style="display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap">${selM ? `<span><span class="cat-dot" style="background:${css('--line')}"></span>매출</span>` : ''}<span><span class="cat-dot" style="background:${css('--accent')}"></span>${lab}${sameAxis || !selM ? '' : ' (오른쪽 눈금 없이 추세만)'}</span><span class="faint" style="margin-left:auto">아래 표에서 줄을 누르면 바뀌어요</span></div>
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:160px">${g}<line x1="0" x2="100" y1="${base}" y2="${base}" stroke="var(--line)" stroke-width="0.3"/></svg>
-        <div style="display:flex;font-size:11px;color:var(--faint)">${rows.map((r, j) => `<span style="width:${W}%;text-align:center">${r.end.slice(2, 7).replace('-', '.')}${selM ? `<br><b style="color:var(--ink);font-weight:600">${show(sv[j], typ)}</b>` : ''}</span>`).join('')}</div>`;
+      g += rows.map((r, j) => `<text x="${(j * cw + cw / 2).toFixed(1)}" y="${Ht - 6}" text-anchor="middle" font-size="${fs}" fill="var(--faint)">${r.end.slice(2, 7).replace('-', '.')}</text>`).join('');
+      return `<div style="display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap">${selM ? `<span><span class="cat-dot" style="background:${css(sameAxis ? '--line' : '--line2')}"></span>매출${sameAxis ? '' : ' (배경)'}</span>` : ''}<span><span class="cat-dot" style="background:${css('--accent')}"></span>${lab}</span><span class="faint" style="margin-left:auto">아래 표에서 줄을 누르면 바뀌어요</span></div>
+        <svg viewBox="0 0 ${Wd} ${Ht}" width="100%" height="${Ht}" style="display:block;overflow:visible">${g}</svg>`;
     };
     const draw = k => {
       curK = k;
@@ -295,6 +312,39 @@ async function renderStock(U, d, P) {
     };
     $('#fin-seg').querySelectorAll('.btn[data-k]').forEach(b => b.onclick = () => { $('#fin-seg').querySelectorAll('.btn').forEach(x => x.classList.remove('on')); b.classList.add('on'); draw(b.dataset.k); });
     draw('annual');
+    let frt; addEventListener('resize', () => { clearTimeout(frt); frt = setTimeout(() => { const c = $('#fin-chart'); if (c) c.innerHTML = chart(fin[curK] || []); }, 150); });
+  }
+  // 컨센서스: 숫자 칸을 누르면 같은 산업 종목과 비교 차트
+  const cc = $('#cons-chart');
+  if (cc) {
+    const erHtml = cc.innerHTML, G = peerGroup(m);
+    const CHG = new Set(['c_ratio', 'c_chg90', 'c_eps_g', 'c_rev_g', 'c_upside', 'c_surp']);
+    const shw = (k, v) => v == null ? '-' : F[k].fmt === 'pct' ? fmt(v, 'pct', CHG.has(k) ? { sign: true } : {}) : fmt(v, F[k].fmt);
+    const peerChart = k => {
+      if (!G) return '<div class="mut s13">비교할 같은 산업 종목이 부족해요</div>';
+      let xs = G.rows.filter(r => typeof r[k] === 'number' && isFinite(r[k]));
+      if (xs.length < 3) return '<div class="mut s13">이 지표는 비교할 종목이 부족해요</div>';
+      const med = xs.map(r => r[k]).sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+      let pick = xs.slice().sort((a, b) => (b.mcap || 0) - (a.mcap || 0)).slice(0, 14);
+      if (!pick.some(r => r.t === m.t) && typeof m[k] === 'number') pick.push(xs.find(r => r.t === m.t) || m);
+      pick.sort((a, b) => b[k] - a[k]);
+      const hi = Math.max(0, ...pick.map(r => r[k])), lo = Math.min(0, ...pick.map(r => r[k])), rg = (hi - lo) || 1, zp = (-lo) / rg * 100;
+      return `<div class="pc">${pick.map(r => { const v = r[k], w = Math.abs(v) / rg * 100, me = r.t === m.t;
+        return `<a class="pc-r ${me ? 'me' : ''}" href="${stockUrl(r.t)}"><b>${esc(r.t)}</b><span class="pc-t"><i style="left:${(v >= 0 ? zp : zp - w).toFixed(1)}%;width:${Math.max(0.8, w).toFixed(1)}%;background:${me ? 'var(--accent)' : v < 0 ? 'color-mix(in srgb,var(--dn) 55%,var(--card))' : 'color-mix(in srgb,var(--ink) 30%,var(--card))'}"></i>${lo < 0 ? `<em style="left:${zp.toFixed(1)}%"></em>` : ''}</span><span class="pc-v">${shw(k, v)}</span></a>`; }).join('')}</div>
+        <div class="small faint">${esc(G.name)} ${xs.length}종목 중 시가총액 상위 ${Math.min(14, xs.length)}개${pick.length > 14 ? ' + 이 종목' : ''} · 중간값 ${shw(k, med)}</div>`;
+    };
+    const box = cc.closest('.card');
+    box.querySelectorAll('.kv>div[data-k]').forEach(el => {
+      const k = el.dataset.k; if (k === 'c_next' || typeof m[k] !== 'number') return;
+      el.classList.add('pick');
+      el.onclick = e => {
+        if (e.target.closest('.tip')) return;
+        box.querySelectorAll('.kv>div').forEach(x => x.classList.toggle('on', x === el));
+        $('#cc-title').textContent = `${F[k].label} — 같은 산업과 비교`; $('#cc-reset').style.display = '';
+        cc.innerHTML = peerChart(k);
+      };
+    });
+    $('#cc-reset').onclick = () => { cc.innerHTML = erHtml; $('#cc-title').textContent = '실적 발표 때 주가 변동'; $('#cc-reset').style.display = 'none'; box.querySelectorAll('.kv>div').forEach(x => x.classList.remove('on')); };
   }
   if (isPro && P.cons_hist) {
     const h2 = P.cons_hist;
