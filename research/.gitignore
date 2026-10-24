@@ -13,3 +13,4 @@ data/raw/sb/company_tickers.json
 data/task3_panel.csv
 data/task4_signals.csv
 data/*.log
+data/task5_panel.csv
