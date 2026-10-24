@@ -363,3 +363,10 @@ tr.xr{display:none}
 .pc-t i{position:absolute;top:0;bottom:0;border-radius:3px}
 .pc-t em{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--muted)}
 .pc-v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* 로그인 마무리 중 */
+#login-wait{position:fixed;inset:0;z-index:210;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:16px}
+#login-wait>div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 22px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 10px 32px rgba(0,0,0,.18);text-align:center}
+#login-wait span{font-size:12.5px;color:var(--muted)}
+.lw-spin{width:26px;height:26px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:lwspin .8s linear infinite;margin-bottom:4px}
+@keyframes lwspin{to{transform:rotate(360deg)}}

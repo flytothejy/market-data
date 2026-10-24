@@ -148,17 +148,21 @@ function loginGate(msg, pending) {
   el.onclick = e => { if (e.target === el) close(); };
   el.querySelector('.lg-x').onclick = close;
   el.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
-    el.querySelectorAll('[data-p]').forEach(x => x.disabled = true);
+    el.querySelectorAll('[data-p]').forEach(x => x.disabled = true); b.dataset.t = b.textContent; b.textContent = '로그인 화면으로 이동 중…';
     try {
       const u = new URL(location.href); ['login', 'new', 'login_error', 'error'].forEach(k => u.searchParams.delete(k));
       sessionStorage.setItem('hub.auth.back', u.href);
       if (pending) sessionStorage.setItem('hub.pending', JSON.stringify(pending)); else sessionStorage.removeItem('hub.pending');
     } catch (e) { }
-    try { await Auth.signIn(b.dataset.p); } catch (e) { notice('로그인을 시작하지 못했어요: ' + e.message); el.querySelectorAll('[data-p]').forEach(x => x.disabled = false); }
+    try { await Auth.signIn(b.dataset.p); } catch (e) { notice('로그인을 시작하지 못했어요: ' + e.message); b.textContent = b.dataset.t; el.querySelectorAll('[data-p]').forEach(x => x.disabled = false); }
   });
 }
 // 화면 전체가 로그인 전용일 때 (후보함·포트폴리오): 안내 카드로 대신 그림
 function loginWall(title, lines) {
+  if (window._loginPending) {   // 로그인하고 막 돌아온 참: 안내 대신 불러오는 중
+    $('#app').innerHTML = `<div class="hero"><h1>${esc(title)}</h1></div><div class="card lw"><div class="skel"><i class="sk sk-h"></i><i class="sk sk-p"></i><i class="sk sk-b"></i></div></div>`;
+    return;
+  }
   $('#app').innerHTML = `<div class="hero"><h1>${esc(title)}</h1></div><div class="card lw"><b style="font-size:16px">로그인하면 ${esc(title)}을 쓸 수 있어요</b>
     <ul class="lw-l">${lines.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
     <div><button class="btn dark" id="lw-go">로그인 · 무료</button></div><div class="small faint">구글·카카오·네이버 계정으로 바로 · 저장한 내용은 계정에 남아 어느 기기에서든 같아요</div></div>`;
@@ -787,6 +791,7 @@ async function popularStats() {   // 최근 7일·30일 종목별 합계 {d7: {T
   return _pop;
 }
 
+(() => { let m = null; try { m = sessionStorage.getItem('hub.notice'); sessionStorage.removeItem('hub.notice'); } catch (e) { } if (m) setTimeout(() => notice(m), 400); })();   // 다시 그린 뒤에 보여 줄 알림
 // ---- 로그인하고 돌아왔을 때 (어느 화면이든): 이 기기를 계정에 묶고 알림만 띄움
 (() => {
   const q = new URLSearchParams(location.search);
@@ -796,13 +801,25 @@ async function popularStats() {   // 최근 7일·30일 종목별 합계 {d7: {T
   history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash);
   if (err) { setTimeout(() => notice('로그인하지 못했어요. 다시 시도해 주세요'), 300); return; }
   if (/account(\.html)?$/.test(location.pathname)) return;              // 계정 화면은 스스로 처리
+  // 마무리하는 동안 화면이 멈춘 것처럼 보이지 않게 진행 표시
+  window._loginPending = true;
+  const wait = document.createElement('div'); wait.id = 'login-wait'; wait.innerHTML = '<div><i class="lw-spin"></i><b>로그인 마무리 중…</b><span>후보함과 설정을 계정에서 불러오고 있어요</span></div>';
+  const addWait = () => document.body && document.body.appendChild(wait);
+  if (document.body) addWait(); else document.addEventListener('DOMContentLoaded', addWait);
   Auth.claim().then(() => Auth.me()).then(me => {
+    wait.remove(); window._loginPending = false;
+    const msg = isNew ? `가입을 환영해요${me && me.user.name ? ', ' + me.user.name + '님' : ''}!` : `로그인했어요${me && me.user.name ? ' · ' + me.user.name : ''}`;
+    let pend = null; try { pend = JSON.parse(sessionStorage.getItem('hub.pending')); } catch (e) { }
+    if (document.querySelector('.lw') && !(pend && pend.watch)) {   // 로그인 안내를 보여 주던 화면(후보함·포트폴리오)은 내용으로 다시 그림
+      try { sessionStorage.setItem('hub.notice', msg); } catch (e) { }
+      location.reload(); return;
+    }
+    try { sessionStorage.removeItem('hub.pending'); } catch (e) { }
     document.querySelectorAll('header .acct').forEach(a => a.outerHTML = acctBtn());
-    notice(isNew ? `가입을 환영해요${me && me.user.name ? ', ' + me.user.name + '님' : ''}!` : `로그인했어요${me && me.user.name ? ' · ' + me.user.name : ''}`);
-    let pend = null; try { pend = JSON.parse(sessionStorage.getItem('hub.pending')); sessionStorage.removeItem('hub.pending'); } catch (e) { }
+    notice(msg);
     if (pend && pend.watch && !Watch.has(pend.watch)) {           // 로그인 전에 누른 ☆ 이어서 담기
-      captureWatch(pend.watch, null, pend.src).then(() => document.querySelectorAll(`[data-watch="${CSS.escape(pend.watch)}"]`).forEach(x => { x.classList.add('on'); x.setAttribute('aria-pressed', true); x.textContent = x.classList.contains('watch') ? '★ 후보함' : '★'; }));
+      captureWatch(pend.watch, null, pend.src).then(() => { if (document.querySelector('.lw')) { location.reload(); return; } }).then(() => document.querySelectorAll(`[data-watch="${CSS.escape(pend.watch)}"]`).forEach(x => { x.classList.add('on'); x.setAttribute('aria-pressed', true); x.textContent = x.classList.contains('watch') ? '★ 후보함' : '★'; }));
     }
     document.dispatchEvent(new CustomEvent('watch-change')); document.dispatchEvent(new CustomEvent('portfolio-change')); document.dispatchEvent(new CustomEvent('sync-change'));
-  }).catch(e => notice('로그인 마무리 중 문제가 생겼어요: ' + e.message));
+  }).catch(e => { wait.remove(); window._loginPending = false; if (document.querySelector('.lw .skel')) location.reload(); notice('로그인 마무리 중 문제가 생겼어요: ' + e.message); });
 })();
