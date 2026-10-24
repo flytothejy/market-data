@@ -6,3 +6,4 @@ __pycache__/
 data/*.log
 data/events.csv
 data/s2_features.csv
+data/raw/sb/sp500_hist.csv
