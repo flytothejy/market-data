@@ -28,7 +28,30 @@ er = er[er["eps_est"].notna() & er["eps_act"].notna()].copy()
 er["date"] = er["dt"].dt.normalize()
 er = er.sort_values(["t", "date"]).drop_duplicates(["t", "date"], keep="first")
 mins = er["dt"].dt.hour * 60 + er["dt"].dt.minute
-er["timing"] = np.select([(mins > 0) & (mins < 570), mins >= 960], ["BMO", "AMC"], "UNK")
+er["timing_yf"] = np.select([(mins > 0) & (mins < 570), mins >= 960], ["BMO", "AMC"], "UNK")
+
+# --- 8-K 항목 2.02 접수 시각으로 교차 확인 (PLAN §1: 어긋나면 8-K 우선) ---
+fp = os.path.join(DATA, "raw", "r2", "sec__filings.parquet")
+k8 = pd.read_parquet(fp, columns=["ticker", "form", "items", "accepted"])
+k8 = k8[(k8["form"] == "8-K") & k8["items"].fillna("").str.contains("2.02")].dropna(subset=["accepted"])
+k8["acc"] = pd.to_datetime(k8["accepted"], utc=True).dt.tz_convert("America/New_York").dt.tz_localize(None)
+k8["kdate"] = k8["acc"].dt.normalize()
+km = k8["acc"].dt.hour * 60 + k8["acc"].dt.minute
+k8["timing_8k"] = np.select([km < 570, km >= 960], ["BMO", "AMC"], "INTRA")
+k8 = k8.sort_values("kdate")[["ticker", "kdate", "timing_8k"]].rename(columns={"ticker": "t"})
+er = er.sort_values("date")
+er = pd.merge_asof(er, k8, left_on="date", right_on="kdate", by="t",
+                   direction="nearest", tolerance=pd.Timedelta(days=3))
+# 8-K 날짜가 다르면 8-K 날짜를 발표일로 (장후 발표가 다음 날짜로 잡히는 경우 등)
+has8 = er["kdate"].notna() & (er["timing_8k"] != "INTRA")
+er.loc[has8, "date"] = er.loc[has8, "kdate"]
+er["timing"] = np.where(has8, er["timing_8k"], er["timing_yf"])
+er.loc[er["timing_8k"] == "INTRA", "timing"] = "UNK"   # 장중 공시는 반응일 애매 → 제외
+er["timing_src"] = np.select([has8, er["timing_yf"] != "UNK"], ["8k", "yf"], "none")
+er = er.sort_values(["t", "date"]).drop_duplicates(["t", "date"], keep="first").reset_index(drop=True)
+both = er["kdate"].notna() & (er["timing_yf"] != "UNK") & (er["timing_8k"] != "INTRA")
+print("timing agree (yf vs 8k, both known):", round((er.loc[both, "timing_yf"] == er.loc[both, "timing_8k"]).mean(), 3),
+      "n", int(both.sum()))
 
 d = (er["eps_act"].round(2) - er["eps_est"].round(2)).round(2)
 er["cls"] = np.select([d >= 0.01, d <= -0.01], ["beat", "miss"], "meet")
@@ -119,6 +142,7 @@ def summ(df):
 tables = {}
 tables["overall"] = summ(ev).to_frame("전체").T
 tables["timing"] = ev.groupby("timing").apply(summ, include_groups=False)
+tables["timing_src"] = ev.groupby("timing_src").apply(summ, include_groups=False)
 tables["year"] = ev.groupby("year").apply(summ, include_groups=False)
 tables["sp500"] = ev.groupby("sp500").apply(summ, include_groups=False)
 tables["sector"] = ev.groupby("sec").apply(summ, include_groups=False)
