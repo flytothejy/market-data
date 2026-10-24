@@ -311,7 +311,17 @@ const Sync = {
   if (m) {
     history.replaceState(null, '', location.pathname + location.search);
     Sync.join(m[1]).then(() => notice('이 기기에 후보함을 이어 붙였어요')).catch(e => notice('기기 추가 실패: ' + e.message));
-  } else if (Sync.on() && Date.now() - (Sync.st().at || 0) > 60e3) setTimeout(() => Sync.run().catch(() => { }), 300);
+  } else if (new URLSearchParams(location.search).has('login')) {
+    // 로그인 직후는 아래 '로그인하고 돌아왔을 때'가 처리
+  } else if (Auth.hint() && !Sync.on()) {
+    // 로그인은 돼 있는데 이 브라우저의 기기 연결이 없음(지워졌거나 끊김) → 다시 연결해서 계정 후보함을 받아옴
+    setTimeout(() => Auth.claim().then(j => { if (j) document.dispatchEvent(new CustomEvent('watch-change')); }).catch(() => { }), 300);
+  } else if (Sync.on() && Date.now() - (Sync.st().at || 0) > (/watch(\.html)?$/.test(location.pathname) ? 0 : 60e3)) {
+    // 후보함 화면은 열 때마다, 그 밖은 1분에 한 번
+    setTimeout(() => Sync.run().catch(() => {
+      if (Auth.hint() && !Sync.on()) Auth.claim().then(j => { if (j) document.dispatchEvent(new CustomEvent('watch-change')); }).catch(() => { });   // 기기 연결이 서버에서 사라졌으면 다시 연결
+    }), 300);
+  }
 })();
 // ---- 사용자 설정: 항목은 PREF_SCHEMA에 한 줄씩 추가 (설정 화면은 이 목록으로 자동으로 그려짐)
 // 저장: 이 브라우저(localStorage) + 로그인하면 계정에도 (문서 통째로, 최근 수정이 이김)
