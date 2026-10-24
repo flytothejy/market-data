@@ -80,10 +80,10 @@ async function accountView(me, note) {
       <div><button class="btn" id="others">다른 기기 모두 로그아웃</button></div></div>
     <div class="card"><h3>최근 보안 기록</h3><div class="sub">로그인·기기 연결·로그아웃 (1년 보관 · IP는 저장하지 않음)</div><div class="lst" id="log"></div></div>
     <div class="card" style="flex-direction:row;gap:8px;flex-wrap:wrap"><button class="btn" id="out">로그아웃</button><button class="btn danger" id="del" style="margin-left:auto">계정 삭제</button></div>
-    <div class="small faint">로그아웃해도 이 브라우저의 후보함은 남아요 · 계정을 삭제하면 서버의 후보함·기기·텔레그램 연결·로그인 정보가 모두 지워져요</div></div>`;
+    <div class="small faint">로그아웃하면 이 브라우저에서 후보함·포트폴리오가 사라지고, 다시 로그인하면 돌아와요 · 계정을 삭제하면 서버의 후보함·기기·텔레그램 연결·로그인 정보가 모두 지워져요</div></div>`;
   $('#out').onclick = async () => { await Auth.signOut(); location.href = 'account.html'; };
   $('#del').onclick = async () => {
-    if (!confirm('계정을 삭제할까요? 서버의 후보함·텔레그램 연결·로그인 정보가 모두 지워지고 되돌릴 수 없어요. 이 브라우저의 후보함은 남아요.')) return;
+    if (!confirm('계정을 삭제할까요? 서버의 후보함·텔레그램 연결·로그인 정보가 모두 지워지고 되돌릴 수 없어요.')) return;
     try { await Auth.remove(); location.href = 'account.html?deleted=1'; } catch (e) { notice('삭제하지 못했어요: ' + e.message); }
   };
   $('#others').onclick = async () => { try { await Auth.revokeOthers(); notice('다른 기기를 모두 로그아웃했어요'); loadSessions(); } catch (e) { notice('실패: ' + e.message); } };
@@ -108,7 +108,7 @@ async function loadSessions() {
     if (P.get('login')) {
       history.replaceState(null, '', 'account.html');
       await Auth.claim();
-      note = P.get('new') ? '가입을 환영해요! 이 브라우저의 후보함을 계정에 담았어요.' : '로그인했어요. 이 기기의 후보함을 계정과 합쳤어요.';
+      note = P.get('new') ? '가입을 환영해요!' : '로그인했어요.';
     }
     me = await Auth.me();
   } catch (e) { note = '계정 정보를 불러오지 못했어요: ' + esc(e.message); }

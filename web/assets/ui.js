@@ -125,13 +125,45 @@ const Auth = {
     const code = Sync.st().code;
     try { await this.call('/api/account/forget-device', { code }); } catch (e) { }
     try { await this.call('/api/auth/sign-out', {}); } catch (e) { }
-    Sync.set({ code: null, me: null, at: 0 }); this.setHint(null);   // 이 기기 후보함은 브라우저에 그대로 남음
+    Sync.set({ code: null, me: null, at: 0 }); this.setHint(null); clearMine();   // 후보함·포트폴리오는 로그인한 계정 것 — 로그아웃하면 이 브라우저에서 지움
   },
   sessions() { return this.call('/api/auth/list-sessions'); },
   revokeOthers() { return this.call('/api/auth/revoke-other-sessions', {}); },
   log() { return this.call('/api/account/log'); },
-  async remove() { const j = await this.call('/api/account/delete', {}); Sync.set({ code: null, me: null, at: 0 }); this.setHint(null); return j; },
+  async remove() { const j = await this.call('/api/account/delete', {}); Sync.set({ code: null, me: null, at: 0 }); this.setHint(null); clearMine(); return j; },
 };
+function clearMine() { ['hub.watch.v2', 'hub.watch.v1', 'hub.watch.del', 'hub.portfolio.v1'].forEach(k => { try { localStorage.removeItem(k); } catch (e) { } }); }
+// ---- 로그인이 필요한 기능(후보함·포트폴리오)을 로그인 안 한 상태에서 누르면: 로그인 안내 창
+// pending: 로그인하고 돌아오면 이어서 할 일 (예: {watch: 'NVDA', src}) — 로그인 뒤 같은 화면으로 돌아와 자동으로 담음
+function loginGate(msg, pending) {
+  let el = document.getElementById('login-gate');
+  if (!el) { el = document.createElement('div'); el.id = 'login-gate'; document.body.appendChild(el); }
+  const P = { google: ['구글', 'g'], kakao: ['카카오', 'k'], naver: ['네이버', 'n'] };
+  el.innerHTML = `<div class="lg-box" role="dialog" aria-modal="true" aria-label="로그인 안내"><button class="lg-x" aria-label="닫기">×</button>
+    <b class="lg-t">로그인하고 쓰세요</b><p class="lg-m">${esc(msg)}</p>
+    ${ON_SITE ? `<div class="lg-sso">${Object.entries(P).map(([k, [l, c]]) => `<button class="${c}" data-p="${k}">${l}로 계속하기</button>`).join('')}</div>` : `<a class="btn dark" href="https://tickermap.kr/hub/account">tickermap.kr에서 로그인</a>`}
+    <p class="lg-s">무료예요 · 후보함과 포트폴리오가 계정에 저장돼 어느 기기에서든 같아요</p></div>`;
+  el.classList.add('show');
+  const close = () => el.classList.remove('show');
+  el.onclick = e => { if (e.target === el) close(); };
+  el.querySelector('.lg-x').onclick = close;
+  el.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+    el.querySelectorAll('[data-p]').forEach(x => x.disabled = true);
+    try {
+      const u = new URL(location.href); ['login', 'new', 'login_error', 'error'].forEach(k => u.searchParams.delete(k));
+      sessionStorage.setItem('hub.auth.back', u.href);
+      if (pending) sessionStorage.setItem('hub.pending', JSON.stringify(pending)); else sessionStorage.removeItem('hub.pending');
+    } catch (e) { }
+    try { await Auth.signIn(b.dataset.p); } catch (e) { notice('로그인을 시작하지 못했어요: ' + e.message); el.querySelectorAll('[data-p]').forEach(x => x.disabled = false); }
+  });
+}
+// 화면 전체가 로그인 전용일 때 (후보함·포트폴리오): 안내 카드로 대신 그림
+function loginWall(title, lines) {
+  $('#app').innerHTML = `<div class="hero"><h1>${esc(title)}</h1></div><div class="card lw"><b style="font-size:16px">로그인하면 ${esc(title)}을 쓸 수 있어요</b>
+    <ul class="lw-l">${lines.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    <div><button class="btn dark" id="lw-go">로그인 · 무료</button></div><div class="small faint">구글·카카오·네이버 계정으로 바로 · 저장한 내용은 계정에 남아 어느 기기에서든 같아요</div></div>`;
+  $('#lw-go').onclick = () => loginGate(`${title}은 계정에 저장돼요.`);
+}
 function acctBtn() {
   const h = Auth.hint();
   const ini = h && h.name ? esc(h.name.trim().slice(0, 1)) : '';
@@ -214,13 +246,14 @@ const qs = k => new URLSearchParams(location.search).get(k);
 // 종목 주소: 검색엔진용 정적 페이지 (/hub/s/NVDA/) — Pages 배포 때 hub/static_pages.py가 만듦
 const stockUrl = t => `s/${encodeURIComponent(t)}/`;
 
-// ---- 후보함 (이 브라우저에 저장 — 로그인이 붙으면 서버 저장으로 바꿈)
+// ---- 후보함 (로그인한 계정만 — 화면은 이 브라우저 사본으로 바로 그리고, 계정과 동기화. 로그아웃하면 사본을 지움)
 // 기록 하나 = 공통 스냅샷(담은 순간의 5개 렌즈 값·구역·트레일 모양·주요 지표) + 출처(어느 화면·어느 부분에서 담았나)
 //   { t, at, px, purpose: 'hold'|'consider'|'watch'|'', why, note, src: {page, part, ...}, snap: {...} }
 const PURPOSE = { hold: '보유 중', consider: '살까 고민', watch: '그냥 관찰' };
 const Watch = {
   KEY: 'hub.watch.v2', OLD: 'hub.watch.v1',
-  records() {
+  records() { return Auth.hint() ? this.raw() : []; },        // 로그인 안 했으면 비어 보임 (예전에 브라우저에만 담아 둔 것은 로그인할 때 계정으로 옮겨짐)
+  raw() {
     try {
       let a = JSON.parse(localStorage.getItem(this.KEY));
       if (!a) {                                          // 예전 관심 종목(티커만) → 후보함으로 옮김
@@ -272,7 +305,7 @@ const Sync = {
   soon() { if (!this.on()) return; clearTimeout(this._t); this._t = setTimeout(() => this.run().catch(() => { }), 1500); },
   async run() {
     const code = this.st().code; if (!code) return null;
-    const recs = Watch.records(), dels = Watch.dels();
+    const recs = Watch.raw(), dels = Watch.dels();
     const items = [...recs.map(r => ({ ...r, u: r.u || (r.at ? Date.parse(r.at) : 1) })), ...Object.entries(dels).map(([t, u]) => ({ t, u, del: 1 }))];
     const body = { code, items };
     if (Auth.hint() && PF.has()) { const p = PF.load(); body.pf = { ...p, u: p.u || 1 }; }   // 로그인한 경우만 포트폴리오도
@@ -379,7 +412,7 @@ const PF = {
   save(p, quiet) { if (!quiet) p.u = Date.now(); try { localStorage.setItem(this.KEY, JSON.stringify(p)); } catch (e) { } if (!quiet) Sync.soon(); },
   has() { try { return !!localStorage.getItem(this.KEY); } catch (e) { return false; } },
 };
-function portfolioTickers() { return (PF.load().items || []).map(x => x.t); }
+function portfolioTickers() { return Auth.hint() ? (PF.load().items || []).map(x => x.t) : []; }
 
 // 렌즈 값 (티커맵 matrix.js LENS와 같은 정의) — 스냅샷·이유 문장용
 const LENS_SNAP = {
@@ -444,8 +477,8 @@ function watchSrc(btn) {
   const h = btn.closest('.card') && btn.closest('.card').querySelector('h3');
   return { page: page === 'earnings' ? 'earnings' : page, label, part: h ? h.textContent.trim().slice(0, 30) : '' };
 }
-async function captureWatch(t, btn) {
-  const src = watchSrc(btn);
+async function captureWatch(t, btn, srcOverride) {
+  const src = srcOverride || watchSrc(btn);
   Stat.hit('w', t);
   Watch.add({ t, at: new Date().toISOString().slice(0, 10), px: null, purpose: '', why: '', note: '', src, snap: null });
   let r = null, P = null;
@@ -493,6 +526,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-watch]');
   if (!b) return;
   e.preventDefault();
+  if (!Auth.hint()) { loginGate(`${b.dataset.watch}을(를) 후보함에 담으려면 로그인해 주세요. 로그인하고 돌아오면 바로 담아 둘게요.`, { watch: b.dataset.watch, src: watchSrc(b) }); return; }
   const t = b.dataset.watch, on = !Watch.has(t);
   if (on) captureWatch(t, b); else Watch.remove(t);
   document.querySelectorAll(`[data-watch="${CSS.escape(t)}"]`).forEach(x => {
@@ -764,7 +798,11 @@ async function popularStats() {   // 최근 7일·30일 종목별 합계 {d7: {T
   if (/account(\.html)?$/.test(location.pathname)) return;              // 계정 화면은 스스로 처리
   Auth.claim().then(() => Auth.me()).then(me => {
     document.querySelectorAll('header .acct').forEach(a => a.outerHTML = acctBtn());
-    notice(isNew ? `가입을 환영해요${me && me.user.name ? ', ' + me.user.name + '님' : ''}! 이 브라우저의 후보함도 계정에 담았어요` : `로그인했어요${me && me.user.name ? ' · ' + me.user.name : ''}`);
+    notice(isNew ? `가입을 환영해요${me && me.user.name ? ', ' + me.user.name + '님' : ''}!` : `로그인했어요${me && me.user.name ? ' · ' + me.user.name : ''}`);
+    let pend = null; try { pend = JSON.parse(sessionStorage.getItem('hub.pending')); sessionStorage.removeItem('hub.pending'); } catch (e) { }
+    if (pend && pend.watch && !Watch.has(pend.watch)) {           // 로그인 전에 누른 ☆ 이어서 담기
+      captureWatch(pend.watch, null, pend.src).then(() => document.querySelectorAll(`[data-watch="${CSS.escape(pend.watch)}"]`).forEach(x => { x.classList.add('on'); x.setAttribute('aria-pressed', true); x.textContent = x.classList.contains('watch') ? '★ 후보함' : '★'; }));
+    }
     document.dispatchEvent(new CustomEvent('watch-change')); document.dispatchEvent(new CustomEvent('portfolio-change')); document.dispatchEvent(new CustomEvent('sync-change'));
   }).catch(e => notice('로그인 마무리 중 문제가 생겼어요: ' + e.message));
 })();

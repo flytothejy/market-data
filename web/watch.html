@@ -123,7 +123,7 @@ function alertPanel() {
         waiting = Date.now(); poll();
       } else if (a === 'mode') await Sync.mode(me.mode === 'off' ? 'digest' : 'off');
       else if (a === 'unlink') { if (confirm('텔레그램 연결을 끊을까요? 후보함은 그대로 남아요')) await Sync.unlink(); }
-      else if (a === 'wipe') { if (confirm('서버에 있는 후보함·텔레그램 연결 정보를 모두 지울까요? 되돌릴 수 없어요. 이 브라우저의 후보함은 그대로 남아요')) { await Sync.wipe(); notice('서버에서 모두 지웠어요'); } }
+      else if (a === 'wipe') { if (confirm('서버에 있는 후보함·텔레그램 연결 정보를 모두 지울까요? 되돌릴 수 없어요')) { await Sync.wipe(); notice('서버에서 모두 지웠어요'); } }
     } catch (e) { notice('실패: ' + e.message); }
     alertPanel();
   });
@@ -144,7 +144,7 @@ function render() {
   const rets = all.map(ret).filter(v => v != null), avg = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
   const nwarn = all.filter(rec => changes(rec, U.rows.find(x => x.t === rec.t)).warn.length).length;
   const cnt = k => all.filter(r => k === 'none' ? !r.purpose : r.purpose === k).length;
-  $('#app').innerHTML = `<div class="hero"><h1>후보함</h1><p>담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었나 · ${Auth.hint() ? '계정에 저장돼 다른 기기에서도 같아요' : Sync.on() ? '이 기기와 서버에 저장됨' : '이 브라우저에 저장됨 · <a href="account.html">로그인</a>하면 다른 기기에서도'} · 어느 화면에서든 ☆를 누르면 그때의 상태가 함께 기록돼요</p></div>
+  $('#app').innerHTML = `<div class="hero"><h1>후보함</h1><p>담은 종목과 담은 이유, 그 뒤 무엇이 바뀌었나 · 계정에 저장돼 다른 기기에서도 같아요 · 어느 화면에서든 ☆를 누르면 그때의 상태가 함께 기록돼요</p></div>
     <div class="card" id="alert"></div>
     ${all.length ? `<div class="card"><div class="kv"><div><span>담은 종목</span><b>${all.length}개</b></div>${avg != null ? `<div><span>담은 뒤 평균</span><b>${pctS(avg)}</b></div>` : ''}<div><span>오른쪽 아래로 들어간 종목</span><b>${nwarn}개</b></div></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="mx-seg seg">${[['', `전체 ${all.length}`], ['hold', `${PURPOSE.hold} ${cnt('hold')}`], ['consider', `${PURPOSE.consider} ${cnt('consider')}`], ['watch', `${PURPOSE.watch} ${cnt('watch')}`], ['none', `목적 미정 ${cnt('none')}`]].map(([k, l]) => `<button class="btn ${st.p === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')}</div>
@@ -164,6 +164,7 @@ function render() {
   });
 }
 (async () => {
+  if (!Auth.hint()) { loginWall('후보함', ['어느 화면에서든 ☆를 누르면 그때의 상태와 담은 이유가 함께 기록돼요', '담은 뒤 무엇이 바뀌었는지(구역·점검표·수익률)를 한눈에', '실적 발표·새 경고·임원 매수를 텔레그램 아침 알림으로']); footer(); return; }
   try { [U, P] = await Promise.all([Data.universe(), patterns()]); }
   catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   // 예전 관심 종목에서 옮긴 것: 지금 상태를 스냅샷으로 채워 둠 (담은 날·가격은 모름)
