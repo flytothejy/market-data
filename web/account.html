@@ -75,7 +75,7 @@ async function accountView(me, note) {
       <div><b style="font-size:17px">${esc(u.name || '이름 없음')}</b><div class="small mut">${u.email ? esc(u.email) + ' · ' : ''}${esc(String(u.since || '').slice(0, 10))} 가입</div>
       <div class="prov" style="margin-top:4px">${me.providers.map(p => `<span class="tag">${PROV[p] || p}</span>`).join('')}</div></div></div></div>
     <div class="card"><div class="kv"><div><span>후보함</span><b>${items}종목</b></div><div><span>텔레그램 알림</span><b>${me.tg && me.tg.linked ? (me.tg.mode === 'off' ? '꺼짐' : '켜짐') : '연결 안 됨'}</b></div></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="watch.html" style="text-decoration:none">후보함 →</a></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn dark" href="watch.html" style="text-decoration:none">후보함 →</a><a class="btn" href="settings.html" style="text-decoration:none">설정 →</a></div></div>
     <div class="card"><h3>로그인된 기기</h3><div class="lst" id="sess"><div class="mut">불러오는 중…</div></div>
       <div><button class="btn" id="others">다른 기기 모두 로그아웃</button></div></div>
     <div class="card"><h3>최근 보안 기록</h3><div class="sub">로그인·기기 연결·로그아웃 (1년 보관 · IP는 저장하지 않음)</div><div class="lst" id="log"></div></div>

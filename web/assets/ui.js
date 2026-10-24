@@ -57,7 +57,7 @@ function bottomNav(active) {
   const page = ((location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') || 'index') + '.html';   // Cloudflare는 .html 없는 주소로 보여 줌
   // 홈은 티커맵·랭킹 미리보기라 탭에서 빼고 로고로 (더보기에도 둠)
   const tabs = [['matrix.html', '티커맵', 'map'], ['ranking.html', '랭킹', 'rank'], ['screen.html', '검색', 'find'], ['watch.html', '후보함', 'star']];
-  const more = [['index.html', '홈'], ['earnings.html', '실적 달력'], ['compare.html', '비교'], ['investors.html', '유명 투자자'], ['stock.html', '종목'], ['portfolio.html', '포트폴리오'], ['account.html', Auth.hint() ? '내 계정' : '로그인'], ['terms.html', '이용약관'], ['privacy.html', '개인정보처리방침']];
+  const more = [['index.html', '홈'], ['earnings.html', '실적 달력'], ['compare.html', '비교'], ['investors.html', '유명 투자자'], ['stock.html', '종목'], ['portfolio.html', '포트폴리오'], ['account.html', Auth.hint() ? '내 계정' : '로그인'], ['settings.html', '설정'], ['terms.html', '이용약관'], ['privacy.html', '개인정보처리방침']];
   const inMore = more.some(([h]) => h === page && h !== 'index.html') || /\/s\/|\/i\//.test(location.pathname);
   const svg = k => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${ICON[k]}</svg>`;
   const nav = document.createElement('nav');
@@ -99,6 +99,7 @@ const Auth = {
   async claim() {                                        // 로그인 직후: 이 기기를 계정에 묶고 후보함을 합침
     const j = await this.call('/api/account/claim', { code: Sync.st().code || null });
     if (j && j.code) { Sync.set({ code: j.code }); await Sync.run().catch(() => { }); }
+    await Prefs.sync().catch(() => { });                 // 설정도 계정과 맞춤 (이 브라우저 설정이 더 최근이면 계정에 올라감)
     return j;
   },
   async signOut() {
@@ -169,7 +170,7 @@ function header(active) {
 async function footer() {
   const f = document.createElement('footer');
   f.className = 'foot';
-  f.innerHTML = '출처: SEC EDGAR(공시·재무·내부자·13F) · FINRA(공매도 거래) · yfinance(가격·컨센서스·개요·옵션) · 공공데이터포털(국내 ETF) · 각 운용사(ETF 구성)<br>정보 제공용이며 투자 권유가 아닙니다 · <a href="terms.html">이용약관·투자 위험 고지</a> · <a href="privacy.html"><b>개인정보처리방침</b></a>';
+  f.innerHTML = '출처: SEC EDGAR(공시·재무·내부자·13F) · FINRA(공매도 거래) · yfinance(가격·컨센서스·개요·옵션) · 공공데이터포털(국내 ETF) · 각 운용사(ETF 구성)<br>정보 제공용이며 투자 권유가 아닙니다 · <a href="settings.html">설정</a> · <a href="terms.html">이용약관·투자 위험 고지</a> · <a href="privacy.html"><b>개인정보처리방침</b></a>';
   $('.wrap').append(f);
   try {
     const m = await Data.meta();
@@ -178,7 +179,7 @@ async function footer() {
 }
 
 // ---- 순위 목록: rows, 값 표시 함수, 부가 표시 함수
-const shortName = r => r.ko || String(r.n || '').replace(/,?\s+(Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.|Holdings?|Ltd\.?|Limited|plc|PLC|N\.V\.|S\.A\.|AG|SE|L\.P\.)(,?\s+(Inc\.?|Ltd\.?|plc))?\.?$/, '').replace(/^The\s+/, '');
+const shortName = r => r.ko || String(r.n || '').replace(/,?\s+(Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.|Holdings?|Ltd\.?|Limited|plc|PLC|N\.V\.|S\.A\.|AG|SE|L\.P\.)(,?\s+(Inc\.?|Ltd\.?|plc))?\.?$/, '').replace(/^The\s+/, '').replace(/[,\s]+$/, '');
 function rankList(rows, val, sub, n = 8) {
   if (!rows.length) return '<div class="mut s13">해당 종목이 없습니다</div>';
   return `<div class="rank">${rows.slice(0, n).map((r, i) => `<a class="r" href="${stockUrl(r.t)}">
@@ -291,6 +292,55 @@ const Sync = {
     history.replaceState(null, '', location.pathname + location.search);
     Sync.join(m[1]).then(() => notice('이 기기에 후보함을 이어 붙였어요')).catch(e => notice('기기 추가 실패: ' + e.message));
   } else if (Sync.on() && Date.now() - (Sync.st().at || 0) > 60e3) setTimeout(() => Sync.run().catch(() => { }), 300);
+})();
+// ---- 사용자 설정: 항목은 PREF_SCHEMA에 한 줄씩 추가 (설정 화면은 이 목록으로 자동으로 그려짐)
+// 저장: 이 브라우저(localStorage) + 로그인하면 계정에도 (문서 통째로, 최근 수정이 이김)
+// 쓰는 곳: Prefs.get('map.mode') · 바뀌면 document에 'prefs-change' 이벤트 {detail: {k, v}}
+const PREF_SCHEMA = [
+  { id: 'view', title: '화면', items: [
+    { k: 'home.brief', label: '홈 맨 위에 오늘의 소식', desc: '어젯밤 실적·크게 움직인 종목·임원 매수 같은 그날의 볼거리', type: 'toggle', def: true },
+    { k: 'map.mode', label: '티커맵 처음 보기', desc: '홈과 티커맵 화면에서 먼저 보이는 지도 모양', type: 'choice', def: 'bubble',
+      opts: [['bubble', '버블', '주가와 신호가 어긋난 종목 찾기'], ['heat', '히트맵', '업종별로 오늘 시장 한눈에']] },
+    { k: 'heat.color', label: '히트맵 기본 색', desc: '히트맵을 열었을 때 처음 칠하는 기준', type: 'choice', def: 'r1d',
+      opts: [['r1d', '1일'], ['r1w', '1주'], ['r1m', '1개월'], ['r3m', '3개월']] },
+  ] },
+  { id: 'alert', title: '알림', items: [
+    { k: '_watch', label: '후보함 텔레그램 알림', desc: '연결·알림 방식·끄기는 후보함 화면에서', type: 'link', href: 'watch.html' },
+  ] },
+];
+const Prefs = {
+  KEY: 'hub.prefs.v1',
+  _d() { try { return JSON.parse(localStorage.getItem(this.KEY)) || { data: {}, u: 0 }; } catch (e) { return { data: {}, u: 0 }; } },
+  item(k) { for (const g of PREF_SCHEMA) for (const it of g.items) if (it.k === k) return it; return null; },
+  get(k) { const d = this._d().data, it = this.item(k); return k in d ? d[k] : it ? it.def : undefined; },
+  all() { return this._d().data; },
+  set(k, v) {
+    const d = this._d();
+    const it = this.item(k);
+    if (it && it.def === v) delete d.data[k]; else d.data[k] = v;     // 기본값이면 지움 (기본값이 나중에 바뀌어도 따라가게)
+    d.u = Date.now();
+    try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) { }
+    document.dispatchEvent(new CustomEvent('prefs-change', { detail: { k, v } }));
+    this.push();
+  },
+  _t: null,
+  push() { if (!Auth.hint()) return; clearTimeout(this._t); this._t = setTimeout(() => this.sync().catch(() => { }), 800); },
+  async sync() {                                       // 로그인한 경우: 서버와 맞춤 (더 최근 쪽이 이김)
+    if (!Auth.hint()) return null;
+    const d = this._d();
+    const j = d.u ? await Auth.call('/api/account/prefs', { data: d.data, u: d.u }) : await Auth.call('/api/account/prefs');
+    if (j && j.data && (j.u || 0) > (d.u || 0)) {
+      try { localStorage.setItem(this.KEY, JSON.stringify({ data: j.data, u: j.u })); } catch (e) { }
+      document.dispatchEvent(new CustomEvent('prefs-change', { detail: { k: '*' } }));
+    }
+    try { localStorage.setItem(this.KEY + '.at', String(Date.now())); } catch (e) { }
+    return j;
+  },
+  reset() { try { localStorage.setItem(this.KEY, JSON.stringify({ data: {}, u: Date.now() })); } catch (e) { } document.dispatchEvent(new CustomEvent('prefs-change', { detail: { k: '*' } })); this.push(); },
+};
+(() => {                                               // 로그인한 경우 화면을 열 때 가끔(10분에 한 번) 서버 설정을 받아옴
+  let at = 0; try { at = +localStorage.getItem(Prefs.KEY + '.at') || 0; } catch (e) { }
+  if (Auth.hint() && Date.now() - at > 600e3) setTimeout(() => Prefs.sync().catch(() => { }), 500);
 })();
 // 포트폴리오 (이 브라우저 저장 + 로그인하면 계정에도 저장해 다른 기기와 같게)
 const PF = {

@@ -10,10 +10,11 @@ const Heat = (() => {
   let U, S, box, st, PX = null, LAY = [], frame = null, playing = false, raf = 0, ro = null;
 
   const qs = new URLSearchParams(location.search);
-  st = { c: qs.get('hc') || 'r1d', cap: qs.has('hcap') ? +qs.get('hcap') : (innerWidth < 700 ? 1e10 : 0), sec: qs.get('hsec') || '' };   // 휴대폰은 처음에 100억 달러 이상만 (칸이 너무 작아짐)
+  const defC = () => (typeof Prefs !== 'undefined' && Prefs.get('heat.color')) || 'r1d';   // 설정의 '히트맵 기본 색'
+  st = { c: qs.get('hc') || defC(), cap: qs.has('hcap') ? +qs.get('hcap') : (innerWidth < 700 ? 1e10 : 0), sec: qs.get('hsec') || '' };   // 휴대폰은 처음에 100억 달러 이상만 (칸이 너무 작아짐)
   const sync = () => {
     const u = new URL(location.href), set = (k, v, d) => v && v !== d ? u.searchParams.set(k, v) : u.searchParams.delete(k);
-    set('hc', st.c, 'r1d'); set('hcap', String(st.cap), String(innerWidth < 700 ? 1e10 : 0)); set('hsec', st.sec);
+    set('hc', st.c, defC()); set('hcap', String(st.cap), String(innerWidth < 700 ? 1e10 : 0)); set('hsec', st.sec);
     history.replaceState(null, '', u);
   };
   const isSig = () => !!SIG[st.c];
@@ -79,10 +80,7 @@ const Heat = (() => {
   }
 
   // ---- 그리기
-  function draw() {
-    const el = box.querySelector('#hm'); if (!el) return;
-    const W = Math.max(320, el.clientWidth), H = Math.round(W < 700 ? W * 1.7 : Math.min(760, Math.max(540, W * 0.6)));
-    LAY = layout(W, H);
+  function svgOf(W, H, label_sec = true) {
     const cells = LAY.cells.map((c, i) => {
       const v = val(c.r), big = c.w > 30 && c.h > 20, fs = Math.max(9, Math.min(22, Math.sqrt(c.w * c.h) / 4.2));
       return `<g data-i="${i}" class="hm-c"><rect x="${(c.x + .5).toFixed(1)}" y="${(c.y + .5).toFixed(1)}" width="${Math.max(0, c.w - 1).toFixed(1)}" height="${Math.max(0, c.h - 1).toFixed(1)}" fill="${fill(v)}"/>`
@@ -90,9 +88,26 @@ const Heat = (() => {
           + (c.h > fs * 2.6 ? `<text x="${(c.x + c.w / 2).toFixed(1)}" y="${(c.y + c.h / 2 + fs * 0.85).toFixed(1)}" font-size="${(fs * 0.62).toFixed(1)}" text-anchor="middle" class="hm-v">${label(v)}</text>` : '') : '') + '</g>';
     }).join('');
     const secs = LAY.secs.map(s => `<g class="hm-s" data-sec="${esc(s.id)}"><rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" fill="none" stroke="var(--bg)" stroke-width="3"/>`
-      + (s.hd ? `<text x="${s.x + 6}" y="${s.y + 12.5}" class="hm-h">${esc(secKo(s.id))}${st.sec ? '' : ' ›'}</text>` : '') + '</g>').join('');
-    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="히트맵: 크기 시가총액, 색 ${esc(COLOR[st.c] ? COLOR[st.c].name + ' 주가 변화' : SIG[st.c])}"><rect width="${W}" height="${H}" fill="var(--bg)"/>${cells}${secs}</svg>`;
+      + (s.hd ? `<text x="${s.x + 6}" y="${s.y + 12.5}" class="hm-h">${esc(secKo(s.id))}${st.sec || !label_sec ? '' : ' ›'}</text>` : '') + '</g>').join('');
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="히트맵: 크기 시가총액, 색 ${esc(COLOR[st.c] ? COLOR[st.c].name + ' 주가 변화' : SIG[st.c])}"><rect width="${W}" height="${H}" fill="var(--bg)"/>${cells}${secs}</svg>`;
+  }
+  function draw() {
+    const el = box.querySelector('#hm'); if (!el) return;
+    const W = Math.max(320, el.clientWidth), H = Math.round(W < 700 ? W * 1.7 : Math.min(760, Math.max(540, W * 0.6)));
+    LAY = layout(W, H);
+    el.innerHTML = svgOf(W, H);
     box.querySelector('#hm-n').textContent = `${LAY.cells.length}종목`;
+  }
+  // 홈용 작은 히트맵: 시가총액 100억 달러 이상, 설정의 기본 색, 조작 없음 (종목을 누르면 종목 화면)
+  function mini(el, u, H) {
+    U = u; S = U.rows.filter(r => r.k === 'stock' && r.mcap);
+    st = { c: defC(), cap: 1e10, sec: '' }; frame = null;
+    const W = Math.max(300, el.clientWidth);
+    LAY = layout(W, H);
+    const c = COLOR[st.c];
+    el.innerHTML = `<div class="hm-mini-h"><b>히트맵</b><span class="mut s13">시가총액 100억 달러 이상 · 색 = ${esc(c ? c.name + ' 주가' : '')}</span><span class="hm-sw">${[-1, -0.5, -0.2, 0, 0.2, 0.5, 1].map(k => `<i style="background:${fill(k * scale())}"></i>`).join('')}</span></div>${svgOf(W, H, false)}`;
+    el.querySelector('svg').onclick = e => { const g = e.target.closest('.hm-c'); if (g) { e.preventDefault(); location.href = stockUrl(LAY.cells[+g.dataset.i].r.t); } };
+    el.querySelector('svg').onmousemove = e => { const g = e.target.closest('.hm-c'); el.title = g ? `${LAY.cells[+g.dataset.i].r.t} ${LAY.cells[+g.dataset.i].r.ko || LAY.cells[+g.dataset.i].r.n || ''} ${label(val(LAY.cells[+g.dataset.i].r))}` : ''; };
   }
   function recolor() {   // 재생 중: 배치는 그대로 두고 색·숫자만
     const svg = box.querySelector('#hm svg'); if (!svg) return;
@@ -207,5 +222,5 @@ const Heat = (() => {
     if (!PX) Data.px3m().then(j => { PX = j; if (box.isConnected && box.querySelector('#hm-top')) { box.querySelector('#hm-top').innerHTML = playBar() + legend(); bindPlay(); box.querySelector('#hm-n').textContent = `${LAY.cells.length}종목`; } }).catch(() => { });
   }
   function unmount() { playing = false; cancelAnimationFrame(raf); if (ro) ro.disconnect(); ro = null; frame = null; }
-  return { mount, unmount };
+  return { mount, unmount, mini };
 })();

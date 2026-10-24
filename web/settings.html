@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="티커맵 설정 — 처음 보이는 화면과 지도 모양을 내게 맞게.">
+<meta name="robots" content="noindex">
+<title>설정 | 티커맵</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/app.css">
+<script src="assets/data.js"></script>
+<script src="assets/ui.js"></script>
+<style>
+.st{max-width:620px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.st-g{gap:0;padding:6px 16px}
+.st-g>h2{font-size:13px;color:var(--muted);font-weight:700;margin:10px 0 4px}
+.st-i{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line2)}
+.st-g>h2+.st-i{border-top:0}
+.st-h{display:flex;align-items:center;gap:12px}
+.st-h>div{flex:1;min-width:0}
+.st-h b{font-size:15px}
+.st-h .small{margin-top:2px}
+.st-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}
+.st-opt{font:inherit;text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:11px;padding:9px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-height:44px}
+.st-opt small{color:var(--muted);font-size:12px;line-height:1.35}
+.st-opt.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);font-weight:700}
+.st-opt.on small{font-weight:400}
+.sw{position:relative;width:46px;height:28px;flex-shrink:0;border-radius:99px;border:0;background:var(--line);cursor:pointer;transition:background .15s}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.sw[aria-checked=true]{background:var(--accent)}
+.sw[aria-checked=true]::after{transform:translateX(18px)}
+.st-link{color:var(--ink);text-decoration:none}
+.st-link .go{color:var(--faint);font-size:18px}
+.st-sync{font-size:13px;flex-direction:row;align-items:center;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+header('');
+// 설정 화면 — 항목은 ui.js의 PREF_SCHEMA 에서 (여기는 그리기만)
+function item(it) {
+  const v = Prefs.get(it.k);
+  const head = (right = '') => `<div class="st-h"><div><b>${esc(it.label)}</b>${it.desc ? `<div class="small mut">${esc(it.desc)}</div>` : ''}</div>${right}</div>`;
+  if (it.type === 'toggle') return `<div class="st-i">${head(`<button class="sw" role="switch" aria-checked="${!!v}" aria-label="${esc(it.label)}" data-k="${it.k}"></button>`)}</div>`;
+  if (it.type === 'choice') return `<div class="st-i">${head()}<div class="st-opts" role="radiogroup" aria-label="${esc(it.label)}">${it.opts.map(([val, lab, sub]) =>
+    `<button class="st-opt ${val === v ? 'on' : ''}" role="radio" aria-checked="${val === v}" data-k="${it.k}" data-v="${esc(val)}"><span>${esc(lab)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`).join('')}</div></div>`;
+  if (it.type === 'link') return `<a class="st-i st-link" href="${esc(it.href)}">${head('<span class="go">›</span>')}</a>`;
+  return '';
+}
+function render() {
+  const login = !!Auth.hint();
+  $('#app').innerHTML = `<div class="st"><div class="hero"><h1>설정</h1><p>처음 보이는 화면과 모양을 내게 맞게</p></div>
+    <div class="card st-sync">${login ? '<span>☁️</span><span>계정에 저장돼요 — 다른 기기에서 로그인해도 같은 설정</span>' : '<span>💾</span><span>이 브라우저에만 저장돼요 · <a href="account.html">로그인</a>하면 다른 기기에서도 같은 설정</span>'}<b id="st-saved" style="margin-left:auto;color:var(--good)"></b></div>
+    ${PREF_SCHEMA.map(g => `<div class="card st-g"><h2>${esc(g.title)}</h2>${g.items.map(item).join('')}</div>`).join('')}
+    <div style="display:flex;justify-content:flex-end"><button class="btn" id="st-reset">기본값으로</button></div></div>`;
+  document.querySelectorAll('.sw').forEach(b => b.onclick = () => { Prefs.set(b.dataset.k, !(b.getAttribute('aria-checked') === 'true')); });
+  document.querySelectorAll('.st-opt').forEach(b => b.onclick = () => Prefs.set(b.dataset.k, b.dataset.v));
+  $('#st-reset').onclick = () => { if (confirm('설정을 모두 기본값으로 돌릴까요?')) { Prefs.reset(); } };
+}
+let saved;
+document.addEventListener('prefs-change', e => {
+  render();
+  if (e.detail && e.detail.k !== '*') { const el = $('#st-saved'); el.textContent = '저장됨 ✓'; clearTimeout(saved); saved = setTimeout(() => { const x = $('#st-saved'); if (x) x.textContent = ''; }, 1800); }
+});
+render();
+footer();
+</script>
+</body>
+</html>

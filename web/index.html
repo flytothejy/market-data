@@ -22,10 +22,33 @@
 .hl a:hover{background:var(--soft);text-decoration:none}
 .hl small{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hl .v{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.home-map.heat{grid-template-columns:minmax(0,1fr)}
+.mini.hm-mini{cursor:default}
+/* 오늘의 소식 */
+.bf{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.bf .card{gap:6px}
+.bf h3{display:flex;align-items:center;gap:7px;font-size:15px}
+.bf h3 .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.bf .sub{font-size:12.5px;color:var(--muted);margin-top:-2px}
+.bf-r{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px;border-top:1px solid var(--line2);padding:6px 0}
+.bf-r:first-of-type{border-top:0}
+.bf-r a{display:flex;align-items:baseline;gap:6px;min-width:0;color:var(--ink)}
+.bf-r a:hover{text-decoration:none}
+.bf-r a:hover b{text-decoration:underline}
+.bf-r b{flex-shrink:0}
+.bf-r .cn{color:var(--muted);font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 2 auto}
+.bf-r .d{font-size:12.5px;white-space:nowrap;margin-left:auto;padding-left:6px;font-variant-numeric:tabular-nums}
+.bf-r .star{min-height:28px;min-width:28px;padding:0 4px}
+.bf-more{font-size:12.5px;color:var(--muted)}
+.map-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.map-head .mx-seg{display:flex;gap:3px;padding:3px;background:var(--soft);border-radius:10px;margin-left:auto}
+.map-head .mx-seg button{font:inherit;font-size:13px;min-height:30px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
+.map-head .mx-seg button.on{background:var(--card);color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 </style>
 </head>
 <body>
 <div class="wrap" id="app"><div class="skel" role="status" aria-label="불러오는 중"><i class="sk sk-h"></i><i class="sk sk-p"></i><div class="sk-grid"><i class="sk sk-c"></i><i class="sk sk-c"></i><i class="sk sk-c"></i></div><i class="sk sk-b"></i></div></div>
+<script src="assets/heatmap.js"></script>
 <script src="assets/home.js"></script>
 </body>
 </html>

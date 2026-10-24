@@ -595,7 +595,8 @@ function bindSide() {
   try { U = await Data.universe(); }
   catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   S = U.rows.filter(r => r.k === 'stock');
-  let mode = new URLSearchParams(location.search).get('mode') === 'heat' ? 'heat' : 'bubble', inited = false;
+  const qMode = new URLSearchParams(location.search).get('mode'), defMode = Prefs.get('map.mode') === 'heat' ? 'heat' : 'bubble';   // 주소에 없으면 설정의 '티커맵 처음 보기'
+  let mode = qMode === 'heat' || qMode === 'bubble' ? qMode : defMode, inited = false;
   const DESC = { bubble: '주가와 신호가 어긋난 종목을 찾는 지도 · 가로 = 주가, 세로 = 고른 신호, 점 크기 = 시가총액 · <span id="mx-count"></span>', heat: '업종별 한눈에 · 사각형 크기 = 시가총액, 색 = 주가 변화나 신호 · ▶로 최근 3개월을 다시 보기' };
   $('#app').innerHTML = `<div class="hero mx-hero"><div><h1>티커맵</h1><p id="mx-desc"></p></div>
       <div class="mx-seg mx-mode" role="tablist" aria-label="지도 모양"><button role="tab" data-mode="bubble">● 버블</button><button role="tab" data-mode="heat">▦ 히트맵</button></div></div>
@@ -618,7 +619,7 @@ function bindSide() {
   $('.mx-mode').onclick = e => {
     const b = e.target.closest('[data-mode]'); if (!b || b.dataset.mode === mode) return;
     mode = b.dataset.mode;
-    const u = new URL(location.href); mode === 'heat' ? u.searchParams.set('mode', 'heat') : u.searchParams.delete('mode'); history.replaceState(null, '', u);
+    const u = new URL(location.href); mode !== defMode ? u.searchParams.set('mode', mode) : u.searchParams.delete('mode'); history.replaceState(null, '', u);
     show();
   };
   show();
