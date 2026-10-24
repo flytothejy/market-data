@@ -164,10 +164,17 @@ async function renderStock(U, d, P) {
     const half = (v, sc, upCol, dnCol, w) => `<div style="width:${w};display:flex;flex-direction:column;height:100%">
           <div style="height:50%;display:flex;align-items:flex-end">${v > 0 ? `<i style="display:block;width:100%;height:${v / sc * 100}%;background:${upCol};border-radius:3px 3px 0 0"></i>` : ''}</div>
           <div style="height:50%;display:flex;align-items:flex-start;border-top:1px solid var(--line)">${v < 0 ? `<i style="display:block;width:100%;height:${-v / sc * 100}%;background:${dnCol};border-radius:0 0 3px 3px"></i>` : ''}</div></div>`;
-    const bars8 = hist.length ? `${hasS ? '<div class="leg-row"><span><i style="background:var(--up)"></i>다음 날 주가(오름)</span><span><i style="background:var(--dn)"></i>(내림)</span><span><i style="background:#d9a21b"></i>EPS 서프라이즈</span></div>' : ''}
-      <div style="display:flex;align-items:center;gap:6px;height:120px;position:relative">
-        ${hist.map(([dd, v, sp]) => `<div style="flex:1;display:flex;gap:2px;height:100%" title="${dd} · 주가 ${fmt(v, 'pct', { sign: true })}${sp != null ? ' · EPS 서프라이즈 ' + fmt(sp, 'pct', { sign: true }) : ''}">
-          ${half(v, hasS ? mxS : mx, 'var(--up)', 'var(--dn)', hasS ? '58%' : '100%')}${hasS ? half(sp || 0, mxS, '#d9a21b', '#b98a16', '42%') : ''}</div>`).join('')}</div>
+    // 주가 = 막대, EPS 서프라이즈 = 같은 눈금의 꺾은선(점 + 선)
+    const sc8 = hasS ? mxS : mx, H8 = 120, yS = v => H8 / 2 - v / sc8 * (H8 / 2), n8 = hist.length;
+    const sp8 = hist.map(([, , sp], j) => sp == null ? null : [(j + 0.5) / n8 * 100, yS(sp), sp]);
+    let line8 = '';
+    for (let j = 1; j < n8; j++) if (sp8[j] && sp8[j - 1]) line8 += `<line x1="${sp8[j - 1][0]}" y1="${sp8[j - 1][1]}" x2="${sp8[j][0]}" y2="${sp8[j][1]}" stroke="#d9a21b" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+    const bars8 = hist.length ? `${hasS ? '<div class="leg-row"><span><i style="background:var(--up)"></i>다음 날 주가(오름)</span><span><i style="background:var(--dn)"></i>(내림)</span><span><i style="background:#d9a21b;border-radius:50%"></i>EPS 서프라이즈</span></div>' : ''}
+      <div style="position:relative;height:${H8}px">
+      <div style="display:flex;align-items:center;gap:6px;height:100%">
+        ${hist.map(([dd, v, sp]) => `<div style="flex:1;display:flex;height:100%;justify-content:center" title="${dd} · 주가 ${fmt(v, 'pct', { sign: true })}${sp != null ? ' · EPS 서프라이즈 ' + fmt(sp, 'pct', { sign: true }) : ''}">${half(v, sc8, 'var(--up)', 'var(--dn)', hasS ? '64%' : '100%')}</div>`).join('')}</div>
+      ${hasS ? `<svg viewBox="0 0 100 ${H8}" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible">${line8}</svg>
+        ${sp8.filter(Boolean).map(([x, y]) => `<i style="position:absolute;left:calc(${x}% - 5px);top:${y - 5}px;width:10px;height:10px;border-radius:50%;background:#d9a21b;border:2px solid var(--card);pointer-events:none"></i>`).join('')}` : ''}</div>
       <div class="er-lab">${hist.map(([dd, v, sp]) => `<span><span class="${cls(v)}">${fmt(v, 'pct', { sign: true })}</span>${hasS ? `<em style="color:${sp == null ? 'var(--faint)' : '#b98a16'}">${sp == null ? '-' : fmt(sp, 'pct', { sign: true })}</em>` : ''}<br>${dd.slice(2, 7).replace('-', '.')}</span>`).join('')}</div>
       ${hasS ? '<div class="small faint">EPS 서프라이즈 = 예상 대비 실제 (최근 4분기만 제공)</div>' : ''}` : '';
     const ratio = er.imp && er.avg ? er.imp / er.avg : null;
