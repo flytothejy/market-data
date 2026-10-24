@@ -43,6 +43,7 @@ ev["b2_y1"] = g["y1"].transform(lambda x: x.shift(1).rolling(8, min_periods=4).m
 ev["b2_y2"] = g["y2"].transform(lambda x: x.shift(1).rolling(8, min_periods=4).mean())
 ev["b1"] = ev.groupby("year")["y1"].transform("mean")
 ev["cdate"] = ev["rday"].fillna(ev["date"]).dt.strftime("%Y-%m-%d")
+ev["era"] = pd.cut(ev["year"], [1990, 2009, 2014, 2019, 2030], labels=["~2009", "2010-14", "2015-19", "2020~"])
 
 
 def test(df, sig, target):
