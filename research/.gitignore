@@ -23,3 +23,5 @@ data/raw/mkt/
 data/raw/sb/facts_rdcf.parquet
 data/task5_panel_D.csv
 data/events_R.csv
+data/raw/sb/tenk_docs/
+data/raw/sb/tenk_delisted.csv
