@@ -666,7 +666,8 @@ def consensus_table(d, asof):
     beats = eh.groupby("ticker").tail(4).assign(b=lambda x: x.value > 0).groupby("ticker").b.sum()
     C = pd.DataFrame({"c_up": up, "c_dn": dn, "c_n": n, "c_chg90": cur / ago90 - 1, "c_upside": ptm / ptc - 1, "c_buy": buy,
                       "c_eps_g": piv("eps", "+1y", "growth"), "c_rev_g": piv("rev", "+1y", "growth"), "c_eps1y": cur,
-                      "c_surp": last_s, "c_beats": beats})
+                      "c_surp": last_s, "c_beats": beats,
+                      "c_rb": rec.get("strongBuy", 0) + rec.get("buy", 0), "c_rh": rec.get("hold", 0), "c_rs": rec.get("sell", 0) + rec.get("strongSell", 0)})   # 투자의견 분포(매수·보유·매도 수)
     C["c_ratio"] = (C.c_up - C.c_dn) / np.maximum(C.c_n.fillna(0), (C.c_up + C.c_dn).fillna(0)).replace(0, np.nan)
     C.index = C.index.str.replace(".", "-", regex=False)
     return C, asof
@@ -877,6 +878,12 @@ def run(limit=0, **_):
     _cut = (pd.Timestamp.today() - pd.Timedelta(days=100)).strftime("%Y-%m-%d")
     ERH = {t: g for t, g in c_H[c_H.block.isin(ER_BLOCKS) & (c_H.date >= _cut)].groupby("ticker")} if not c_H.empty else {}
     C, c_asof = consensus_table(c_snap, c_asof)
+    # 최근 4분기 EPS 서프라이즈 (분기 말 날짜 → 서프라이즈) — 실적 반응 차트에 같이 표시
+    EHS = {}
+    if c_snap is not None and not c_snap.empty:
+        _eh = c_snap[(c_snap.block == "ehist") & (c_snap.field == "surprisePercent")]
+        for _t, _g in _eh.groupby("ticker"):
+            EHS[str(_t).replace(".", "-")] = sorted((pd.Timestamp(p_), float(v_)) for p_, v_ in zip(_g.period, _g.value) if v_ == v_)
     c_hist = consensus_hist(c_H)
     now = pd.Timestamp.now().normalize()
     if not FL.empty:
@@ -1064,7 +1071,7 @@ def run(limit=0, **_):
         # 컨센서스
         if t in C.index:
             c = C.loc[t]
-            row.update({k: c[k] for k in ["c_up", "c_dn", "c_n", "c_ratio", "c_chg90", "c_upside", "c_buy", "c_eps_g", "c_rev_g", "c_surp", "c_beats"]})
+            row.update({k: c[k] for k in ["c_up", "c_dn", "c_n", "c_ratio", "c_chg90", "c_upside", "c_buy", "c_eps_g", "c_rev_g", "c_surp", "c_beats", "c_rb", "c_rh", "c_rs"]})
             if c.get("c_eps1y") and c["c_eps1y"] > 0 and tc.get("px"):
                 row["c_fpe"] = tc["px"] / c["c_eps1y"]
         ts_ = p.get("earningsTimestampStart") if p.get("earningsTimestampStart") == p.get("earningsTimestampStart") else p.get("earningsTimestamp")
@@ -1130,6 +1137,10 @@ def run(limit=0, **_):
                 i = pxa.index.searchsorted(d)
                 if 1 <= i and i + 1 < len(pxa):
                     er_hist.append([str(d.date()), round(float(pxa.iloc[i + 1] / pxa.iloc[i - 1] - 1), 4)])
+        if er_hist and t in EHS:                          # [발표일, 다음 날 주가, EPS 서프라이즈] — 발표 전 100일 안에 끝난 분기
+            for x in er_hist:
+                dd_ = pd.Timestamp(x[0]); qs_ = [v_ for p_, v_ in EHS[t] if p_ < dd_ and (dd_ - p_).days <= 100]
+                x.append(round(qs_[-1], 4) if qs_ else None)
         if er_hist:
             mv = [abs(x[1]) for x in er_hist[-8:]]
             row["er_avg"] = sum(mv) / len(mv)
@@ -1351,7 +1362,7 @@ def run(limit=0, **_):
     # ---- universe.json + market.json + meta.json
     U2 = pd.DataFrame(rows)
     fields = {k: {"label": v[0], "cat": v[1], "fmt": v[2], "tier": v[3]} for k, v in FIELDS.items()}
-    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko"]
+    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs"]
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")
