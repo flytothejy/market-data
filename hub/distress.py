@@ -140,7 +140,12 @@ def run(cands, asof, out_dir=None):
             if len(col) < 20:
                 continue
             cut = col.quantile(0.8)
-            for t in col[col >= cut].index:
+            sel = col[col >= cut]
+            if len(sel) > 0.25 * len(col):                 # 같은 값이 몰리면(주가는 15달러에서 잘림) 경계값은 빼고
+                sel = col[col > cut]
+            if var == "price":                             # '주가 낮음'은 실제로 15달러 미만일 때만
+                sel = sel[X.loc[sel.index, "price"] < math.log(15) - 1e-9]
+            for t in sel.index:
                 if var == "nimta" and X.at[t, "nimta"] >= 0:   # '적자'는 실제로 순손실일 때만
                     continue
                 res[t]["c"].append(code)
