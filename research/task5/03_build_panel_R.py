@@ -17,7 +17,11 @@ f["cik"] = f["cik"].astype(int)
 f = f[f["tag"].isin(TAGS)].copy()
 for c in ("start", "end", "filed"):
     f[c] = pd.to_datetime(f[c])
-f = f.sort_values("filed").drop_duplicates(["cik", "tag", "start", "end"], keep="first")   # 최초 공시 값만
+DEI = "EntityCommonStockSharesOutstanding"
+# 2026-10-25 수정: 표지 주식수(dei)는 주식 종류별로 여러 줄이 같은 공시에 나온다 → 종류별 줄을 지우지 않는다
+fd = f[f["tag"] == DEI].drop_duplicates(["cik", "end", "filed", "val"])
+f = f[f["tag"] != DEI].sort_values("filed").drop_duplicates(["cik", "tag", "start", "end"], keep="first")   # 최초 공시 값만
+f = pd.concat([f, fd]).sort_values("filed")
 f["dur"] = (f["end"] - f["start"]).dt.days
 F = {}
 for (c, t), g in f.groupby(["cik", "tag"]):
@@ -74,13 +78,26 @@ def gp(c, d):
     if g == g: return g
     return rev(c, d) - first_ok(ttm(c, "CostOfRevenue", d), ttm(c, "CostOfGoodsAndServicesSold", d))
 def shares(c, d):
-    for t in ("EntityCommonStockSharesOutstanding", "WeightedAverageNumberOfDilutedSharesOutstanding"):
-        r = _rows(c, t, d)
-        if r is None: continue
-        fl, va = r[0], r[4]
+    """2026-10-25 수정(원자료 대조에서 단위 오류·종류 누락 발견): 표지 주식수는 최근 공시의 종류별 합,
+    희석 가중평균 주식수(재무제표)와 0.5~2배 안에서 맞을 때만 쓰고, 어긋나면 희석 가중평균을 쓴다."""
+    dei = np.nan
+    r = _rows(c, DEI, d)
+    if r is not None:
+        fl, en, va = r[0], r[2], r[4]
         m = fl >= np.datetime64(d) - 200 * DAY
-        if m.any(): return va[m][-1]
-    return np.nan
+        if m.any():
+            lf = fl[m].max(); k = m & (fl == lf); le = en[k].max(); dei = va[k & (en == le)].sum()
+    dil = np.nan
+    r = _rows(c, "WeightedAverageNumberOfDilutedSharesOutstanding", d)
+    if r is not None:
+        fl, st, en, du, va = r
+        du = du.astype(float); m = (fl >= np.datetime64(d) - 200 * DAY) & (du >= 80) & (du <= 100)
+        if m.any():
+            i = np.where(m)[0][np.argmax(en[m])]; dil = va[i]
+    if dei == dei and dei > 0 and dil == dil and dil > 0:
+        return dei if 0.5 <= dei / dil <= 2 else dil
+    if dil == dil and dil > 0: return dil
+    return dei if dei == dei and dei > 0 else np.nan
 def debt(c, d):
     return first_ok(inst(c, "LongTermDebt", d), inst(c, "LongTermDebtNoncurrent", d), 0.0)
 
@@ -112,7 +129,7 @@ prof = pd.read_parquet(os.path.join(R2, "profile__profile.parquet"))[["ticker", 
 us = set(prof.loc[prof["country"] == "United States", "ticker"].str.replace(".", "-", regex=False))
 uni = uni[uni["t2"].isin(us) & ~uni["sec"].isin(["Financial Services", "Real Estate"])]
 pool = [t for t in uni["t2"] if t in now2cik and os.path.exists(os.path.join(PX, f"{t}.parquet"))]
-PXD = os.path.join(DATA, "prices_delisted")
+PXD = os.path.join(DATA, "prices_delisted_clean")   # 2026-10-25 수정: 정리된 상장폐지 가격
 dm = pd.read_csv(os.path.join(SB, "delisted_cik.csv")); dm = dm[dm["status"].isin(["unique", "still_filing_other_ticker"])]
 sic = pd.read_csv(os.path.join(SB, "delisted_sic.csv")).set_index("cik")["sic"]
 CIK = {t: now2cik[t] for t in pool}; PATH = {t: os.path.join(PX, f"{t}.parquet") for t in pool}
