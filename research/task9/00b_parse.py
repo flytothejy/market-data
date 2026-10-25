@@ -19,7 +19,10 @@ def parse(h):
         for t in pd.read_html(io.StringIO(s)):
             cols = {str(c).lower(): c for c in t.columns}
             k = [c for l, c in cols.items() if "ticker" in l or "symbol" in l]
-            if k and len(t) >= 80: return sorted(set(t[k[0]].astype(str).str.strip())), "table"
+            if k and len(t) >= 80:
+                col = t[k[0]]
+                col = col.iloc[:, 0] if isinstance(col, pd.DataFrame) else col
+                return sorted({str(x).strip() for x in col if str(x).strip() not in ("nan", "")}), "table"
     except ValueError: pass
     tk = re.findall(r"<li[^>]*>.*?\((?:NASDAQ:\s*)?(?:<a[^>]*>)?([A-Z][A-Z.]{0,5})(?:</a>)?\)", s)
     if len(tk) < 80:   # 깨진 렌더: 틀 안 위키 원문 '#[[회사]] (TICK)'
