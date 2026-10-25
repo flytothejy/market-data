@@ -1102,6 +1102,10 @@ def run(limit=0, **_):
         R.warning(f"부실 위험 등급 계산 실패: {str(e)[:120]}")
     if SH_BAD:
         R.warning(f"SEC 주식수 × 주가가 시세 시가총액과 0.5~2배 밖: {len(SH_BAD)}종목 ({', '.join(SH_BAD[:8])})")
+    from . import dividend
+    DIVL = []
+    _spy = tech(pxg["SPY"]) if "SPY" in pxg else {}
+    SPY_R1Y = _spy.get("r1y")
     log("종목별 지표 계산·저장 중")
     rows, n_files = [], 0
     asof_s = str(PX.date.max().date())                  # 트레일 끝점(지금 점)의 날짜 = 마지막 거래일
@@ -1131,10 +1135,22 @@ def run(limit=0, **_):
                        pb=div(mcap, fm.get("_equity")) if (fm.get("_equity") or 0) > 0 else None, fcfy=div(fm.get("fcf"), mcap),
                        shy=div((fm.get("_buyback") or 0) + (fm.get("_divpaid") or 0), mcap))
         # 배당수익률: 최근 12개월 배당 / 종가
+        dvc = None
         if tc.get("px"):
             ac = ACTg.get(t, E0)
             dv = ac[ac.date >= now - pd.Timedelta(days=365)].dividend.sum() if len(ac) else 0
             row["dy"] = dv / tc["px"] if dv else 0.0
+            # 배당 점검표 (연구 과제 2-3)
+            try:
+                rr = (tc["r1y"] - SPY_R1Y) if tc.get("r1y") is not None and SPY_R1Y is not None else None
+                dvc = dividend.check(ac, tc["px"], rr, row.get("pe"), now)
+            except Exception as e:
+                dvc = None
+            if dvc and dvc.get("q"):
+                row["dvc_r"], row["dvc_m"], row["dvc_v"], row["dvc_y"], row["dvc_w"] = dvc.get("cut_rate"), dvc.get("anniv_m"), 1 if dvc.get("var") else 0, dvc.get("yld"), 1 if dvc.get("weak") else 0
+                DIVL.append({"ticker": t, "cik": cik, "mcap": mcap, "inputs": {k: dvc.get(k) for k in ("yld", "ret_rel", "payout", "var", "anniv", "up", "cut_d", "last", "last_d")},
+                             "score": dvc.get("cut_rate"), "grade": dvc.get("bucket") + (" + 1년 −20% 이하" if dvc.get("weak") else "") if dvc.get("bucket") else None,
+                             "flags": ["변동배당"] if dvc.get("var") else []})
         # 컨센서스
         if t in C.index:
             c = C.loc[t]
@@ -1288,6 +1304,8 @@ def run(limit=0, **_):
         detail = {"t": t, "n": row["n"], "summary": (p.get("longBusinessSummary") or "")[:1200] if isinstance(p.get("longBusinessSummary"), str) else "",
                   "web": p.get("website") if isinstance(p.get("website"), str) else None, "emp": p.get("fullTimeEmployees"),
                   "m": row, "asof": tc.get("asof")}
+        if dvc:
+            detail["dvc"] = dvc
         if g is not None and len(g):
             g2 = g[g.date >= g.date.max() - pd.Timedelta(days=730)]
             detail["px"] = {"d": g2.date.dt.strftime("%Y-%m-%d").tolist(), "o": g2.open.round(2).tolist(), "h": g2.high.round(2).tolist(),
@@ -1429,10 +1447,17 @@ def run(limit=0, **_):
     # ---- universe.json + market.json + meta.json
     U2 = pd.DataFrame(rows)
     fields = {k: {"label": v[0], "cat": v[1], "fmt": v[2], "tier": v[3]} for k, v in FIELDS.items()}
-    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c"]
+    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c", "dvc_r", "dvc_m", "dvc_v", "dvc_y", "dvc_w"]
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")
+    try:                                                # 배당 삭감 점검 기록 (연구 쪽 채점용)
+        _p = DATA / "research_live" / "div_cut" / f"{PX.date.max().date()}.json"
+        _p.parent.mkdir(parents=True, exist_ok=True)
+        _p.write_text(json.dumps({"date": str(PX.date.max().date()), "spec_version": dividend.spec()["version"], "n_universe": len(DIVL), "rows": DIVL},
+                                 ensure_ascii=False, default=lambda o: None if o is None else (bool(o) if isinstance(o, (bool, np.bool_)) else float(o))), encoding="utf-8")
+    except Exception as e:
+        R.warning(f"배당 점검 기록 실패: {str(e)[:80]}")
     dump(OUT / "free" / "universe.json", {"asof": PX.date.max(), "consensus_asof": c_asof, "etf_base": etf_base, "fields": fields, "cats": CATS, "rows": free_rows})
     dump(OUT / "pro" / "universe_pro.json", {"rows": U2[["t"] + [k for k in pro_keys if k in U2.columns]].to_dict("records")})
     st = U2[U2.k == "stock"]
