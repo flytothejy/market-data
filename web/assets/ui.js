@@ -620,6 +620,8 @@ function checklist(r, U) {
     const dd = Math.round((new Date(r.c_next + 'T12:00:00Z') - Date.now()) / 864e5);
     if (dd >= 0 && dd <= 21) out.push({ k: 'er', s: 'info', t: `실적 발표 ${dd === 0 ? '오늘' : dd + '일 뒤'}`, d: `${r.c_next}${r.er_imp ? ` · 옵션 예상 변동 ±${(r.er_imp * 100).toFixed(1)}%` : ''}${r.er_avg ? ` · 최근 8번 평균 ±${(r.er_avg * 100).toFixed(1)}%` : ''}` });
   }
+  // 11) 배당 삭감 점검 (분기 배당·변동배당 아님, 과거 비율 14% 이상인 조건만 경고)
+  if (r.dvc_r >= 0.14 && !r.dvc_v) out.push({ k: 'dvc', s: 'warn', qt: `같은 조건 회사의 과거 1년 내 배당 삭감·중단 비율 ${(r.dvc_r * 100).toFixed(1)}% · 시가총액 20억 달러 이상 회사 기준`, t: '배당 삭감 점검', d: `배당수익률 ${(r.dvc_y * 100).toFixed(1)}%${r.dvc_w ? ' · 지난 1년 시장 대비 −20% 이하' : ''}` });
   // 11) 부실 위험 등급 (주의 이상만 표시 · 연구 과제 2-5, 점수 기준값으로 자른 등급)
   if (r.dz >= 1) {
     const chip = { vol: '변동성 높음', debt: '부채 비율 높음', px: '주가 낮음', loss: '적자', ret: '1년 수익률 부진' };
@@ -633,7 +635,7 @@ function checklistHtml(items, compact) {
   if (!items.length) return '';
   const n = s => items.filter(x => x.s === s).length;
   const ic = { warn: ['⚠', 'var(--warn)'], good: ['✓', 'var(--good)'], info: ['·', 'var(--muted)'] };
-  const rows = (compact ? items.filter(x => x.s !== 'info') : items).map(x => `<div class="ck-row"><span class="ck-ic" style="color:${ic[x.s][1]}">${ic[x.s][0]}</span><div><b>${esc(x.t)}</b>${x.q ? ' ' + tip(x.q) : ''}<div class="small mut">${esc(x.d)}</div></div></div>`).join('');
+  const rows = (compact ? items.filter(x => x.s !== 'info') : items).map(x => `<div class="ck-row"><span class="ck-ic" style="color:${ic[x.s][1]}">${ic[x.s][0]}</span><div><b>${esc(x.t)}</b>${x.qt ? ' ' + tipText(x.qt) : x.q ? ' ' + tip(x.q) : ''}<div class="small mut">${esc(x.d)}</div></div></div>`).join('');
   return `<div class="ck"><div class="ck-head"><b>종목 점검표</b><span class="s13"><span style="color:var(--warn)">경고 ${n('warn')}</span> · <span style="color:var(--good)">우호 ${n('good')}</span> · <span class="mut">참고 ${n('info')}</span></span></div>
     <div class="ck-list">${rows || '<div class="small mut">경고·우호 신호 없음</div>'}</div></div>`;
 }
@@ -666,6 +668,8 @@ function erResultHtml(L, opt = {}) {
 // ---- 지표 설명 (라벨 옆 ? 에 마우스를 올리거나 누르면 표시)
 const GLOSS = {
   // 부실 위험 등급의 과거 비율 — hub/spec/tickermap_spec.json (2026-10-25b) hist_rate_1y_large·hist_n_large
+  // 배당 점검 — spec dividend.anniv_up_rate_large·cut_1y_by_yield_large(_and_ret1y_le_-20pct)
+  dv_up: '작년 같은 시기에 배당을 올린 회사가 다음 배당도 올린 비율 77% (그렇지 않은 회사 6%) · 시가총액 20억 달러 이상 회사 기준',
   dz3: '같은 등급 회사의 과거 1년 내 파산·부실 상장폐지 비율 약 7% (전체 0.1%) · 시가총액 20억 달러 이상 비금융 회사 기준, 같은 등급 사례 94건',
   dz2: '같은 등급 회사의 과거 1년 내 파산·부실 상장폐지 비율 1.4% (전체 0.1%) · 시가총액 20억 달러 이상 비금융 회사 기준',
   dz1: '같은 등급 회사의 과거 1년 내 파산·부실 상장폐지 비율 0.6% (전체 0.1%) · 시가총액 20억 달러 이상 비금융 회사 기준',
@@ -714,6 +718,7 @@ const GLOSS = {
   g13: '추적 중인 유명 투자자(집중 투자형·행동주의 약 36곳) 중 이 종목을 보유한 곳의 수. 분기 13F 기준이며 대형 운용사·퀀트 펀드는 세지 않음',
   g13_chg: '이번 분기 새로 사거나 5% 넘게 늘린 유명 투자자 수 − 다 팔거나 5% 넘게 줄인 수',
 };
+const tipText = t => `<span class="tip" tabindex="0" role="note" aria-label="${esc(t)}" data-tip="${esc(t)}">?</span>`;
 const tip = k => GLOSS[k] ? `<span class="tip" tabindex="0" role="note" aria-label="${esc(GLOSS[k])}" data-tip="${esc(GLOSS[k])}">?</span>` : '';
 
 // ---- 티커에 마우스를 올리면 회사 이름 (화면 어디든: 표·범례·칩·순위 목록)

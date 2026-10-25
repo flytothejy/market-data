@@ -97,6 +97,25 @@ function kvGrid(m, keys, F) {
 
 const sec = (id, key, title, desc, body) => `<section id="${id}" style="display:flex;flex-direction:column;gap:12px;scroll-margin-top:110px">
   <div class="sec-head"><h2>${key ? `<span class="cat-dot c-${key}"></span>` : ''}${title}</h2><span class="desc">${desc}</span></div>${body}</section>`;
+// 배당 점검 (연구 과제 2-3) — 분기 배당 회사만, 과거 비율은 ? 뒤에
+function dvcCard(v) {
+  if (!v || !v.q) return '';
+  const ym = s => s ? `${s.slice(0, 4)}.${s.slice(5, 7)}` : '';
+  const rows = [];
+  rows.push(['최근 배당', `$${(+v.last).toFixed(v.last < 1 ? 3 : 2)} <span class="mut s13">(${ym(v.last_d)}, 분기마다)</span>`]);
+  if (v.var) rows.push(['배당 성격', `변동배당 <span class="mut s13">· 이력상 삭감이 3번 이상이라 인상·삭감 점검에서 뺐어요</span>`]);
+  else {
+    rows.push(['최근 인상', v.up ? `${pctS(v.up)} <span class="mut s13">(${ym(v.up_d)})</span>` : '<span class="mut">-</span>']);
+    rows.push(['삭감', v.cut_d ? `마지막 삭감 ${ym(v.cut_d)}` : `${v.since}년 이후 삭감 없음`]);
+    if (v.anniv) rows.push(['인상 시기', `매년 ${v.anniv_m}월경 인상 ${tip('dv_up')}`]);
+  }
+  rows.push(['배당수익률', `${(v.yld * 100).toFixed(1)}% <span class="mut s13">(최근 배당 × 4 ÷ 주가)</span>`]);
+  if (v.payout != null) rows.push(['배당성향', `${(v.payout * 100).toFixed(0)}% <span class="mut s13">(이익 대비)</span>`]);
+  if (v.ret_rel != null) rows.push(['지난 1년 시장 대비', pctS(v.ret_rel)]);
+  const bl = { '<2%': '2% 미만', '2-4%': '2~4%', '4-6%': '4~6%', '>=6%': '6% 이상' }[v.bucket];
+  if (!v.var && v.cut_rate != null) rows.push(['삭감 점검', `배당수익률 ${bl} 구간${v.weak ? ' · 1년 시장 대비 −20% 이하' : ''} ${tipText(`같은 조건 회사의 과거 1년 내 삭감·중단 비율 ${(v.cut_rate * 100).toFixed(1)}% · 시가총액 20억 달러 이상 회사 기준`)}`]);
+  return card('배당 점검', '', `<div class="dvc">${rows.map(([k, x]) => `<div><span>${k}</span><b>${x}</b></div>`).join('')}</div>`);
+}
 const card = (title, sub, body, extra = '') => `<div class="card" ${extra}>${title ? `<h3>${title}</h3>` : ''}${sub ? `<div class="sub">${sub}</div>` : ''}${body}</div>`;
 
 function chartCard(id) {
@@ -213,6 +232,7 @@ async function renderStock(U, d, P) {
   }
   finBody += card('', `최근 4개 분기 합계 · 기준일 ${fmt(m.fq, 'date')}${m.cur && m.cur !== 'USD' ? ` · 재무 통화 ${esc(m.cur)} (밸류에이션 지표 제외)` : ''}`,
     kvGrid(m, ['rev', 'rev_g', 'rev_qg', 'gm', 'om', 'om_chg', 'nm', 'ni', 'ni_g', 'eps', 'fcf', 'roe', 'roa', 'de', 'cr', 'rnd', 'pe', 'ps', 'pb', 'fcfy', 'dy', 'shy'], F));
+  finBody += dvcCard(d.dvc);
   h += sec('fin', 'fin', '재무', 'SEC에 제출한 재무제표(XBRL) 기준', finBody);
 
   // 차트·수급
