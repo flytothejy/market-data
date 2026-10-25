@@ -68,11 +68,17 @@ def snapshot(y):
     s = s.sort_values("mcap", ascending=False).reset_index(drop=True); s["rank"] = np.arange(1, len(s) + 1)
     return s
 
+# 2026-10-25 (결과 후, 연결 수정): 옛 티커(PCLN·FISV·SYMC 등)는 S&P 500 위키 이력의 CIK로 연결
+_w = pd.read_csv(os.path.join(SB, "wiki_members_hist.csv")).dropna(subset=["cik"])
+T2CIK = {str(t).replace(".", "-"): int(c) for t, c in _w.groupby("t")["cik"].first().items()}
+BYCIK = {}
+for k, v in ENT.items(): BYCIK.setdefault(v[0], []).append(k)
 def map_members(tickers, y, snap):
     """위키 티커 → CIK. 그 시점 가격이 있는 후보 중 시가총액이 큰 것."""
     d = last_td(y, 10); pos = cal.get_loc(d); out, miss = set(), []
     for t in tickers:
         cands = [k for k in ENT if k == t or k == "D:" + t or (k.startswith("D:" + t + "_"))]
+        if t in T2CIK: cands += [k for k in BYCIK.get(T2CIK[t], []) if k not in cands]
         best, bm = None, -1
         for k in cands:
             u = PXS[k]["RawUnadj"].iloc[max(0, pos - 40):pos + 1].dropna()
@@ -145,7 +151,7 @@ for name, fn in T.items():
                   **{f"b0_{k}": v for k, v in stats(sub, "b0").items()}}
     for c, r in res.items():
         rows.append({"test": name, "cell": c, **r})
-        logs.append([f"T9-{name}-{c}", today, 9, "Nasdaq-100 연말 재구성 예측", "NDX", name, "add/rem", c, r["years"], name,
+        logs.append([f"T9{os.environ.get('TAG', '')}-{name}-{c}", today, 9, "Nasdaq-100 연말 재구성 예측", "NDX", name, "add/rem", c, r["years"], name,
                      round(r["est"], 5), 0, "", round(r["p1"], 4), f"n_add={r['b1_n_add']};n_rem={r['b1_n_rem']}"])
 with open(os.path.join(ROOT, "log.csv"), "a") as fh:
     for l in logs: fh.write(",".join(str(x) for x in l) + "\n")

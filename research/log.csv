@@ -900,3 +900,14 @@ T5R30v2-RGAP-63-확인2,2026-10-25,5,재무 신호 좋은 쪽 5분위 − 전체
 T5R30v2-RGAP-252-설계,2026-10-25,5,재무 신호 좋은 쪽 5분위 − 전체,Fundamental,RGAP,r252,설계,27,D,0.00901,,,0.1864,LS=0.0192
 T5R30v2-RGAP-252-확인1,2026-10-25,5,재무 신호 좋은 쪽 5분위 − 전체,Fundamental,RGAP,r252,확인1,24,D,0.02441,,,0.0037,LS=0.0523
 T5R30v2-RGAP-252-확인2,2026-10-25,5,재무 신호 좋은 쪽 5분위 − 전체,Fundamental,RGAP,r252,확인2,27,D,0.01651,,,0.1819,LS=0.0453
+T9-B1_prec_add_vs_base-설계,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_prec_add_vs_base,add/rem,설계,8,B1_prec_add_vs_base,0.02447,0,,0.1205,n_add=23;n_rem=13
+T9-B1_prec_add_vs_base-확인1,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_prec_add_vs_base,add/rem,확인1,7,B1_prec_add_vs_base,0.06129,0,,0.016,n_add=15;n_rem=16
+T9-B1_prec_add_vs_base-확인2,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_prec_add_vs_base,add/rem,확인2,8,B1_prec_add_vs_base,0.10018,0,,0.007,n_add=13;n_rem=21
+T9-B1_prec_add_vs_base-최종,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_prec_add_vs_base,add/rem,최종,7,B1_prec_add_vs_base,0.17349,0,,0.002,n_add=14;n_rem=14
+T9-B1_prec_rem_vs_base-설계,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_prec_rem_vs_base,add/rem,설계,8,B1_prec_rem_vs_base,0.29441,0,,0.0,n_add=23;n_rem=13
+T9-B1_prec_rem_vs_base-확인1,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_prec_rem_vs_base,add/rem,확인1,7,B1_prec_rem_vs_base,0.33447,0,,0.002,n_add=15;n_rem=16
+T9-B1_prec_rem_vs_base-확인2,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_prec_rem_vs_base,add/rem,확인2,8,B1_prec_rem_vs_base,0.40226,0,,0.0,n_add=13;n_rem=21
+T9-B1_prec_rem_vs_base-최종,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_prec_rem_vs_base,add/rem,최종,7,B1_prec_rem_vs_base,0.40007,0,,0.0175,n_add=14;n_rem=14
+T9-B1_minus_B0_f1-설계,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_minus_B0_f1,add/rem,설계,8,B1_minus_B0_f1,-0.01393,0,,0.6095,n_add=23;n_rem=13
+T9-B1_minus_B0_f1-확인1,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_minus_B0_f1,add/rem,확인1,7,B1_minus_B0_f1,-0.02266,0,,0.759,n_add=15;n_rem=16
+T9-B1_minus_B0_f1-확인2,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_minus_B0_f1,add/rem,확인2,8,B1_minus_B0_f1,-0.04353,0,,0.8845,n_add=13;n_rem=21
