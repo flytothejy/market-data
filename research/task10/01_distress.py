@@ -6,7 +6,7 @@ from sklearn.metrics import roc_auc_score
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data"); SB = os.path.join(DATA, "raw", "sb"); CF = os.path.join(SB, "companyfacts")
-PX = os.path.join(DATA, "prices"); PXD = os.path.join(DATA, "prices_delisted_clean"); OUT = os.path.join(ROOT, "task10", "out")
+PX = os.path.join(DATA, "prices"); PXD = os.path.join(DATA, "prices_delisted_clean"); OUT = os.path.join(ROOT, "task10", "out" + os.environ.get("TAG", ""))
 os.makedirs(OUT, exist_ok=True)
 # 재무 함수: 과제 1-5 R 패널 코드(수정판)에 태그 3개를 더해 불러온다
 src = open(os.path.join(ROOT, "task5", "03_build_panel_R.py")).read().split("# ---------- 유니버스 ----------")[0]
@@ -34,6 +34,20 @@ dm = pd.read_csv(os.path.join(SB, "delisted_cik.csv")); d2cik = dict(zip("D:" + 
 cik_of = lambda t: d2cik.get(t) if t.startswith("D:") else now2cik.get(t)
 pn = pd.read_csv(os.path.join(DATA, "task5_panel_R.csv"), parse_dates=["date"])
 pn["cik"] = [cik_of(t) for t in pn["t"]]; pn = pn[pn["cik"].notna()].copy(); pn["cik"] = pn["cik"].astype(int)
+if os.environ.get("CLEAN") == "1":
+    # 2026-10-25 사후 민감도(구현 쪽 확인 요청 4): 주식수 오류로 틀린 시가총액 거르기.
+    # 분할 반영 주식수 = 시가총액 ÷ 수정주가. 직전 4분기 중앙값과 0.5~2배를 벗어나면 그 분기 시가총액을 결측으로 둔다(시점 기준, 미래 정보 없음).
+    _spy = pd.read_parquet(os.path.join(PX, "SPY.parquet")).index
+    pn = pn.sort_values(["t", "date"]); keep_m = []
+    for t, g in pn.groupby("t", sort=False):
+        pth = os.path.join(PXD, t[2:].replace("/", "_") + ".parquet") if t.startswith("D:") else os.path.join(PX, f"{t}.parquet")
+        cl = pd.read_parquet(pth)["Close"].groupby(level=0).last() if os.path.exists(pth) else None
+        sh = [m / cl.asof(d - pd.Timedelta(days=1)) if cl is not None and m == m and cl.asof(d - pd.Timedelta(days=1)) == cl.asof(d - pd.Timedelta(days=1)) else np.nan for m, d in zip(g["mcap"], g["date"])]
+        sh = pd.Series(sh, index=g.index); prev = sh.shift(1).rolling(4, min_periods=2).median()
+        ok = ~(((sh / prev) > 2) | ((sh / prev) < 0.5)) & (g["mcap"] > 1e7)
+        keep_m += list(g.index[~ok])
+    print("CLEAN: market caps set missing", len(keep_m), "of", len(pn))
+    pn.loc[keep_m, "mcap"] = np.nan
 spy = pd.read_parquet(os.path.join(PX, "SPY.parquet"))["Close"]; cal = spy.index; ls = np.log(spy.values)
 def pxs(t):
     p = os.path.join(PXD, t[2:].replace("/", "_") + ".parquet") if t.startswith("D:") else os.path.join(PX, f"{t}.parquet")
@@ -133,7 +147,7 @@ dz = pn[pn["cell"] == "설계"]; MF = [c for c in MF if dz[c].std() > 0]
 m = sm.Logit(dz["y"], sm.add_constant(dz[MF])).fit(disp=0, maxiter=300)
 pn["pM"] = m.predict(sm.add_constant(pn[MF], has_constant="add"))
 json.dump({"M": m.params.to_dict(), "base_design": float(dz["y"].mean()), "n_events": int(pn["y"].sum())}, open(os.path.join(OUT, "model.json"), "w"), indent=1)
-pn.to_csv(os.path.join(DATA, "task10_panel.csv"), index=False)
+pn.to_csv(os.path.join(DATA, "task10_panel" + os.environ.get("TAG", "") + ".csv"), index=False)
 
 def top10(df, col):
     k = df[col] >= df.groupby("date")[col].transform(lambda x: x.quantile(0.9)); return df.loc[k, "y"].mean()
@@ -157,7 +171,7 @@ for name, (fn, null) in T.items():
                   "auc_B1": roc_auc_score(sub["y"], sub["pB1"]), "auc_M": roc_auc_score(sub["y"], sub["pM"]), "top10_B1": top10(sub, "pB1"), "top10_M": top10(sub, "pM")}
     for c, r in res.items():
         rows.append({"test": name, "cell": c, **r})
-        logs.append([f"T10-{name}-{c}", today, 10, "부실 12개월 경고", "DISTRESS", name, "distress12m", c, r["n"], name,
+        logs.append([f"T10{os.environ.get('TAG', '')}-{name}-{c}", today, 10, "부실 12개월 경고", "DISTRESS", name, "distress12m", c, r["n"], name,
                      round(r["est"], 5), null, "", round(r["p1"], 4), f"events={r['events']}"])
 with open(os.path.join(ROOT, "log.csv"), "a") as fh:
     for l in logs: fh.write(",".join(str(x) for x in l) + "\n")
