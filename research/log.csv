@@ -958,3 +958,15 @@ T8v2-y_cut-M_minus_B1_top10-설계,2026-10-25,8,배당 증액·삭감 예측,DIV
 T8v2-y_cut-M_minus_B1_top10-확인1,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_cut,확인1,6081,M_minus_B1_top10,0.02423,0.0,,0.021,events=316
 T8v2-y_cut-M_minus_B1_top10-확인2,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_cut,확인2,5977,M_minus_B1_top10,0.02791,0.0,,0.009,events=286
 T8v2-y_cut-M_minus_B1_top10-최종,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_cut,최종,5845,M_minus_B1_top10,0.01839,0.0,,0.0485,events=285
+T10-B1_auc-설계,2026-10-25,10,부실 12개월 경고,DISTRESS,B1_auc,distress12m,설계,10422,B1_auc,0.67484,0.5,,0.0,events=34
+T10-B1_auc-확인1,2026-10-25,10,부실 12개월 경고,DISTRESS,B1_auc,distress12m,확인1,10633,B1_auc,0.7456,0.5,,0.0,events=35
+T10-B1_auc-확인2,2026-10-25,10,부실 12개월 경고,DISTRESS,B1_auc,distress12m,확인2,9910,B1_auc,0.65724,0.5,,0.0,events=34
+T10-B1_auc-최종,2026-10-25,10,부실 12개월 경고,DISTRESS,B1_auc,distress12m,최종,10141,B1_auc,0.64637,0.5,,0.0,events=33
+T10-M_minus_B1_auc-설계,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_auc,distress12m,설계,10422,M_minus_B1_auc,0.25149,0.0,,0.0,events=34
+T10-M_minus_B1_auc-확인1,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_auc,distress12m,확인1,10633,M_minus_B1_auc,0.17416,0.0,,0.0025,events=35
+T10-M_minus_B1_auc-확인2,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_auc,distress12m,확인2,9910,M_minus_B1_auc,0.22045,0.0,,0.0,events=34
+T10-M_minus_B1_auc-최종,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_auc,distress12m,최종,10141,M_minus_B1_auc,0.25462,0.0,,0.0,events=33
+T10-M_minus_B1_top10-설계,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,설계,10422,M_minus_B1_top10,0.01686,0.0,,0.0,events=34
+T10-M_minus_B1_top10-확인1,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,확인1,10633,M_minus_B1_top10,0.01297,0.0,,0.0,events=35
+T10-M_minus_B1_top10-확인2,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,확인2,9910,M_minus_B1_top10,0.01412,0.0,,0.0,events=34
+T10-M_minus_B1_top10-최종,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,최종,10141,M_minus_B1_top10,0.01556,0.0,,0.0005,events=33
