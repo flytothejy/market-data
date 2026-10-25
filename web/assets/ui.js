@@ -560,6 +560,7 @@ document.addEventListener('click', e => {
 });
 const starBtn = t => `<button class="star ${Watch.has(t) ? 'on' : ''}" data-watch="${esc(t)}" title="관심 종목에 담기" aria-label="${esc(t)} 관심 종목">${Watch.has(t) ? '★' : '☆'}</button>`;
 
+const DZ_NAME = ['보통', '주의', '높음', '매우 높음'];
 // ---- 종목 점검표: 점수가 아니라 '확인할 거리' — 경고를 먼저, 근거 수준을 함께
 // 반환: [{k, s: 'good'|'warn'|'info', t: 제목, d: 근거 한 줄, v: 내부 백테스트로 뒷받침된 신호(화면에는 표시하지 않고 정렬에만 씀)}]
 function checklist(r, U) {
@@ -619,6 +620,12 @@ function checklist(r, U) {
     const dd = Math.round((new Date(r.c_next + 'T12:00:00Z') - Date.now()) / 864e5);
     if (dd >= 0 && dd <= 21) out.push({ k: 'er', s: 'info', t: `실적 발표 ${dd === 0 ? '오늘' : dd + '일 뒤'}`, d: `${r.c_next}${r.er_imp ? ` · 옵션 예상 변동 ±${(r.er_imp * 100).toFixed(1)}%` : ''}${r.er_avg ? ` · 최근 8번 평균 ±${(r.er_avg * 100).toFixed(1)}%` : ''}` });
   }
+  // 11) 부실 위험 등급 (주의 이상만 표시 · 연구 과제 2-5, 점수 기준값으로 자른 등급)
+  if (r.dz >= 1) {
+    const chip = { vol: '변동성 높음', debt: '부채 비율 높음', px: '주가 낮음', loss: '적자', ret: '1년 수익률 부진' };
+    const cs = (r.dz_c || '').split(',').filter(Boolean).map(c => chip[c]).filter(Boolean);
+    out.push({ k: 'dz', s: r.dz >= 2 ? 'warn' : 'info', q: 'dz' + r.dz, t: `부실 위험 ${DZ_NAME[r.dz]}`, d: cs.length ? cs.join(' · ') : '재무·주가 지표 종합' });
+  }
   const order = { warn: 0, good: 1, info: 2 };
   return out.sort((a, b) => order[a.s] - order[b.s] || (b.v ? 1 : 0) - (a.v ? 1 : 0));
 }
@@ -626,7 +633,7 @@ function checklistHtml(items, compact) {
   if (!items.length) return '';
   const n = s => items.filter(x => x.s === s).length;
   const ic = { warn: ['⚠', 'var(--warn)'], good: ['✓', 'var(--good)'], info: ['·', 'var(--muted)'] };
-  const rows = (compact ? items.filter(x => x.s !== 'info') : items).map(x => `<div class="ck-row"><span class="ck-ic" style="color:${ic[x.s][1]}">${ic[x.s][0]}</span><div><b>${esc(x.t)}</b><div class="small mut">${esc(x.d)}</div></div></div>`).join('');
+  const rows = (compact ? items.filter(x => x.s !== 'info') : items).map(x => `<div class="ck-row"><span class="ck-ic" style="color:${ic[x.s][1]}">${ic[x.s][0]}</span><div><b>${esc(x.t)}</b>${x.q ? ' ' + tip(x.q) : ''}<div class="small mut">${esc(x.d)}</div></div></div>`).join('');
   return `<div class="ck"><div class="ck-head"><b>종목 점검표</b><span class="s13"><span style="color:var(--warn)">경고 ${n('warn')}</span> · <span style="color:var(--good)">우호 ${n('good')}</span> · <span class="mut">참고 ${n('info')}</span></span></div>
     <div class="ck-list">${rows || '<div class="small mut">경고·우호 신호 없음</div>'}</div></div>`;
 }
@@ -658,6 +665,10 @@ function erResultHtml(L, opt = {}) {
 
 // ---- 지표 설명 (라벨 옆 ? 에 마우스를 올리거나 누르면 표시)
 const GLOSS = {
+  // 부실 위험 등급의 과거 비율 — hub/spec/tickermap_spec.json (2026-10-25b) hist_rate_1y_large·hist_n_large
+  dz3: '같은 등급 회사의 과거 1년 내 파산·부실 상장폐지 비율 약 7% (전체 0.1%) · 시가총액 20억 달러 이상 비금융 회사 기준, 같은 등급 사례 94건',
+  dz2: '같은 등급 회사의 과거 1년 내 파산·부실 상장폐지 비율 1.4% (전체 0.1%) · 시가총액 20억 달러 이상 비금융 회사 기준',
+  dz1: '같은 등급 회사의 과거 1년 내 파산·부실 상장폐지 비율 0.6% (전체 0.1%) · 시가총액 20억 달러 이상 비금융 회사 기준',
   tn: '기사 제목의 금융 단어(상승·하락·상향·소송 등)로 분류한 톤. 본문은 읽지 않음',
   c_ratio: '최근 30일 동안 내년 EPS 전망을 올린 애널리스트 수에서 내린 수를 빼고, 전체 수로 나눈 값. 플러스면 전망이 좋아지는 중',
   c_up: '최근 30일 동안 내년 EPS 전망을 올린 애널리스트 수', c_dn: '최근 30일 동안 내년 EPS 전망을 내린 애널리스트 수',

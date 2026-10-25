@@ -157,6 +157,11 @@ def checklist(r, sec_fpe, asof):
     if r.get("d200") is not None:
         v = r["d200"]
         out.append(("warn" if v < -0.1 else "good" if v > 0 else "info", "200일선 위" if v >= 0 else "200일선 아래", f"200일 평균 대비 {P(v)} · 52주 고가 대비 {P(r.get('hi52'))}"))
+    dz = r.get("dz")
+    if dz is not None and dz == dz and dz >= 1:          # 부실 위험 등급 (주의 이상만) — ui.js checklist와 같게
+        chip = {"vol": "변동성 높음", "debt": "부채 비율 높음", "px": "주가 낮음", "loss": "적자", "ret": "1년 수익률 부진"}
+        cs = [chip[c] for c in str(r.get("dz_c") or "").split(",") if c in chip]
+        out.append(("warn" if dz >= 2 else "info", "부실 위험 " + ["보통", "주의", "높음", "매우 높음"][int(dz)], " · ".join(cs) or "재무·주가 지표 종합"))
     order = {"warn": 0, "good": 1, "info": 2}
     return sorted(out, key=lambda x: order[x[0]])
 
