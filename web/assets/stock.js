@@ -129,13 +129,20 @@ function mountChart(id, d, isEtf) {
     seg.append(b); if (k === '1년') b.click(); });
 }
 
+// 지수 근접도 (연구 과제 1-3·2-4) — 순위 사실만
+function ixTags(m) {
+  let h = '';
+  if (m.ix_sp && m.ix_sp <= 20 && !(m.idx || '').includes('S&P500')) h += `<span class="tag">S&P 500 요건 충족 비구성 시총 ${m.ix_sp}위</span>${tip('ix_sp')}`;
+  if (m.ix_nq && m.ix_nq <= 150) h += `<span class="tag">나스닥 비금융 시총 ${m.ix_nq >= 90 && m.ix_nq <= 130 ? '약 ' : ''}${m.ix_nq}위</span>${tip('ix_nq')}`;
+  return h;
+}
 const hist8S = er => (er && er.hist || []).slice(-8).some(x => x[2] != null) ? ' · EPS 서프라이즈' : '';
 function headBlock(m, extraTags) {
   const tags = [m.sec ? secKo(m.sec) : null, m.ind, ...(m.idx ? m.idx.split(',') : []), ...extraTags].filter(Boolean);
   return `<div class="hero"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h1>${esc(m.t)}</h1><span class="mut" style="font-size:17px">${m.ko ? `<b style="color:var(--ink);font-weight:650">${esc(m.ko)}</b> · ` : ''}${esc(m.n)}</span></div>
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b style="font-size:28px" class="num">${fmt(m.px, 'px')}</b><span class="hd-chg"><span><small>1일</small>${pctS(m.r1d)}</span><span><small>1개월</small>${pctS(m.r1m)}</span></span>
     <span class="mut s13">${m.mcap ? '시가총액 ' + fmtUsd(m.mcap) : m.aum ? '순자산 ' + fmtUsd(m.aum) : ''}</span></div>
-    <div class="pill-row" style="align-items:center">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}<span id="pop-line"></span>
+    <div class="pill-row" style="align-items:center">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}${ixTags(m)}<span id="pop-line"></span>
       <span style="margin-left:auto;display:flex;gap:6px">${watchBtn(m.t)}<a class="btn" href="compare.html?t=${encodeURIComponent(m.t)}" style="text-decoration:none" title="비슷한 종목을 추천받아 나란히 비교">비교하기</a></span></div>
     ${m.s1 ? `<p style="margin:6px 0 0;font-size:15px;color:var(--ink)">${esc(m.s1)}</p>` : ''}</div>`;
 }
@@ -201,7 +208,8 @@ async function renderStock(U, d, P) {
     erCard = card('실적 발표', '과거 발표 때 주가 반응과 옵션 시장이 예상하는 이번 변동폭',
       `<div class="kv"><div><span>다음 발표${tip('c_next')}</span><b>${er.next ? esc(er.next) : '-'}</b>${er.when || er.est ? `<span>${er.when ? er.when + ' 발표' : ''}${er.est ? '예상일' : ''}</span>` : ''}</div>
         <div><span>옵션 예상 변동폭${tip('er_imp')}</span><b>${er.imp != null ? '±' + fmt(er.imp, 'pct') : '-'}</b></div>
-        <div><span>과거 평균 변동${tip('er_avg')}</span><b>${er.avg != null ? '±' + fmt(er.avg, 'pct') : '-'}</b></div>
+        <div><span>지난 8번 평균${tip('er_avg')}</span><b>${er.avg != null ? '±' + fmt(er.avg, 'pct') : '-'}</b></div>
+        ${m.em_ind ? `<div><span>이번 시즌 ${m.em_all ? '전체' : '같은 업종'}${tip('em_ind')}</span><b>±${fmt(m.em_ind, 'pct')}</b></div>` : ''}
         <div><span>최근 서프라이즈${tip('c_surp')}</span><b>${pctS(m.c_surp)}</b></div></div>
       ${verdict ? `<div class="s13">${verdict}${er.exp ? ` <span class="faint">(만기 ${esc(er.exp)} 옵션 기준)</span>` : ''}</div>` : er.next && er.imp == null ? '<div class="small faint">옵션 예상 변동폭은 옵션을 수집하는 시가총액 상위 종목만, 발표 직후 끝나는 만기가 생기면(보통 발표 주간) 보여요</div>' : ''}
 `);

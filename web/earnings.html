@@ -83,10 +83,10 @@ function render(U) {
     const rows = byDay[d].sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
     const past = d < today;
     h += `<div class="card day"><h3>${d.slice(5).replace('-', '월 ')}일 (${DOW[dow(d)]})${d === today ? ' <span class="tag">오늘</span>' : ''}<span class="mut">${rows.length}개${past ? ' · 발표 지남 (결과는 다음 갱신 때 반영)' : ''}</span></h3>
-      <div class="tbl-wrap"><table class="t"><thead><tr><th></th><th class="l">종목</th><th>시점</th><th>시가총액</th><th>옵션 예상 변동${tip('er_imp')}</th><th>과거 평균 변동${tip('er_avg')}</th><th></th><th>직전 서프라이즈${tip('c_surp')}</th><th>4분기 상회${tip('c_beats')}</th><th>전망 순상향률${tip('c_ratio')}</th><th>1개월</th></tr></thead><tbody>
+      <div class="tbl-wrap"><table class="t"><thead><tr><th></th><th class="l">종목</th><th>시점</th><th>시가총액</th><th>옵션 예상 변동${tip('er_imp')}</th><th>지난 8번 평균${tip('er_avg')}</th><th>같은 업종 이번 시즌${tip('em_ind')}</th><th></th><th>직전 서프라이즈${tip('c_surp')}</th><th>4분기 상회${tip('c_beats')}</th><th>전망 순상향률${tip('c_ratio')}</th><th>1개월</th></tr></thead><tbody>
       ${rows.map(r => `<tr><td style="width:30px">${starBtn(r.t)}</td><td class="l nm"><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 22))}</span>${hold.has(r.t) ? ' <span class="tag">보유</span>' : ''}</td>
         <td>${r.c_when || (r.c_est ? '<span class="faint">예상일</span>' : '-')}</td><td class="num">${fmtUsd(r.mcap)}</td>
-        <td class="num">${r.er_imp != null ? '±' + fmt(r.er_imp, 'pct') : '-'}</td><td class="num">${r.er_avg != null ? '±' + fmt(r.er_avg, 'pct') : '-'}</td><td>${ratioTag(r)}</td>
+        <td class="num">${r.er_imp != null ? '±' + fmt(r.er_imp, 'pct') : '-'}</td><td class="num">${r.er_avg != null ? '±' + fmt(r.er_avg, 'pct') : '-'}</td><td class="num">${r.em_ind != null ? '±' + fmt(r.em_ind, 'pct') + (r.em_all ? '<span class="faint small"> 전체</span>' : '') : '-'}</td><td>${ratioTag(r)}</td>
         <td>${pctS(r.c_surp)}</td><td class="num">${r.c_beats != null ? r.c_beats + '/4' : '-'}</td><td>${pctS(r.c_ratio)}</td><td>${pctS(r.r1m)}</td></tr>`).join('')}
       </tbody></table></div></div>`;
   }

@@ -251,7 +251,7 @@ def stock_page(tpl, r, d, ko, aliases, peers, is_etf, ck=None, etfs=None):
         extra += checklist_html(ck or [])
         if cn:
             qas.append((f"{nm} 다음 실적 발표일은 언제인가요?", f"{cn}({wday(cn)}) 미국 시간{when} 발표{' 예정(회사 확정 전 추정)' if r.get('c_est') else ' 예정'}이에요." +
-                        (f" 최근 발표 때 주가는 다음 날 평균 ±{r['er_avg'] * 100:.1f}% 움직였어요." if r.get("er_avg") else "")))
+                        (f" 최근 8번 발표 때 주가는 S&P 500 대비 평균 ±{r['er_avg'] * 100:.1f}% 움직였어요." if r.get("er_avg") else "")))
         if tp:
             qas.append((f"{nm} 목표주가는 얼마인가요?", f"애널리스트 {int(r.get('c_n') or 0)}명의 평균 목표주가는 약 ${tp:,.2f}로, {r['asof']} 종가 ${r['px']:,.2f}보다 {pct(r['c_upside'])} 높아요" +
                         (f" (매수 의견 {pct(r['c_buy'], False)})" if r.get("c_buy") is not None else "") + ". 목표주가는 애널리스트 의견일 뿐 실제 주가를 보장하지 않아요."))
