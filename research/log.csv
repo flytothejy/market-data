@@ -970,3 +970,13 @@ T10-M_minus_B1_top10-설계,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minu
 T10-M_minus_B1_top10-확인1,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,확인1,10633,M_minus_B1_top10,0.01297,0.0,,0.0,events=35
 T10-M_minus_B1_top10-확인2,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,확인2,9910,M_minus_B1_top10,0.01412,0.0,,0.0,events=34
 T10-M_minus_B1_top10-최종,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,최종,10141,M_minus_B1_top10,0.01556,0.0,,0.0005,events=33
+T11-B1_auc-설계,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,B1_auc,13d12m,설계,10331,B1_auc,0.64291,0.5,,0.0,events=105
+T11-B1_auc-확인1,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,B1_auc,13d12m,확인1,10546,B1_auc,0.67291,0.5,,0.0,events=102
+T11-B1_auc-확인2,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,B1_auc,13d12m,확인2,9824,B1_auc,0.62368,0.5,,0.0,events=93
+T11-B1_auc-최종,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,B1_auc,13d12m,최종,10067,B1_auc,0.62534,0.5,,0.0,events=115
+T11-M_minus_B1_auc-설계,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,M_minus_B1_auc,13d12m,설계,10331,M_minus_B1_auc,0.10259,0.0,,0.0,events=105
+T11-M_minus_B1_auc-확인1,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,M_minus_B1_auc,13d12m,확인1,10546,M_minus_B1_auc,0.0054,0.0,,0.4055,events=102
+T11-M_minus_B1_auc-확인2,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,M_minus_B1_auc,13d12m,확인2,9824,M_minus_B1_auc,-0.03411,0.0,,0.8845,events=93
+T11-M_minus_B1_top10-설계,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,M_minus_B1_top10,13d12m,설계,10331,M_minus_B1_top10,0.01531,0.0,,0.0015,events=105
+T11-M_minus_B1_top10-확인1,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,M_minus_B1_top10,13d12m,확인1,10546,M_minus_B1_top10,0.00655,0.0,,0.041,events=102
+T11-M_minus_B1_top10-확인2,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,M_minus_B1_top10,13d12m,확인2,9824,M_minus_B1_top10,0.00201,0.0,,0.3475,events=93
