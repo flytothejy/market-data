@@ -115,7 +115,7 @@
 - 문구 예: "10월 말 기준 나스닥 비금융 시가총액 **87위**."
 
 ## 7. 설명 지표 (예측 아님)
-- 역DCF 내재 성장률: 정의 D(`reports/1-5_재무신호_역DCF.md` §5)를 그대로 쓴다. 입력값은 모두 화면에 공개한다.
+- 역DCF 내재 성장률: 정의 D(`reports/1-5_재무신호_역DCF.md` §5)를 그대로 쓴다. 입력값은 모두 화면에 공개한다. 예시 숫자는 §10 F5대로 다시 계산하고, 문구의 '검증'은 지운다.
 - 피인수 조건: "같은 업종(SIC 2자리) 최근 2년 인수 비율 x%, 업종 내 규모 하위 y%." 업종 회사 수가 10개 미만이면 표시하지 않는다.
 - 분할 이력: 과거 분할 목록 + "최근 15년 분할 없음·고가 유지 회사" 표시.
 
@@ -127,3 +127,59 @@
 - 정해진 날 기록하고, 창이 끝나면 채점한다. 내부 품질 관리용이다.
 - 구현 쪽은 같은 계산을 쓰므로, 계산 결과를 날짜와 함께 R2에 남겨 두면 연구 쪽이 채점에 쓴다.
   - 제안 경로: `hub/research_live/{기능}/{YYYY-MM-DD}.json`
+
+## 10. 기반 데이터 점검 — 업데이트가 필요한 것 / 이미 된 것
+> 2026-10-25 기준. R2 `market-hub/hub/`를 읽기 전용으로 확인했고, `hub/` 코드는 research 브랜치 분기 시점(2026-10-25) 기준이다.
+> **연구 쪽은 R2에 아무것도 쓰지 않았다.** 연구에서 고치거나 새로 만든 데이터는 모두 `research/data/`(로컬, git 제외)에만 있다. 따라서 아래 '필요'는 전부 구현 쪽 작업이다.
+
+### 10-1. 이미 되어 있음 (그대로 쓰면 됨)
+| R2 경로 | 쓰는 기능 | 확인 내용 |
+|---|---|---|
+| `hub/prices/daily/YYYY.parquet` | ①②③④⑤ | close(분할 반영·배당 미반영), adj_close, volume. 2006~. **오늘 종가는 실제 가격**이라 오늘 시가총액·주가 수준 계산에는 문제없다 |
+| `hub/prices/actions.parquet` | ③, 분할 이력 | 배당(배당락일, 분할 반영 금액)과 분할 비율. 2006~, 지금 종목만. 선언일은 없지만 화면 기능에는 필요 없다 |
+| `hub/profile/profile.parquet` | ①⑤ | marketCap, exchange(NMS/NGM/NYQ…), sector, sharesOutstanding. 지금 시점 값 |
+| `hub/universe/universe.parquet`, `members/날짜.parquet` | ⑤, 실시간 채점 | Russell 1000 기준, in_sp500·in_ndx·gics_sector·cik. **2026-10-18부터 날짜별 스냅샷이 쌓이고 있다** → 편입 실시간 채점의 정답으로 쓸 수 있다. 계속 유지 |
+| `hub/sec/filings.parquet` | ②④ | 8-K items(1.03·2.02 포함), accepted 시각, SC 13D/SCHEDULE 13D, SC TO-T, SC 14D9 |
+| `hub/sec/facts.parquet` | ①③ | Assets, Liabilities, AssetsCurrent, LiabilitiesCurrent, OperatingIncomeLoss, NetIncomeLoss, Revenues 계열, Cash, LongTermDebt, InterestExpense, ShareBasedCompensation, WeightedAverageNumberOfDilutedSharesOutstanding, dei 주식수 |
+| `hub/options/2026.parquet` | ② 비교 | 옵션 예상 변동폭과의 실시간 비교용 |
+
+### 10-2. 고쳐야 함 (기존 계산의 오류 — 연구 중 발견)
+| # | 위치 | 문제 | 수정 |
+|---|---|---|---|
+| F1 | `hub/build.py` 잔액 `shares` (약 271행) | `last.drop_duplicates("accn").groupby("accn").val.sum()`가 공시마다 한 줄만 남긴다. 주식 종류가 여럿인 회사(GOOGL, META, BRK 등)는 **일부 종류만 집계**된다. profile marketCap이 없을 때의 대체 시가총액이 틀린다 | 같은 accn·같은 end의 종류별 값을 **합산**(중복 제거는 값까지 포함해서) |
+| F2 | 같은 곳 | dei 주식수 **단위 오류** 공시가 있다(QCOM 일부 분기 1,000배, AEP 100만 배) | 희석 가중평균 주식수(`WeightedAverageNumberOfDilutedSharesOutstanding`, 최근 분기)와 비교한다. 0.5~2배 밖이면 희석 주식수를 쓴다 |
+| F3 | `hub/check.py` | 위 오류를 잡는 점검이 없다 | 점검 규칙 추가: dei×주가 시가총액 ÷ profile marketCap이 0.5~2배 밖이면 경고 |
+| F4 | 과거 시점 시가총액·주가 수준을 쓰는 모든 곳(앞으로 만들 것 포함) | `close`는 **분할 반영 가격**이다. 과거 시가총액 = close × 그때 주식수로 계산하면 나중에 분할한 회사(NVDA·NFLX 등)가 크게 틀린다 | 과거 실제 주가 = close × (그날 이후 분할 비율의 곱). actions의 split으로 복원한다. 연구의 `RawUnadj`와 같다 |
+| F5 | 역DCF 예시(`reports/1-5…` §5) | 예시 표는 분할 오류 수정 **전** 값이다. NVDA '발행주식수 누락'은 F1 탓일 가능성이 크다. 화면 문장 초안의 "(2011–2025 검증)"은 '검증 표시 안 함' 원칙과 어긋난다 | F1·F2·F4 수정 뒤 다시 계산한다. 문구에서 '검증'을 지운다 |
+
+### 10-3. 새로 수집해야 함 (R2 추가)
+| # | 무엇 | 왜 | 방법 |
+|---|---|---|---|
+| N1 | `sec/facts`에 **RetainedEarningsAccumulatedDeficit** 추가 | ① Altman Z(nz) 입력. 지금 R2에 없다(연구도 이 때문에 첫 실행이 실패) | `hub/sec.py` TAGS["us-gaap"]에 추가하고 전체 재수집(`--full`) |
+| N2 | `sec/facts`에 역DCF 정의 D 입력 추가 | 설명 지표 역DCF | LongTermDebtCurrent, DebtCurrent, ShortTermBorrowings, OperatingLeaseLiability, FinanceLeaseLiability, MinorityInterest, ShortTermInvestments, MarketableSecuritiesCurrent, AllocatedShareBasedCompensationExpense |
+| N3 | `sec/filings` FORMS에 합병 서식 추가 | ④ 합병 알림 | PREM14A, DEFM14A, 425, SC TO-C, SC14D9C 추가. DEFA14A는 정기 주총에도 쓰여 단독 알림 금지. 지금은 SC TO-T·SC 14D9만 있다 |
+| N4 | **13D 제출자 확인** | ④ 행동주의 알림. filings에는 대상 회사 쪽 13D만 있고 제출자(펀드)가 없다 | 새 SC 13D/SCHEDULE 13D가 생기면 그 공시의 `https://www.sec.gov/Archives/edgar/data/{대상CIK}/{accn 하이픈 없음}/{accn}-index.htm` 헤더에서 FILED BY CIK를 읽는다. `research/task11/activist_ciks.json`과 대조한다(하루 몇 건 수준) |
+| N5 | **실적 반응 이력** 파생 테이블 | ② 변동폭(과거 8회 평균) | 8-K 2.02의 accepted 시각(UTC → 뉴욕)으로 장전·장후를 정하고 반응일을 찾는다. daily 가격으로 반응일 \|종목 − SPY\| 수익을 계산한다. 같은 회사 45일 안 중복은 첫 건만. 제안: `hub/derived/earn_moves.parquet`. filings 이력이 대체로 2017년 이후라 8회는 충분하다 |
+| N6 | 역DCF 시장 입력 | 역DCF 할인율 | FRED DGS10(일별), Damodaran 'ERP (T12m)' 월별(ERPbymonth.xlsx). 제안: `hub/ref/rates.parquet`. 출처를 화면에 공개 |
+| N7 | Nasdaq-100 외국 구성 종목 시가총액 | ⑤ 순위가 위로 당겨지는 문제(연구 2-4의 주 실패 원인) | universe가 Russell 1000이라 ASML·AZN·PDD·ARM·MELI·CCEP 등이 없다. in_ndx 종목 중 universe 밖 종목도 profile에 넣어 순위 계산에 포함한다 |
+| N8 | 실시간 기록 저장소 | §9 채점 | `hub/research_live/{기능}/{YYYY-MM-DD}.json` 쓰기 권한. 연구 쪽은 읽기만 한다 |
+| N9 | (선택) 배당 선언일 | 배당 알림을 선언 시점에 보내고 싶을 때만 | 8-K items 8.01이나 보도 자료. 지금 actions(배당락일)만으로 점검표는 충분하다 |
+
+### 10-4. 연구에서 새로 만든 데이터 — 사이트에 넣지 않음 (보존·참고용)
+| 데이터 | 위치(로컬) | 사이트 반영 | 비고 |
+|---|---|---|---|
+| EODHD 상장폐지 목록·가격 3만 개, 정리판, 배당(선언일 포함), 분할 | `research/data/prices_delisted*`, `raw/eodhd/` | **안 함** | 개인 연구 플랜 라이선스. 2026-11-22 해지 전에 연구에 더 필요한 수집이 있으면 끝낸다. 원자료 보관 위치는 사용자가 정한다(R2 비공개 `research/` 접두어 등, 연구 쪽 자격 증명은 읽기 전용) |
+| 상장폐지 ↔ SEC CIK 연결표 | `research/data/raw/sb/delisted_cik.csv` | 안 함 | 연구 재현용 |
+| SEC 원본 companyfacts·제출 이력(옛 페이지 포함), 행동주의 펀드 제출 이력 | `research/data/raw/sb/…` | 안 함 | 공개 자료라 필요하면 다시 받을 수 있다 |
+| 분할 미반영 가격 복원(RawUnadj) | 로컬 `prices/*.parquet` 열 추가 | **방법만 반영**(F4) | |
+| Nasdaq-100 위키 판본(2007~2026), S&P 500 변경 내역(2025-08 이후 보강) | `research/data/raw/sb/ndx_wiki/`, `wiki_changes.csv` | 안 함 | 사이트는 universe 스냅샷을 쓴다 |
+| 과거 통계 표(등급별 부실 비율, 배당 조건별 삭감 비율, 사건 반응) | `research/handoff/tickermap_spec.json` | **반영**(정적 값) | 연구 쪽에서 1년에 한 번 다시 계산해 갱신한다 |
+
+### 10-5. 구현 순서 제안
+1. F1·F2·F3(주식수)과 F4 원칙: 모든 시가총액 기반 기능의 전제.
+2. N1(이익잉여금) 재수집 → ① 부실 등급.
+3. N5 → ② 변동폭.
+4. N3·N4 → ④ 알림.
+5. N7 → ⑤ Nasdaq-100 순위.
+6. N2·N6 → 역DCF.
+7. N8: ①부터 기록 시작.
