@@ -156,7 +156,7 @@ for name, (fn, null) in T.items():
         res[c] = {"est": est, "p1": float((bs <= null).mean()), "n": len(sub), "events": int(sub["y"].sum()), "base": sub["y"].mean()}
     for c, r in res.items():
         rows.append({"test": name, "cell": c, **r})
-        logs.append([f"T7-{name}-{c}", today, 7, "피인수 12개월 예측", "MA", name, "acquired12m", c, r["n"], name,
+        logs.append([f"T7{os.environ.get('TAG', '')}-{name}-{c}", today, 7, "피인수 12개월 예측", "MA", name, "acquired12m", c, r["n"], name,
                      round(r["est"], 5), round(null, 3), "", round(r["p1"], 4), f"events={r['events']}"])
 with open(os.path.join(ROOT, "log.csv"), "a") as fh:
     for l in logs: fh.write(",".join(str(x) for x in l) + "\n")

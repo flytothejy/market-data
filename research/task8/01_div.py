@@ -178,7 +178,7 @@ for y, b1cols in (("y_up", ["u_anniv", "u_n4", "m_u_anniv"]), ("y_cut", None)):
                       "top10_B1": top10(sub, a, y), "top10_M": top10(sub, b, y)}
         for c, r in res.items():
             res_rows.append({"target": y, "test": name, "cell": c, **r})
-            logs.append([f"T8-{y}-{name}-{c}", today, 8, "배당 증액·삭감 예측", "DIV", name, y, c, r["n"], name,
+            logs.append([f"T8{os.environ.get('TAG', '')}-{y}-{name}-{c}", today, 8, "배당 증액·삭감 예측", "DIV", name, y, c, r["n"], name,
                          round(r["est"], 5), round(null, 3), "", round(r["p1"], 4), f"events={r['events']}"])
 with open(os.path.join(ROOT, "log.csv"), "a") as fh:
     for l in logs: fh.write(",".join(str(x) for x in l) + "\n")
