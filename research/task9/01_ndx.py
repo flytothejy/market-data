@@ -15,7 +15,7 @@ cur = pd.DataFrame(json.load(open(os.path.join(SB, "company_tickers.json"))).val
 cur["ticker"] = cur["ticker"].str.replace(".", "-", regex=False); now2cik = dict(zip(cur["ticker"], cur["cik_str"]))
 uni = pd.read_csv(os.path.join(DATA, "universe.csv")); uni["t2"] = uni["t"].str.replace(".", "-", regex=False)
 prof = pd.read_parquet(os.path.join(R2, "profile__profile.parquet"))[["ticker", "country", "exchange"]]
-prof["ticker"] = prof["ticker"].str.replace(".", "-", regex=False); prof = prof.set_index("ticker")
+prof["ticker"] = prof["ticker"].astype(str).str.replace(".", "-", regex=False); prof = prof.astype(object).where(prof.notna(), None).drop_duplicates("ticker").set_index("ticker")
 dm = pd.read_csv(os.path.join(SB, "delisted_cik.csv")); dm = dm[dm["status"].isin(["unique", "still_filing_other_ticker"])]
 sic = pd.read_csv(os.path.join(SB, "delisted_sic.csv")).set_index("cik")["sic"]
 dl = pd.DataFrame(json.load(open(os.path.join(DATA, "raw", "eodhd", "us_delisted.json"))))
