@@ -51,6 +51,15 @@ const st = { id: qs('p'), tab: qs('tab') === 'cmp' ? 'cmp' : '', per: '3y', cur:
 let U, byT, SER = {};
 const money = v => v == null ? '-' : '$' + Math.round(v).toLocaleString();
 const today = () => new Date().toISOString().slice(0, 10);
+// 공유 링크: 종목·비중·리밸런싱만 주소에 담음 (금액·기록·이유는 담지 않음, 서버에 저장하지 않음)
+const b64e = o => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64d = t => { try { const b = atob(t.replace(/-/g, '+').replace(/_/g, '/')); return JSON.parse(new TextDecoder().decode(Uint8Array.from(b, c => c.charCodeAt(0)))); } catch (e) { return null; } };
+function shareUrl(p) { return new URL('portfolio.html?s=' + b64e({ n: p.name, i: p.items.filter(x => x.w > 0).map(x => [x.t, +(+x.w).toFixed(2)]), rb: p.rb }), location.href).href; }
+function fromShare(o) {
+  if (!o || !Array.isArray(o.i)) return null;
+  const items = o.i.slice(0, 30).filter(x => Array.isArray(x) && /^[A-Z0-9.\-^]{1,12}$/.test(x[0])).map(([t, w]) => ({ t, w: Math.max(0, Math.min(100, +w || 0)) })).filter(x => x.w > 0);
+  return items.length ? { id: 'shared', shared: true, name: String(o.n || '공유받은 포트폴리오').slice(0, 30), items, rb: ['q', 'y', 'band'].includes(o.rb) ? o.rb : 'none', cap: 10000, start: null, hist: [] } : null;
+}
 const won = v => v == null ? '-' : v >= 1e8 ? (v / 1e8).toFixed(2) + '억원' : Math.round(v / 1e4).toLocaleString() + '만원';
 const wonS = v => !v ? '0' : v >= 1e8 ? (v / 1e8).toFixed(1) + '억' : Math.round(v / 1e4).toLocaleString() + '만';
 // 매달 적립: 넣은 돈·지금 가치·내부수익률
@@ -198,6 +207,7 @@ async function view(p) {
       <div id="ch-f"></div>` : `<div class="s13 mut">만든 지 얼마 안 돼서 아직 쌓인 기록이 없어요. 다음 주부터 그래프가 그려져요 — 과거 시뮬레이션과 달리 결과를 모르고 고른 뒤의 성적이라, 전략을 점검하는 데 더 정직한 기록이에요.</div>`}
     <div class="small faint">구성을 바꾸면 이전 구성이 기록으로 남아, 바꾼 판단이 도움이 됐는지 ‘그대로 뒀다면’과 비교해 보여 드려요</div></div>`;
   }
+  if (p.shared) h = '';                                       // 공유받은 화면: 실제 기록은 보여 주지 않음 (주인만)
   const seg = (attr, cur, opts) => `<div class="seg">${opts.map(([k, l]) => `<button class="btn ${cur === k ? 'on' : ''}" ${attr}="${k}" ${k === 'krw' && !fxA ? 'disabled title="환율 자료를 불러오지 못했어요"' : ''}>${l}</button>`).join('')}</div>`;
   h += `<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">과거 시뮬레이션</h3><span class="mut s13">${perL} 전부터 이 비중으로 ${dca ? `매달 ${M(dca)}씩 샀다면` : '샀다면'} · 리밸런싱 ${RB[p.rb] || '안 함'}</span><span style="margin-left:auto">${segPer(st.per)}</span></div>
     <div class="pf-ctl">${seg('data-cur', krw ? 'krw' : 'usd', [['usd', '달러'], ['krw', '원화']])}${seg('data-pm', st.mode, [['lump', '한 번에'], ['dca', '매달 적립']])}
@@ -310,18 +320,52 @@ function renderMain() {
   }
   const W = p.items.reduce((a, x) => a + x.w, 0);
   m.innerHTML = `<div class="pf-head"><h2>${esc(p.name)}</h2><span class="mut s13">${p.items.length}종목 · 가상 ${money(p.cap)} · 리밸런싱 ${({ q: '분기마다', y: '1년마다', band: '5%p 벗어나면' })[p.rb] || '안 함'}${Math.abs(W - 100) > 0.5 ? ' · 비중 합계를 100%로 맞춰 계산' : ''}</span>
-      <span class="act"><button class="btn" data-edit>편집</button><a class="btn" href="report.html?p=${p.id}" style="text-decoration:none">주간 리포트</a></span></div>
+      <span class="act"><button class="btn" data-edit>편집</button><button class="btn" data-share>공유</button><a class="btn" href="report.html?p=${p.id}" style="text-decoration:none">주간 리포트</a></span></div>
     <div id="pf-body" style="display:flex;flex-direction:column;gap:12px"></div>`;
   m.querySelector('[data-edit]').onclick = () => { st.edit = true; st.draft = JSON.parse(JSON.stringify(p)); renderMain(); };
+  m.querySelector('[data-share]').onclick = async () => {
+    const u = shareUrl(p);
+    try { await navigator.clipboard.writeText(u); notice('공유 링크를 복사했어요 — 종목과 비중만 담겨요'); }
+    catch (e) { prompt('이 링크를 복사해 공유하세요 (종목과 비중만 담겨요)', u); }
+  };
   view(p);
 }
 function bindTop() {
   document.querySelectorAll('#pf-main [data-new]').forEach(b => b.onclick = () => { const p = PF.create(null, []); if (!p) return; st.id = p.id; st.edit = true; st.draft = JSON.parse(JSON.stringify(p)); history.replaceState(null, '', '?p=' + p.id); render(); });
   const fw = document.querySelector('#pf-main [data-fromwatch]'); if (fw) fw.onclick = () => { const W = Watch.list().slice(0, 30); const p = PF.create('관심 종목', W.map((t, i) => ({ t, w: i ? Math.round(1000 / W.length) / 10 : Math.round((100 - Math.round(1000 / W.length) / 10 * (W.length - 1)) * 10) / 10 }))); if (p) { st.id = p.id; history.replaceState(null, '', '?p=' + p.id); render(); } };
 }
-document.addEventListener('portfolio-change', () => { if (U && !st.edit && !document.activeElement.matches('input,textarea,select')) render(); });
+document.addEventListener('portfolio-change', () => { if (U && !qs('s') && !st.edit && !document.activeElement.matches('input,textarea,select')) render(); });
 
+function renderShared(p) {
+  const W = p.items.reduce((a, x) => a + x.w, 0) || 1;
+  $('#app').innerHTML = `<div class="hero"><h1>${esc(p.name)}</h1><p>공유받은 포트폴리오 · 종목과 비중만 담긴 링크예요 · 계산은 오늘 데이터로 새로 해요</p></div>
+    <div class="card" style="gap:10px"><div style="display:flex;gap:6px;flex-wrap:wrap">${p.items.map(x => `<a class="tag" href="${stockUrl(x.t)}" style="text-decoration:none">${esc(x.t)} ${(x.w / W * 100).toFixed(1)}%</a>`).join('')}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn dark" data-copy>내 포트폴리오로 복사</button><span class="small mut">복사한 뒤 내 것으로 고치고, 만든 날부터 실제 기록이 쌓여요</span></div></div>
+    <div id="pf-body" style="display:flex;flex-direction:column;gap:12px"></div>`;
+  $('[data-copy]').onclick = () => {
+    if (!Auth.hint()) { try { localStorage.setItem('hub.pfimport', qs('s')); } catch (e) { } loginGate('로그인하면 이 포트폴리오를 내 포트폴리오로 복사할 수 있어요. 로그인하고 돌아오면 바로 복사해 둘게요.'); return; }
+    importShared(p);
+  };
+  view(p);
+}
+function importShared(p) {
+  try { localStorage.removeItem('hub.pfimport'); } catch (e) { }
+  if (PF.list().length >= PF.max()) { notice(`포트폴리오는 ${PF.max()}개까지예요. 하나를 지운 뒤 다시 복사해 주세요`); return; }
+  const n = PF.create(p.name, p.items.map(x => ({ t: x.t, w: x.w })));
+  if (n) { PF.update(n.id, { rb: p.rb }); location.href = 'portfolio.html?p=' + n.id; }
+}
 (async () => {
+  if (qs('s')) {                                            // 공유 링크: 로그인 없이 볼 수 있음
+    const sp = fromShare(b64d(qs('s')));
+    try { U = await Data.universe(); } catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
+    byT = Object.fromEntries(U.rows.map(r => [r.t, r]));
+    if (!sp) { $('#app').innerHTML = '<div class="hero"><h1>공유 링크를 읽지 못했어요</h1><p>주소가 잘렸는지 확인해 주세요</p></div>'; footer(); return; }
+    let pend = null; try { pend = localStorage.getItem('hub.pfimport'); } catch (e) { }
+    if (Auth.hint() && pend === qs('s')) { importShared(sp); return; }
+    renderShared(sp); footer();
+    document.addEventListener('sync-change', () => { let pd = null; try { pd = localStorage.getItem('hub.pfimport'); } catch (e) { } if (Auth.hint() && pd === qs('s')) importShared(sp); });   // 로그인 마무리 뒤
+    return;
+  }
   if (!Auth.hint()) { loginWall('포트폴리오', ['관심 종목을 비중으로 묶어 과거 1·3·5·10년 시뮬레이션', '만든 날부터 실제 성과를 S&P 500과 비교', `포트폴리오 ${Plan.PF_COUNT}개까지 나란히 비교`]); footer(); return; }
   try { U = await Data.universe(); } catch (e) { $('#app').innerHTML = `<div class="loading">불러오지 못했습니다 (${esc(e.message)})</div>`; return; }
   byT = Object.fromEntries(U.rows.map(r => [r.t, r]));
