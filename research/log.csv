@@ -790,3 +790,17 @@ T6-M_vs_B1_rho-최종,2026-10-25,6,실적 발표일 변동폭 크기 예측,Move
 T6-M_vs_B1_hit-설계,2026-10-25,6,실적 발표일 변동폭 크기 예측,MoveSize,M_vs_B1_hit,|abret|,설계,15665,diff,0.00246,,,0.319,quarters=40
 T6-M_vs_B1_hit-확인1,2026-10-25,6,실적 발표일 변동폭 크기 예측,MoveSize,M_vs_B1_hit,|abret|,확인1,16524,diff,0.01819,,,0.0006,quarters=43
 T6-M_vs_B1_hit-확인2,2026-10-25,6,실적 발표일 변동폭 크기 예측,MoveSize,M_vs_B1_hit,|abret|,확인2,14847,diff,0.0043,,,0.2375,quarters=40
+T7-B1_auc-설계,2026-10-25,7,피인수 12개월 예측,MA,B1_auc,acquired12m,설계,10726,B1_auc,0.72423,0.5,,0.0,events=280
+T7-B1_auc-확인1,2026-10-25,7,피인수 12개월 예측,MA,B1_auc,acquired12m,확인1,10905,B1_auc,0.7384,0.5,,0.0,events=346
+T7-B1_auc-확인2,2026-10-25,7,피인수 12개월 예측,MA,B1_auc,acquired12m,확인2,10288,B1_auc,0.70023,0.5,,0.0,events=320
+T7-B1_auc-최종,2026-10-25,7,피인수 12개월 예측,MA,B1_auc,acquired12m,최종,10483,B1_auc,0.72599,0.5,,0.0,events=324
+T7-B1_lift10-설계,2026-10-25,7,피인수 12개월 예측,MA,B1_lift10,acquired12m,설계,10726,B1_lift10,2.46688,1.0,,0.0,events=280
+T7-B1_lift10-확인1,2026-10-25,7,피인수 12개월 예측,MA,B1_lift10,acquired12m,확인1,10905,B1_lift10,2.76919,1.0,,0.0,events=346
+T7-B1_lift10-확인2,2026-10-25,7,피인수 12개월 예측,MA,B1_lift10,acquired12m,확인2,10288,B1_lift10,2.92833,1.0,,0.0,events=320
+T7-B1_lift10-최종,2026-10-25,7,피인수 12개월 예측,MA,B1_lift10,acquired12m,최종,10483,B1_lift10,3.07418,1.0,,0.0,events=324
+T7-M_minus_B1_auc-설계,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_auc,acquired12m,설계,10726,M_minus_B1_auc,0.00938,0.0,,0.234,events=280
+T7-M_minus_B1_auc-확인1,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_auc,acquired12m,확인1,10905,M_minus_B1_auc,0.01263,0.0,,0.1275,events=346
+T7-M_minus_B1_auc-확인2,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_auc,acquired12m,확인2,10288,M_minus_B1_auc,-0.01706,0.0,,0.9355,events=320
+T7-M_minus_B1_top10-설계,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_top10,acquired12m,설계,10726,M_minus_B1_top10,0.01387,0.0,,0.0055,events=280
+T7-M_minus_B1_top10-확인1,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_top10,acquired12m,확인1,10905,M_minus_B1_top10,0.01087,0.0,,0.0455,events=346
+T7-M_minus_B1_top10-확인2,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_top10,acquired12m,확인2,10288,M_minus_B1_top10,0.00393,0.0,,0.2705,events=320
