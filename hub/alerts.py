@@ -241,13 +241,13 @@ def message(asof, items, ev, R):
     blocks, keys = [], []
     def rank(it):
         e = ev.get(it["t"], [])
-        return (0 if any(x.get("v") or x["kind"] == "er" for x in e) else 1, P_ORDER.get(it.get("purpose") or "", 2), it["t"])
+        return (0 if any(x.get("v") or x["kind"] in ("er", "ev") for x in e) else 1, P_ORDER.get(it.get("purpose") or "", 2), it["t"])
     for it in sorted(items, key=rank):
         e = ev.get(it["t"])
         if not e:
             continue
         if it.get("purpose") == "watch":                     # 그냥 관찰: 검증된 신호·실적만
-            e = [x for x in e if x.get("v") or x["kind"] == "er"]
+            e = [x for x in e if x.get("v") or x["kind"] in ("er", "ev")]
         e = [x for x in e if x["k"] not in it.get("_sent", ())]
         if not e:
             continue
@@ -256,7 +256,7 @@ def message(asof, items, ev, R):
         head = f"<b>{html.escape(it['t'])}</b> {html.escape(r.get('ko') or r.get('n') or '')}"
         sub = " · ".join(x for x in [", ".join(it.get("pf") or []), f"담은 뒤 {pct(ret)}" if ret is not None else ""] if x)
         lines = [head + (f"  <i>{html.escape(sub)}</i>" if sub else "")]
-        icon = {"er": "📅", "ins": "👤", "warn": "⚠️"}
+        icon = {"er": "📅", "ins": "👤", "warn": "⚠️", "ev": "📌"}
         for x in sorted(e, key=lambda x: x["ord"]):
             lines.append(f"{icon.get(x['kind'], '·')} {html.escape(x['title'])}\n    <i>{html.escape(x['desc'])}</i>")
             keys.append(f"{it['t']}|{x['k']}")
@@ -336,9 +336,25 @@ def run(limit=0, full=False, **_):
         log("alerts: 같은 기준일 — 건너뜀 (--full로 강제)")
         return R.done()
     ev, state, rows = detect(U, old.get("tickers", {}), init)
+    # 사건 알림 (13D 행동주의·피인수·합병 관련·파산·분할) — SEC 공시 목록에서
+    try:
+        from . import events
+        from .core import sec_http, read as _read
+        UU = _read(DATA / "universe" / "universe.parquet")
+        tk = {r.ticker: int(r.cik) for r in UU.itertuples() if r.kind == "stock" and r.cik == r.cik} if len(UU) else {}
+        try:
+            http = sec_http() if os.environ.get("SEC_CONTACT_EMAIL") else None
+        except SystemExit:
+            http = None
+        EV = events.scan(tk, U["asof"], http=http) if not init else {}
+        for t, xs in EV.items():
+            ev.setdefault(t, []).extend(xs)
+        R.set(sec_events=sum(len(v) for v in EV.values()))
+    except Exception as e:
+        R.warning(f"사건 알림 실패: {str(e)[:120]}")
     n_ev = sum(len(v) for v in ev.values())
     R.set(asof=U["asof"], init=init, tickers_with_events=len(ev), events=n_ev,
-          kinds={k: sum(1 for v in ev.values() for x in v if x["kind"] == k) for k in ("er", "warn", "ins")})
+          kinds={k: sum(1 for v in ev.values() for x in v if x["kind"] == k) for k in ("er", "warn", "ins", "ev")})
     sent = old.get("sent", {})
     cut = (now_utc() - timedelta(days=40)).date().isoformat()
     sent = {u: {k: d for k, d in m.items() if d >= cut} for u, m in sent.items()}
