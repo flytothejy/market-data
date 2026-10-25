@@ -1,0 +1,24 @@
+# Nasdaq-100 순위 계산용: 나스닥 상장 외국 회사 중 구성 종목이 아니면서 시가총액이 큰 곳 (연구 2-4 답변: 약 200억 달러 이상)
+# 시세 정보(시가총액·거래소·업종)만 받음. 화면에는 순위 계산에만 쓰고 종목 화면은 만들지 않음. 200억 달러 미만은 계산할 때 빠짐
+SNY
+JD
+NTES
+TCOM
+BIDU
+ARGX
+BNTX
+LI
+ONC
+CHKP
+FUTU
+GRAB
+ERIC
+VOD
+RYAAY
+LOGI
+ICLR
+CYBR
+NICE
+XPEV
+BILI
+TME

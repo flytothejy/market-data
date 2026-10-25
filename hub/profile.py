@@ -62,6 +62,26 @@ def run(limit=0, **_):
             num = pd.to_numeric(P[c], errors="coerce")
             P[c] = num if num.notna().sum() == P[c].notna().sum() else P[c].astype("string")
     write(D / "profile.parquet", P)
+    # Nasdaq-100 순위용 외국 회사 (구성 종목 아님) — 시가총액·거래소·업종만
+    try:
+        from pathlib import Path
+        xs = [x.strip() for x in (Path(__file__).resolve().parent / "spec" / "ndx_extra.txt").read_text().splitlines() if x.strip() and not x.startswith("#")]
+        xs = [x for x in xs if x not in set(U.ticker)]
+        xr = []
+        for t in xs[: (5 if limit else None)]:
+            try:
+                info = yf.Ticker(t).info or {}
+                xr.append({"ticker": t, **{k: info.get(k) for k in ("shortName", "marketCap", "exchange", "sector", "country", "quoteType")}})
+            except Exception:
+                pass
+            time.sleep(0.15)
+        if xr:
+            X = pd.DataFrame(xr)
+            X["fetched"] = pd.Timestamp.now().normalize()
+            write(D / "ndx_extra.parquet", X)
+            R.set(ndx_extra=len(X))
+    except Exception as e:
+        R.warning(f"Nasdaq-100 외국 회사 개요 실패: {str(e)[:80]}")
     if si:
         S = pd.DataFrame(si)
         S["date"] = pd.to_datetime(S["dateShortInterest"], unit="s", errors="coerce").dt.date.astype("string")

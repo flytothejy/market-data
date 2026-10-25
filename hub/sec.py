@@ -37,13 +37,15 @@ def run_filings(limit=0, **_):
     U = universe.load("stock").dropna(subset=["cik"])
     if limit:
         U = U.head(limit)
-    rows, fail = [], []
+    rows, fail, meta = [], [], []
     for i, r in enumerate(U.itertuples()):
         try:
             j = http.get(f"https://data.sec.gov/submissions/CIK{_cik10(r.cik)}.json").json()
         except Exception as e:
             fail.append(r.ticker)
             continue
+        meta.append({"cik": int(r.cik), "ticker": r.ticker, "sic": str(j.get("sic") or ""), "sic_desc": j.get("sicDescription") or "",
+                     "state_inc": j.get("stateOfIncorporation") or ""})
         rc = j.get("filings", {}).get("recent", {})
         if not rc:
             continue
@@ -64,6 +66,8 @@ def run_filings(limit=0, **_):
     if not rows:
         R.warning("치명: 받은 제출 목록이 없음")
         return R.done(ok=False)
+    if meta:                                            # 회사 정보 (SIC 업종 코드 등) — 실적 반응의 '같은 업종' 묶음용
+        pd.DataFrame(meta).to_parquet(S_DIR / "company.parquet", index=False)
     new = pd.concat(rows, ignore_index=True)
     old = read(S_DIR / "filings.parquet")
     old_acc = set(old.accession) if not old.empty else set()
