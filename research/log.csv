@@ -992,3 +992,15 @@ T12-M_minus_B1_top10-설계,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M
 T12-M_minus_B1_top10-확인1,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_top10,split,확인1,10456,M_minus_B1_top10,0.03211,0.0,,0.0,events=116
 T12-M_minus_B1_top10-확인2,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_top10,split,확인2,9687,M_minus_B1_top10,0.01427,0.0,,0.004,events=145
 T12-M_minus_B1_top10-최종,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_top10,split,최종,9893,M_minus_B1_top10,0.00299,0.0,,0.34,events=157
+T10clean-B1_auc-설계,2026-10-25,10,부실 12개월 경고,DISTRESS,B1_auc,distress12m,설계,10422,B1_auc,0.63904,0.5,,0.0,events=34
+T10clean-B1_auc-확인1,2026-10-25,10,부실 12개월 경고,DISTRESS,B1_auc,distress12m,확인1,10633,B1_auc,0.70655,0.5,,0.0,events=35
+T10clean-B1_auc-확인2,2026-10-25,10,부실 12개월 경고,DISTRESS,B1_auc,distress12m,확인2,9910,B1_auc,0.65819,0.5,,0.0,events=34
+T10clean-B1_auc-최종,2026-10-25,10,부실 12개월 경고,DISTRESS,B1_auc,distress12m,최종,10141,B1_auc,0.64661,0.5,,0.0,events=33
+T10clean-M_minus_B1_auc-설계,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_auc,distress12m,설계,10422,M_minus_B1_auc,0.3182,0.0,,0.0,events=34
+T10clean-M_minus_B1_auc-확인1,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_auc,distress12m,확인1,10633,M_minus_B1_auc,0.22955,0.0,,0.0,events=35
+T10clean-M_minus_B1_auc-확인2,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_auc,distress12m,확인2,9910,M_minus_B1_auc,0.20145,0.0,,0.0,events=34
+T10clean-M_minus_B1_auc-최종,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_auc,distress12m,최종,10141,M_minus_B1_auc,0.24325,0.0,,0.0,events=33
+T10clean-M_minus_B1_top10-설계,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,설계,10422,M_minus_B1_top10,0.01915,0.0,,0.0,events=34
+T10clean-M_minus_B1_top10-확인1,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,확인1,10633,M_minus_B1_top10,0.01576,0.0,,0.0,events=35
+T10clean-M_minus_B1_top10-확인2,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,확인2,9910,M_minus_B1_top10,0.01014,0.0,,0.0035,events=34
+T10clean-M_minus_B1_top10-최종,2026-10-25,10,부실 12개월 경고,DISTRESS,M_minus_B1_top10,distress12m,최종,10141,M_minus_B1_top10,0.01459,0.0,,0.001,events=33
