@@ -154,7 +154,8 @@ def detect(U, prev, init):
             after = (r.get("c_when") or "").endswith("후")
             kst = kday((date.fromisoformat(nxt) + timedelta(days=1)).isoformat()) + " 새벽" if after else kday(nxt) + " 밤"
             extra = " · ".join(x for x in [f"옵션 예상 변동 ±{r['er_imp'] * 100:.1f}%" if r.get("er_imp") else "",
-                                           f"최근 8번 평균 ±{r['er_avg'] * 100:.1f}%" if r.get("er_avg") else ""] if x)
+                                           f"최근 8번 평균 ±{r['er_avg'] * 100:.1f}%" if r.get("er_avg") else "",
+                                           f"이번 시즌 {'전체' if r.get('em_all') else '같은 업종'} ±{r['em_ind'] * 100:.1f}%" if r.get("em_ind") else ""] if x)
             out.append({"k": f"er_d1:{nxt}", "kind": "er", "ord": 1, "title": f"실적 발표 임박 — 미국 {kday(nxt)} {r.get('c_when') or ''}".strip(),
                         "desc": f"한국 시간 {kst}" + (f" · {extra}" if extra else "")})
         # 실적 뒤 주가 반응 + 내부자 매수는 종목 파일에서 (내 종목에 있을 만한 종목만 읽으면 되지만 단순하게 필요할 때만)

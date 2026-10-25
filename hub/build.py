@@ -329,7 +329,8 @@ def fin_metrics(fc):
          "_buyback": T["buyback"], "_divpaid": T["divpaid"], "_equity": eq, "_shares": B.get("shares"), "_dilsh": B.get("dilsh"),
          # 부실 위험 등급 입력 (잔액은 최근 값, 흐름은 최근 4분기 합)
          "_assets": B.get("assets"), "_liab": B.get("liab"), "_ca": B.get("ca"), "_cl": B.get("cl"), "_cash": B.get("cash"), "_re": B.get("re"),
-         "_opi_ttm": T["opi"], "_bal_date": B.get("assets_date")}
+         "_opi_ttm": T["opi"], "_bal_date": B.get("assets_date"),
+         "_ni_q": Q["ni"][max(Q["ni"])] if Q.get("ni") else None}
     om0 = div(P["opi"], P["rev"])
     m["om_chg"] = (m["om"] - om0) if m["om"] is not None and om0 is not None else None
     return m
@@ -1100,10 +1101,79 @@ def run(limit=0, **_):
         R.set(distress_n=live["n_universe"], distress_hi=int(sum(1 for v in DZ.values() if v["g"] >= 2)))
     except Exception as e:
         R.warning(f"부실 위험 등급 계산 실패: {str(e)[:120]}")
+    # ---- 지수 편입 근접도 (연구 과제 1-3·2-4): 순위 사실만, 수익 표현 없음
+    IX = {}
+    try:
+        today_ = PX.date.max()
+        spc, nq = [], []
+        for r in S.itertuples():
+            t = r.ticker
+            p = P.loc[t] if t in P.index else pd.Series(dtype=object)
+            mc = nz(float(p.get("marketCap"))) if p.get("marketCap") == p.get("marketCap") and p.get("marketCap") is not None else None
+            g = pxg.get(t)
+            if not mc or g is None or not len(g):
+                continue
+            sec_ = p.get("sector") if isinstance(p.get("sector"), str) else None
+            exch = p.get("exchange") if isinstance(p.get("exchange"), str) else ""
+            if exch in ("NMS", "NGM") and sec_ != "Financial Services":
+                nq.append((t, mc, bool(getattr(r, "in_ndx", False))))
+            if getattr(r, "in_sp500", False) or p.get("country") != "United States" or len(g) < 252:
+                continue
+            cik = int(r.cik) if r.cik == r.cik else None
+            fm = fin.get(cik, {}) if cik else {}
+            if not ((fm.get("_ni_q") or 0) > 0 and (fm.get("ni") or 0) > 0):
+                continue
+            last = g[g.date >= today_ - pd.Timedelta(days=200)]
+            mv = last.assign(m=last.date.dt.to_period("M")).groupby("m").volume.sum()
+            mv = mv[mv.index < today_.to_period("M")].tail(6)          # 지난 6개 완결 월
+            dv = float((g.tail(252).close * g.tail(252).volume).sum())
+            if len(mv) < 6 or (mv < 250_000).any() or dv / mc < 0.75:
+                continue
+            spc.append((t, mc))
+        spc.sort(key=lambda x: -x[1])
+        XN = read(DATA / "profile" / "ndx_extra.parquet")
+        have = {x[0] for x in nq}
+        for x in XN.itertuples() if len(XN) else []:
+            if x.ticker in have or x.exchange not in ("NMS", "NGM") or x.sector == "Financial Services" or not (x.marketCap and x.marketCap >= 2e10):
+                continue
+            nq.append((x.ticker, float(x.marketCap), False))
+        nq.sort(key=lambda x: -x[1])
+        for i, (t, mc) in enumerate(spc[:50]):
+            IX.setdefault(t, {})["sp"] = i + 1
+        for i, (t, mc, mem) in enumerate(nq[:150]):
+            IX.setdefault(t, {})["nq"] = i + 1
+        live_ix = {"date": str(today_.date()), "spec_version": json.loads((Path(__file__).resolve().parent / "spec" / "tickermap_spec.json").read_text(encoding="utf-8"))["version"],
+                   "n_universe": len(spc) + len(nq),
+                   "rows": [{"ticker": t, "cik": None, "mcap": mc, "inputs": {"index": "S&P 500", "rule": "비구성·미국 본사·상장 12개월·최근 분기와 4분기 순이익>0·6개월 매달 25만 주·연 거래대금/시총≥0.75"},
+                             "score": None, "grade": i + 1, "flags": []} for i, (t, mc) in enumerate(spc[:50])] +
+                           [{"ticker": t, "cik": None, "mcap": mc, "inputs": {"index": "Nasdaq-100", "member": mem, "rule": "나스닥(NMS·NGM)·비금융·외국 포함 시가총액 순"},
+                             "score": None, "grade": i + 1, "flags": []} for i, (t, mc, mem) in enumerate(nq[:150])]}
+        _p = DATA / "research_live" / "index_near" / f"{today_.date()}.json"
+        _p.parent.mkdir(parents=True, exist_ok=True)
+        _p.write_text(json.dumps(live_ix, ensure_ascii=False, default=float), encoding="utf-8")
+        log(f"지수 근접도: S&P 500 요건 충족 비구성 {len(spc)}종목 · 나스닥 비금융 {len(nq)}종목")
+    except Exception as e:
+        R.warning(f"지수 근접도 계산 실패: {str(e)[:120]}")
     if SH_BAD:
         R.warning(f"SEC 주식수 × 주가가 시세 시가총액과 0.5~2배 밖: {len(SH_BAD)}종목 ({', '.join(SH_BAD[:8])})")
-    from . import dividend
+    from . import dividend, earnmove
     DIVL = []
+    # ---- 실적 반응 이력 (연구 과제 2-1, N5): 반응일 S&P 500 대비 초과수익
+    EMg, SEAS, SIC2 = {}, None, {}
+    try:
+        CO = read(DATA / "sec" / "company.parquet")
+        SIC2 = {int(r.cik): str(r.sic)[:2] for r in CO.itertuples() if str(r.sic or "")[:2]} if len(CO) else {}
+        EM = earnmove.moves(FL, pxg, SIC2)
+        if len(EM):
+            (DATA / "derived").mkdir(parents=True, exist_ok=True)
+            EM.to_parquet(DATA / "derived" / "earn_moves.parquet", index=False)
+            EMg = dict(tuple(EM.groupby("ticker")))
+            W = EM[(EM.react <= now) & (EM.react > now - pd.Timedelta(days=90))].assign(a=lambda x: x.ex.abs())
+            SEAS = {"all": (W.a.sum(), len(W)), "sic": W.groupby("sic2").a.agg(["sum", "count"]).to_dict("index"),
+                    "own": W.groupby("ticker").agg(s=("a", "sum"), n=("a", "count"), sic=("sic2", "first")).to_dict("index")}
+        log(f"실적 반응 이력: {len(EM)}건 · {len(EMg)}종목")
+    except Exception as e:
+        R.warning(f"실적 반응 이력 실패: {str(e)[:120]}")
     _spy = tech(pxg["SPY"]) if "SPY" in pxg else {}
     SPY_R1Y = _spy.get("r1y")
     log("종목별 지표 계산·저장 중")
@@ -1128,6 +1198,8 @@ def run(limit=0, **_):
                "sec": p.get("sector"), "ind": p.get("industry"), "mcap": mcap,
                "idx": ",".join(x for x, f in (("S&P500", "in_sp500"), ("NDX", "in_ndx"), ("DOW", "in_dji"), ("R1000", "in_r1000")) if getattr(r, f, False)),
                **{k: v for k, v in tc.items() if k != "asof"}, **{k: v for k, v in fm.items() if not k.startswith("_")}}
+        if t in IX:                                      # 지수 근접도: S&P 500 요건 충족 비구성 시총 순위 · 나스닥 비금융 시총 순위
+            row.update({"ix_" + k: v for k, v in IX[t].items()})
         if t in DZ:                                      # 부실 위험 등급 0~3 (보통·주의·높음·매우 높음) + 근거 칩
             row["dz"], row["dz_c"] = DZ[t]["g"], ",".join(DZ[t]["c"])
         if usd and mcap:
@@ -1227,6 +1299,19 @@ def run(limit=0, **_):
         if er_hist:
             mv = [abs(x[1]) for x in er_hist[-8:]]
             row["er_avg"] = sum(mv) / len(mv)
+        # 지난 8번 반응일 S&P 500 대비 |초과수익| 평균(4번 이상이면 이 값으로) + 이번 시즌 같은 업종 평균
+        em = EMg.get(t)
+        if em is not None and len(em) >= 4:
+            row["er_avg"], row["er_n"] = float(em.sort_values("react").tail(8).ex.abs().mean()), int(min(len(em), 8))
+        if SEAS:
+            sc_ = SIC2.get(cik, "") if cik else ""
+            own = SEAS["own"].get(t, {"s": 0, "n": 0})
+            ss = SEAS["sic"].get(sc_) if sc_ else None
+            if ss and ss["count"] - (own["n"] if own.get("sic") == sc_ else 0) >= 5:
+                k_ = own["n"] if own.get("sic") == sc_ else 0
+                row["em_ind"] = (ss["sum"] - (own["s"] if k_ else 0)) / (ss["count"] - k_)
+            elif SEAS["all"][1] - own["n"] > 0:
+                row["em_ind"], row["em_all"] = (SEAS["all"][0] - own["s"]) / (SEAS["all"][1] - own["n"]), 1
         # 최근 실적 결과 (발표 뒤 75일 동안 카드 유지)
         er_last = None
         if er_d and (now - pd.Timestamp(er_d)).days <= 75:
@@ -1447,7 +1532,7 @@ def run(limit=0, **_):
     # ---- universe.json + market.json + meta.json
     U2 = pd.DataFrame(rows)
     fields = {k: {"label": v[0], "cat": v[1], "fmt": v[2], "tier": v[3]} for k, v in FIELDS.items()}
-    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c", "dvc_r", "dvc_m", "dvc_v", "dvc_y", "dvc_w"]
+    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c", "dvc_r", "dvc_m", "dvc_v", "dvc_y", "dvc_w", "er_n", "em_ind", "em_all", "ix_sp", "ix_nq"]
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")
@@ -1458,6 +1543,23 @@ def run(limit=0, **_):
                                  ensure_ascii=False, default=lambda o: None if o is None else (bool(o) if isinstance(o, (bool, np.bool_)) else float(o))), encoding="utf-8")
     except Exception as e:
         R.warning(f"배당 점검 기록 실패: {str(e)[:80]}")
+    try:                                                # 실적 변동폭 기록: 7일 안에 발표하는 종목 (연구 쪽 채점용, 모델 예상치 포함)
+        _rows, _asof = [], str(PX.date.max().date())
+        lim = str((PX.date.max() + pd.Timedelta(days=7)).date())
+        for r_ in rows:
+            if r_.get("k") != "stock" or not r_.get("c_next") or not (_asof < str(r_["c_next"]) <= lim):
+                continue
+            em = EMg.get(r_["t"])
+            f1 = float(em.sort_values("react").tail(8).ex.abs().mean()) if em is not None and len(em) >= 4 else None
+            pred, xs = earnmove.model(f1, pxg.get(r_["t"]), pxg.get("SPY"), r_.get("em_ind"), "후" in str(r_.get("c_when") or "")) if f1 and r_.get("em_ind") else (None, {})
+            _rows.append({"ticker": r_["t"], "cik": None, "mcap": r_.get("mcap"), "inputs": {"c_next": r_["c_next"], "c_when": r_.get("c_when"), "simple8": f1, "season_ind": r_.get("em_ind"), "season_all": bool(r_.get("em_all")), **xs},
+                          "score": pred, "grade": None, "flags": [] if f1 else ["과거 반응 4번 미만"]})
+        _p = DATA / "research_live" / "earn_move" / f"{_asof}.json"
+        _p.parent.mkdir(parents=True, exist_ok=True)
+        _p.write_text(json.dumps({"date": _asof, "spec_version": dividend.spec()["version"], "n_universe": len(_rows), "rows": _rows},
+                                 ensure_ascii=False, default=lambda o: None if o is None else float(o)), encoding="utf-8")
+    except Exception as e:
+        R.warning(f"실적 변동폭 기록 실패: {str(e)[:80]}")
     dump(OUT / "free" / "universe.json", {"asof": PX.date.max(), "consensus_asof": c_asof, "etf_base": etf_base, "fields": fields, "cats": CATS, "rows": free_rows})
     dump(OUT / "pro" / "universe_pro.json", {"rows": U2[["t"] + [k for k in pro_keys if k in U2.columns]].to_dict("records")})
     st = U2[U2.k == "stock"]
