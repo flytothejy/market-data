@@ -28,6 +28,15 @@
 .pfx-tip{display:none;position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);white-space:nowrap;z-index:5}
 .pfx-tip i,.pfx-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0}
 .pfx-t td,.pfx-t th{white-space:nowrap}
+.pf-b2{display:flex;flex-direction:column;gap:5px}
+.pf-b2 .r{display:grid;grid-template-columns:minmax(80px,150px) 1fr 70px;gap:8px;align-items:center;font-size:13px}
+.pf-b2 .k{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-b2 .bb{display:flex;flex-direction:column;gap:2px}
+.pf-b2 .bb i{display:block;height:7px;border-radius:3px;min-width:1px}
+.pf-b2 .bb i.me{background:var(--accent)}
+.pf-b2 .bb i.rf{background:#8a8984;opacity:.55}
+.pf-b2 .v{text-align:right;line-height:1.15}
+.pf-b2 .v small{display:block;color:var(--faint);font-size:11px}
 .cmp-pick{display:flex;gap:6px;flex-wrap:wrap}
 .cmp-pick label{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13.5px;cursor:pointer;background:var(--card)}
 .cmp-pick input{accent-color:var(--ink)}
@@ -122,7 +131,7 @@ function bindEditor(p) {
 async function view(p) {
   const el = $('#pf-body');
   el.innerHTML = '<div class="loading">계산하는 중…</div>';
-  await need([...p.items.map(x => x.t), 'SPY', 'QQQ']);
+  const [E] = await Promise.all([PFX.etfs([...p.items, { t: 'SPY', w: 1 }], byT), need([...p.items.map(x => x.t), 'SPY', 'QQQ'])]);
   if (!el.isConnected) return;
   const dates = calendar(), ts = [...p.items.map(x => x.t), 'SPY', 'QQQ'], A = aligned(ts, dates);
   const col = PFX.COLORS[0];
@@ -141,7 +150,8 @@ async function view(p) {
   const perL = PFX.PER.find(x => x[0] === st.per)[1];
   // 구성
   const comp = (ok ? sim.contrib : p.items.map(x => ({ t: x.t, w: x.w / p.items.reduce((a, y) => a + y.w, 0), c: null }))).slice().sort((a, b) => b.w - a.w);
-  const sec = {}; comp.forEach(x => { const r = byT[x.t]; const s = !r ? '기타' : r.k === 'etf' ? 'ETF' : secKo(r.sec); sec[s] = (sec[s] || 0) + x.w; });
+  // 진단: ETF 안까지 펼친 실제 노출, S&P 500(SPY)과 같은 방법으로 비교
+  const L = PFX.look(p.items, byT, E), Ls = PFX.look([{ t: 'SPY', w: 1 }], byT, E), C = PFX.conc(L), ch = PFX.chars(L, p.items, byT), chS = PFX.chars(Ls, [{ t: 'SPY', w: 1 }], byT);
   const days = Math.round((Date.now() - Date.parse(p.start || today())) / 864e5);
   let h = '';
   h += `<div class="card"><h3>만든 뒤 성과 <span class="mut s13" style="font-weight:400">· ${esc(p.start || today())}부터${days ? ` (${days}일)` : ''}</span></h3>
@@ -152,9 +162,27 @@ async function view(p) {
     ${ok && sim.late.length ? `<div class="small" style="color:var(--warn)">${esc(sim.late.join(', '))} 상장 뒤인 ${esc(sim.start)}부터 계산했어요</div>` : ''}
     ${sim && sim.missing && sim.missing.length ? `<div class="small" style="color:var(--warn)">주가 자료가 없어 뺀 종목: ${esc(sim.missing.join(', '))}</div>` : ''}
     <div class="small faint">지금 고른 종목을 과거에 대 본 결과라 실제보다 좋게 나오기 쉬워요 (이미 오른 종목을 고르게 되므로) · ${NOTE}</div></div>`;
-  h += `<div class="grid g2"><div class="card"><h3>구성</h3><div class="tbl-wrap"><table class="t"><thead><tr><th class="l">종목</th><th>비중</th><th>1개월</th><th>1년</th>${ok ? `<th title="과거 시뮬레이션 기간 동안 포트폴리오 수익률에 보탠 몫">기여 (${perL})</th>` : ''}<th>점검표</th></tr></thead><tbody>
-      ${comp.map(x => { const r = byT[x.t]; const ck = r ? checklist(r, U) : []; const nw = ck.filter(c => c.s === 'warn').length; return `<tr><td class="l"><a href="${stockUrl(x.t)}"><b>${esc(x.t)}</b></a> <span class="mut small">${esc(r ? shortName(r.ko || r.n) : '')}</span></td><td class="num">${(x.w * 100).toFixed(1)}%</td><td>${r ? pctS(r.r1m) : '-'}</td><td>${r ? pctS(r.r1y) : '-'}</td>${ok ? `<td>${pctS(x.c)}</td>` : ''}<td>${r ? (nw ? `<span style="color:var(--warn)">경고 ${nw}</span>` : '<span class="faint">-</span>') : ''}</td></tr>`; }).join('')}</tbody></table></div></div>
-    <div class="card"><h3>업종 비중</h3>${Object.entries(sec).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div style="display:grid;grid-template-columns:100px 1fr 48px;gap:8px;align-items:center;font-size:13px"><span>${esc(k)}</span><div class="bar"><i style="width:${v * 100}%"></i></div><span class="num" style="text-align:right">${(v * 100).toFixed(1)}%</span></div>`).join('')}</div></div>`;
+  h += `<div class="card"><h3>구성</h3><div class="tbl-wrap"><table class="t"><thead><tr><th class="l">종목</th><th>비중</th><th>1개월</th><th>1년</th>${ok ? `<th title="과거 시뮬레이션 기간 동안 포트폴리오 수익률에 보탠 몫">기여 (${perL})</th>` : ''}<th>점검표</th></tr></thead><tbody>
+      ${comp.map(x => { const r = byT[x.t]; const ck = r && r.k !== 'etf' ? checklist(r, U) : []; const nw = ck.filter(c => c.s === 'warn').length; return `<tr><td class="l"><a href="${stockUrl(x.t)}"><b>${esc(x.t)}</b></a> <span class="mut small">${esc(r ? shortName(r.ko || r.n) : '')}</span>${r && r.k === 'etf' ? ' <span class="tag">ETF</span>' : ''}</td><td class="num">${(x.w * 100).toFixed(1)}%</td><td>${r ? pctS(r.r1m) : '-'}</td><td>${r ? pctS(r.r1y) : '-'}</td>${ok ? `<td>${pctS(x.c)}</td>` : ''}<td>${nw ? `<span style="color:var(--warn)">경고 ${nw}</span>` : '<span class="faint">-</span>'}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+  // 실제 노출
+  const topE = L.exp.slice(0, 12), viaS = e => Object.entries(e.via).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${(v * 100).toFixed(1)}%`).join(' · ');
+  h += `<div class="grid g2"><div class="card"><h3>${L.etfW ? '실제로 들고 있는 종목 <span class="mut s13" style="font-weight:400">· ETF 안까지 펼침</span>' : '집중도'}</h3>
+    <div class="pf-big"><div><span>상위 5종목 합계</span><b>${(C.top5 * 100).toFixed(0)}%</b></div><div><span title="비중이 모두 같다면 몇 종목에 나눠 담은 것과 같은지">실질 분산</span><b>${C.effN ? C.effN.toFixed(1) + '종목' : '-'}</b></div>${L.etfW ? `<div><span>ETF 안 나머지 종목</span><b>${(L.rest * 100).toFixed(0)}%</b></div>` : ''}</div>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th class="l">종목</th><th>실제 비중</th>${L.etfW ? '<th>직접</th><th class="l">ETF를 통해</th>' : ''}</tr></thead><tbody>
+      ${topE.map(e => { const r = byT[e.t], both = e.direct > 0 && Object.keys(e.via).length; return `<tr><td class="l">${r ? `<a href="${stockUrl(e.t)}"><b>${esc(e.t)}</b></a>` : `<b>${esc(e.t)}</b>`} <span class="mut small">${esc(r ? shortName(r.ko || r.n) : '')}</span>${both ? ' <span class="tag" style="color:var(--warn)">겹침</span>' : ''}</td><td class="num"><b>${(e.w * 100).toFixed(1)}%</b></td>${L.etfW ? `<td class="num">${e.direct ? (e.direct * 100).toFixed(1) + '%' : '<span class="faint">-</span>'}</td><td class="l small mut">${esc(viaS(e)) || '-'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>
+    ${L.etfW ? `<div class="small faint">ETF는 공개된 구성 종목만 펼쳤어요 (ETF마다 상위 10~60개 정도). 펼치지 못한 부분은 ‘ETF 안 나머지 종목’으로 따로 셌어요 · 실질 분산은 이 나머지를 빼고 계산</div>` : `<div class="small faint">실질 분산 = 비중이 모두 같다면 몇 종목에 나눠 담은 것과 같은지 (1 ÷ 비중 제곱의 합)</div>`}</div>`;
+  // 쏠림
+  const secK = Object.keys({ ...L.sec, ...Ls.sec }).sort((a, b) => (L.sec[b] || 0) - (L.sec[a] || 0) || (Ls.sec[b] || 0) - (Ls.sec[a] || 0));
+  const nonStock = Object.entries(L.cls).filter(([k]) => k !== '주식').reduce((a, [, v]) => a + v, 0);
+  const crow = (n, a, b, f) => `<tr><td class="l">${n}</td><td class="num"><b>${f(a)}</b></td><td class="num mut">${f(b)}</td></tr>`;
+  const fP = v => v == null ? '-' : (v * 100).toFixed(1) + '%', fX = v => v == null ? '-' : v.toFixed(1) + '배';
+  h += `<div class="card"><h3>쏠림 <span class="mut s13" style="font-weight:400">· S&P 500과 비교</span></h3>
+    <div class="leg-row"><span><i style="background:var(--accent)"></i>${esc(p.name)}</span><span><i style="background:${PFX.BCOL.SPY}"></i>S&P 500</span></div>
+    <div class="s13 mut" style="margin-top:2px">업종</div>${PFX.bars2(L.sec, Ls.sec, secK)}
+    ${nonStock > 0.005 ? `<div class="s13 mut" style="margin-top:6px">자산 종류</div>${PFX.bars2(L.cls, Ls.cls, Object.keys(L.cls).sort((a, b) => L.cls[b] - L.cls[a]))}` : ''}
+    <div class="tbl-wrap"><table class="t"><thead><tr><th class="l">특징 (가중 평균)</th><th>${esc(p.name)}</th><th>S&P 500</th></tr></thead><tbody>
+      ${crow('선행 PER', ch.fpe, chS.fpe, fX)}${crow('매출 성장 (최근 연간)', ch.rev_g, chS.rev_g, fP)}${crow('영업이익률', ch.om, chS.om, fP)}${crow('배당수익률', ch.dy, chS.dy, fP)}${crow('1년 수익률', ch.r1y, chS.r1y, fP)}</tbody></table></div>
+    <div class="small faint">S&P 500도 같은 방법(SPY 공개 구성 상위 종목)으로 계산 · PER·매출 성장·이익률은 펼친 종목 중 자료가 있는 ${(ch.cov * 100).toFixed(0)}% 기준</div></div></div>`;
   h += `<div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 직접 고른 종목과 비중으로 계산한 가상 결과예요</div>`;
   el.innerHTML = h;
   if (fm) PFX.chart(el.querySelector('#ch-f'), [{ name: p.name, color: col, d: fwd.d, v: fwd.v, bold: 1 }, fS && { name: 'S&P 500', color: PFX.BCOL.SPY, d: fS.d, v: fS.v }], { h: 180 });
@@ -168,7 +196,7 @@ async function compare(list) {
   if (!st.cmp) st.cmp = list.map(p => p.id);
   const pick = list.filter(p => st.cmp.includes(p.id));
   el.innerHTML = '<div class="loading">계산하는 중…</div>';
-  await need([...list.flatMap(p => p.items.map(x => x.t)), 'SPY', 'QQQ']);
+  const [E] = await Promise.all([PFX.etfs(list.flatMap(p => p.items), byT), need([...list.flatMap(p => p.items.map(x => x.t)), 'SPY', 'QQQ'])]);
   if (!el.isConnected) return;
   const dates = calendar(), A = aligned(Object.keys(SER), dates), s0 = perStart(dates, st.per);
   const runs = pick.map(p => ({ p, r: PFX.run(p.items, A, dates, s0, 10000, p.rb) })).filter(x => x.r && !x.r.empty);
@@ -180,18 +208,19 @@ async function compare(list) {
   PFX.BENCH.forEach(([t, n]) => { if (st.bench[t]) { const b = PFX.bench(A, dates, i1, t); if (b) lines.push({ name: n, color: PFX.BCOL[t], d: b.d, v: b.v }); } });
   const mRows = lines.map(l => ({ name: l.name, color: l.color, m: PFX.metrics(l, spy) }));
   // 겹치는 종목
-  const share = []; for (let a = 0; a < pick.length; a++) for (let b = a + 1; b < pick.length; b++) { const A1 = pick[a].items.map(x => x.t), B1 = new Set(pick[b].items.map(x => x.t)); const both = A1.filter(t => B1.has(t)); share.push([pick[a].name, pick[b].name, both]); }
+  // 겹치는 정도: ETF 안까지 펼친 뒤 같은 종목의 작은 쪽 비중을 더함
+  const LK = pick.map(p => PFX.look(p.items, byT, E));
+  const share = []; for (let a = 0; a < pick.length; a++) for (let b = a + 1; b < pick.length; b++) { const mb = Object.fromEntries(LK[b].exp.map(e => [e.t, e.w])); const both = LK[a].exp.filter(e => mb[e.t]).map(e => ({ t: e.t, w: Math.min(e.w, mb[e.t]) })).sort((x, y) => y.w - x.w); share.push([pick[a].name, pick[b].name, both, both.reduce((s, x) => s + x.w, 0)]); }
   // 업종 비중 나란히
-  const secOf = p => { const W = p.items.reduce((a, x) => a + x.w, 0) || 1, m = {}; p.items.forEach(x => { const r = byT[x.t]; const s = !r ? '기타' : r.k === 'etf' ? 'ETF' : secKo(r.sec); m[s] = (m[s] || 0) + x.w / W; }); return m; };
-  const secs = pick.map(secOf), keys = [...new Set(secs.flatMap(m => Object.keys(m)))].sort((a, b) => secs.reduce((s, m) => s + (m[b] || 0), 0) - secs.reduce((s, m) => s + (m[a] || 0), 0));
+  const secs = LK.map(l => l.sec), keys = [...new Set(secs.flatMap(m => Object.keys(m)))].sort((a, b) => secs.reduce((s, m) => s + (m[b] || 0), 0) - secs.reduce((s, m) => s + (m[a] || 0), 0));
   const perL = PFX.PER.find(x => x[0] === st.per)[1];
   let h = `<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">포트폴리오 비교</h3><span class="mut s13">${perL} · 모두 같은 날 가상 $10,000로 시작</span><span style="margin-left:auto">${segPer(st.per)}</span></div>
     <div class="cmp-pick">${list.map((p, k) => `<label><input type="checkbox" data-pk="${p.id}" ${st.cmp.includes(p.id) ? 'checked' : ''}><i class="pfx-dot" style="background:${PFX.COLORS[k]}"></i>${esc(p.name)}</label>`).join('')}${PFX.BENCH.map(([t, n]) => `<label><input type="checkbox" data-bk="${t}" ${st.bench[t] ? 'checked' : ''}><i class="pfx-dot" style="background:${PFX.BCOL[t]}"></i>${n}</label>`).join('')}</div>
     ${lines.length ? `<div id="ch-c"></div>${PFX.table(mRows)}` : '<div class="s13 mut">비교할 포트폴리오를 고르세요</div>'}
     ${start !== dates[s0] && runs.length ? `<div class="small" style="color:var(--warn)">늦게 상장한 종목이 있어 ${esc(start)}부터 비교했어요</div>` : ''}
     <div class="small faint">지금 고른 종목을 과거에 대 본 결과라 실제보다 좋게 나오기 쉬워요 · ${NOTE}</div></div>`;
-  if (pick.length >= 2) h += `<div class="grid g2"><div class="card"><h3>업종 비중</h3><div class="tbl-wrap"><table class="t"><thead><tr><th class="l">업종</th>${pick.map(p => `<th><i class="pfx-dot" style="background:${PFX.COLORS[list.indexOf(p)]}"></i>${esc(p.name)}</th>`).join('')}</tr></thead><tbody>${keys.map(k => `<tr><td class="l">${esc(k)}</td>${secs.map(m => `<td class="num">${m[k] ? (m[k] * 100).toFixed(1) + '%' : '<span class="faint">-</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
-    <div class="card"><h3>겹치는 종목</h3>${share.map(([a, b, both]) => `<div class="s13"><b>${esc(a)}</b> · <b>${esc(b)}</b> — ${both.length ? both.map(t => `<a href="${stockUrl(t)}">${esc(t)}</a>`).join(', ') : '<span class="mut">없음</span>'}</div>`).join('')}</div></div>`;
+  if (pick.length >= 2) h += `<div class="grid g2"><div class="card"><h3>업종 비중 <span class="mut s13" style="font-weight:400">· ETF 안까지</span></h3><div class="tbl-wrap"><table class="t"><thead><tr><th class="l">업종</th>${pick.map(p => `<th><i class="pfx-dot" style="background:${PFX.COLORS[list.indexOf(p)]}"></i>${esc(p.name)}</th>`).join('')}</tr></thead><tbody>${keys.map(k => `<tr><td class="l">${esc(k)}</td>${secs.map(m => `<td class="num">${m[k] ? (m[k] * 100).toFixed(1) + '%' : '<span class="faint">-</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
+    <div class="card"><h3>겹치는 정도 <span class="mut s13" style="font-weight:400">· ETF 안까지</span></h3>${share.map(([a, b, both, ov]) => `<div class="s13" style="display:flex;flex-direction:column;gap:3px"><div><b>${esc(a)}</b> · <b>${esc(b)}</b> — 겹치는 비중 <b>${(ov * 100).toFixed(0)}%</b></div>${both.length ? `<div class="small mut">${both.slice(0, 8).map(x => `<a href="${stockUrl(x.t)}">${esc(x.t)}</a> ${(x.w * 100).toFixed(1)}%`).join(' · ')}${both.length > 8 ? ` 외 ${both.length - 8}개` : ''}</div>` : ''}</div>`).join('')}<div class="small faint">같은 종목은 두 포트폴리오 중 작은 쪽 비중만큼 겹친다고 셈 · ETF 공개 구성 기준</div></div></div>`;
   h += `<div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 직접 고른 종목과 비중으로 계산한 가상 결과예요</div>`;
   el.innerHTML = h;
   if (lines.length) PFX.chart(el.querySelector('#ch-c'), lines);

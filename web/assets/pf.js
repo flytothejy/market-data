@@ -6,6 +6,63 @@ const PFX = {
   BCOL: { SPY: '#8a8984', QQQ: '#c4c3bd' },
   PER: [['1y', '1년', 1], ['3y', '3년', 3], ['5y', '5년', 5], ['10y', '10년', 10]],
 
+  // ---- 진단: ETF 안까지 펼친 실제 노출 (ETF 구성은 공개된 상위 종목만 있는 경우가 많아 나머지는 따로 셈)
+  SEC_KEY: { technology: 'Technology', healthcare: 'Healthcare', financial_services: 'Financial Services', consumer_cyclical: 'Consumer Cyclical', consumer_defensive: 'Consumer Defensive', industrials: 'Industrials', energy: 'Energy', utilities: 'Utilities', realestate: 'Real Estate', basic_materials: 'Basic Materials', communication_services: 'Communication Services' },
+  CAPS: ['초대형 (2,000억 달러 이상)', '대형 (100억~2,000억)', '중형 (20억~100억)', '소형 (20억 미만)', '분류 안 됨'],
+  async etfs(items, byT) {
+    const out = {};
+    await Promise.all(items.filter(x => byT[x.t] && byT[x.t].k === 'etf').map(async x => { try { out[x.t] = await Data.etf(x.t); } catch (e) { } }));
+    return out;
+  },
+  look(items, byT, E) {
+    const W = items.reduce((a, x) => a + (x.w > 0 ? x.w : 0), 0) || 1;
+    const exp = {}, sec = {}, cls = {}, cap = {}, add = (m, k, v) => { if (v > 0) m[k] = (m[k] || 0) + v; };
+    let rest = 0, etfW = 0;
+    const capB = mc => mc == null ? this.CAPS[4] : mc >= 2e11 ? this.CAPS[0] : mc >= 1e10 ? this.CAPS[1] : mc >= 2e9 ? this.CAPS[2] : this.CAPS[3];
+    const stock = (t, w, via) => {
+      const r = byT[t], e = exp[t] = exp[t] || { t, w: 0, direct: 0, via: {} };
+      e.w += w; if (via) e.via[via] = (e.via[via] || 0) + w; else e.direct += w;
+      add(cap, r && r.k !== 'etf' ? capB(r.mcap) : this.CAPS[4], w);
+    };
+    for (const x of items) {
+      if (!(x.w > 0)) continue;
+      const w = x.w / W, r = byT[x.t];
+      if (!r) { add(cls, '분류 안 됨', w); add(sec, '분류 안 됨', w); continue; }
+      if (r.k !== 'etf') { stock(x.t, w); add(cls, '주식', w); add(sec, secKo(r.sec), w); continue; }
+      etfW += w;
+      const d = E[x.t], a = d && d.assets, hs = (d && d.holdings) || [];
+      if (!d || (!a && !hs.length && !d.sectors)) { add(cls, '분류 안 됨', w); add(sec, '분류 안 됨', w); add(cap, this.CAPS[4], w); continue; }
+      const S = a ? (a.stockPosition || 0) + (a.preferredPosition || 0) : 1, B = a ? a.bondPosition || 0 : 0, C = a ? a.cashPosition || 0 : 0, O = a ? (a.otherPosition || 0) + (a.convertiblePosition || 0) : 0;
+      add(cls, '주식', w * S); add(cls, '채권', w * B); add(cls, '현금', w * C); add(cls, '기타 자산 (금 등)', w * O);
+      if (d.sectors) { const tot = Object.values(d.sectors).reduce((p, q) => p + q, 0) || 1; for (const [k, v] of Object.entries(d.sectors)) add(sec, secKo(this.SEC_KEY[k] || k), w * S * v / tot); }
+      else add(sec, '분류 안 됨', w * S);
+      add(sec, '채권', w * B); add(sec, '현금', w * C); add(sec, '기타 자산 (금 등)', w * O);
+      let cov = 0;
+      for (const [h, , pct] of hs) { const hw = w * S * Math.min(1, (+pct || 0) / 100 / Math.max(S, 1e-9)); if (!(hw > 0)) continue; cov += hw; stock(String(h).replace('.', '-'), hw, x.t); }
+      const rem = Math.max(0, w * S - cov); rest += rem; add(cap, this.CAPS[4], rem);
+    }
+    return { exp: Object.values(exp).sort((a, b) => b.w - a.w), sec, cls, cap, rest, etfW };
+  },
+  // 가중 특징: 펼친 종목 기준(선행 PER은 이익수익률로 평균), 배당·1년 수익률은 담은 종목(ETF 그대로) 기준
+  chars(L, items, byT) {
+    const W = items.reduce((a, x) => a + (x.w > 0 ? x.w : 0), 0) || 1;
+    const avg = (f, pos) => { let s = 0, n = 0; for (const e of L.exp) { const r = byT[e.t]; if (!r || r.k === 'etf') continue; const v = f(r); if (v == null || !isFinite(v) || (pos && v <= 0)) continue; s += e.w * v; n += e.w; } return n ? s / n : null; };
+    const ey = avg(r => { const pe = r.c_fpe ?? r.pe; return pe > 0 ? 1 / pe : null; });
+    const item = f => { let s = 0, n = 0; for (const x of items) { const r = byT[x.t]; if (!r || !(x.w > 0)) continue; const v = f(r); if (v == null) continue; s += x.w / W * v; n += x.w / W; } return n ? s / n : null; };
+    const known = L.exp.filter(e => byT[e.t] && byT[e.t].k !== 'etf').reduce((a, e) => a + e.w, 0);
+    const stockW = Object.entries(L.cls).filter(([k]) => k === '주식').reduce((a, [, v]) => a + v, 0) || (1 - L.etfW);
+    return { fpe: ey ? 1 / ey : null, rev_g: avg(r => r.rev_g), om: avg(r => r.om), dy: item(r => r.dy), r1y: item(r => r.r1y), cov: stockW ? Math.min(1, known / stockW) : 0 };
+  },
+  conc(L) {
+    const top5 = L.exp.slice(0, 5).reduce((a, e) => a + e.w, 0), hh = L.exp.reduce((a, e) => a + e.w * e.w, 0);
+    return { top5, effN: hh ? 1 / hh : null };
+  },
+  // 두 분포를 나란히 막대로 (mine vs ref)
+  bars2(mine, ref, keys, refName) {
+    const mx = Math.max(...keys.map(k => Math.max(mine[k] || 0, ref ? ref[k] || 0 : 0)), 0.01);
+    return `<div class="pf-b2">${keys.map(k => { const a = mine[k] || 0, b = ref ? ref[k] || 0 : null; return `<div class="r"><span class="k">${esc(k)}</span><div class="bb"><i class="me" style="width:${a / mx * 100}%"></i>${b != null ? `<i class="rf" style="width:${b / mx * 100}%"></i>` : ''}</div><span class="v num">${(a * 100).toFixed(1)}%${b != null ? `<small>${(b * 100).toFixed(1)}%</small>` : ''}</span></div>`; }).join('')}</div>`;
+  },
+
   // 종목별 주간 시계열 { t: {d:[], c:[]} } — 없는 종목은 빠짐
   async series(tickers, byT) {
     const out = {};
