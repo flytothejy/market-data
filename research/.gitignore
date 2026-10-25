@@ -26,3 +26,4 @@ data/events_R.csv
 data/raw/sb/tenk_docs/
 data/raw/sb/tenk_delisted.csv
 data/prices_delisted_clean/
+data/task6_events.csv
