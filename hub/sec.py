@@ -17,7 +17,8 @@ from . import universe
 S_DIR = DATA / "sec"
 FORMS = {"8-K", "8-K/A", "10-K", "10-K/A", "10-Q", "10-Q/A", "20-F", "20-F/A", "40-F", "6-K", "DEF 14A",
          "3", "4", "4/A", "5", "144", "S-1", "S-3", "S-4", "SC 13D", "SC 13D/A", "SC 13G", "SC 13G/A",
-         "SCHEDULE 13D", "SCHEDULE 13D/A", "SCHEDULE 13G", "SCHEDULE 13G/A", "SC TO-T", "SC 14D9", "11-K", "NT 10-K", "NT 10-Q"}
+         "SCHEDULE 13D", "SCHEDULE 13D/A", "SCHEDULE 13G", "SCHEDULE 13G/A", "SC TO-T", "SC 14D9", "11-K", "NT 10-K", "NT 10-Q",
+         "PREM14A", "DEFM14A", "425", "SC TO-C", "SC14D9C"}                # 합병 관련 (사건 알림)
 ITEMS_8K = {"1.01": "중요 계약 체결", "1.02": "중요 계약 해지", "1.03": "파산", "1.05": "사이버 보안 사고",
             "2.01": "인수·매각 완료", "2.02": "실적 발표", "2.03": "채무 발생", "2.05": "구조조정 비용",
             "2.06": "자산 손상", "3.01": "상장 요건 미달", "3.02": "미등록 증권 발행", "3.03": "주주 권리 변경",
@@ -197,7 +198,8 @@ TAGS = {
                 "DepreciationDepletionAndAmortization", "Assets", "Liabilities", "StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "AssetsCurrent", "LiabilitiesCurrent",
                 "CashAndCashEquivalentsAtCarryingValue", "LongTermDebt", "LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations", "LongTermNotesPayable", "InventoryNet", "AccountsReceivableNetCurrent",
                 "NetCashProvidedByUsedInOperatingActivities", "PaymentsToAcquirePropertyPlantAndEquipment",
-                "PaymentsForRepurchaseOfCommonStock", "PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "ShareBasedCompensation"],
+                "PaymentsForRepurchaseOfCommonStock", "PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "ShareBasedCompensation",
+                "RetainedEarningsAccumulatedDeficit"],                  # 부실 위험 등급(Altman Z) 입력
     "ifrs-full": ["Revenue", "RevenueFromContractsWithCustomers", "InterestIncome", "GrossProfit", "ProfitLossFromOperatingActivities", "ProfitLoss", "ProfitLossAttributableToOwnersOfParent",
                   "DilutedEarningsLossPerShare", "Assets", "Liabilities", "Equity", "CashAndCashEquivalents",
                   "CashFlowsFromUsedInOperatingActivities", "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"],

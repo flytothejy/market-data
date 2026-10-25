@@ -64,6 +64,21 @@ def nz(x):
     return None if x is None or (isinstance(x, float) and not math.isfinite(x)) else x
 
 
+def sec_shares(dei, dil, ref=None):
+    """SEC 주식수 고르기 (F1·F2): 표지 주식수(dei)와 희석 가중평균(dil)이 0.5~2배 안이면 표지 값.
+    벗어나면 둘 다 단위 오류가 있을 수 있어(MCD는 희석 쪽, TAP·MA는 표지 쪽이 틀림) 시세 정보 주식수(ref)에 가까운 값.
+    ref가 없으면 0이 아닌 쪽, 둘 다 있으면 표지 값"""
+    dei = dei if dei and dei > 1 else None
+    dil = dil if dil and dil > 1 else None
+    if dei and dil:
+        if 0.5 <= dei / dil <= 2:
+            return dei
+        if ref and ref > 0:
+            return min((dei, dil), key=lambda x: abs(np.log(x / ref)))
+        return dei
+    return dei or dil
+
+
 def div(a, b):
     try:
         return a / b if a is not None and b not in (None, 0) and math.isfinite(a) and math.isfinite(b) else None
@@ -88,7 +103,8 @@ CONCEPTS = {
 }
 BAL = {"assets": ["Assets"], "liab": ["Liabilities"], "equity": ["StockholdersEquity", "Equity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
        "cash": ["CashAndCashEquivalentsAtCarryingValue", "CashAndCashEquivalents"], "ltd": ["LongTermDebtNoncurrent", "LongTermDebt", "LongTermDebtAndCapitalLeaseObligations", "LongTermNotesPayable"],
-       "ca": ["AssetsCurrent"], "cl": ["LiabilitiesCurrent"], "shares": ["EntityCommonStockSharesOutstanding"]}
+       "ca": ["AssetsCurrent"], "cl": ["LiabilitiesCurrent"], "shares": ["EntityCommonStockSharesOutstanding"],
+       "re": ["RetainedEarningsAccumulatedDeficit"]}
 
 
 ANNUAL_FORMS = ("10-K", "20-F", "40-F")
@@ -270,6 +286,15 @@ def fin_company(G0):
             last = g[g.end_dt == g.end_dt.max()]
             bal[c] = float(last.drop_duplicates("accn", keep="last").groupby("accn").val.sum().iloc[-1]) if c == "shares" else float(last.val.iloc[-1])
             bal[c + "_date"] = g.end_dt.max()
+    # 희석 가중평균 주식수(가장 최근 분기, 없으면 가장 최근 기간) — 표지 주식수가 없거나 단위가 틀린 회사 보완용 (F1·F2)
+    dg = G.get("WeightedAverageNumberOfDilutedSharesOutstanding")
+    if dg is not None and len(dg):
+        dg = dg[(dg.unit == "shares") & dg.start_dt.notna() & (dg.val > 0)]
+        if len(dg) and dg.end_dt.max() >= gmax - pd.Timedelta(days=200):
+            dg = dg.assign(_days=(dg.end_dt - dg.start_dt).dt.days).sort_values(["end_dt", "filed"])
+            last = dg[dg.end_dt == dg.end_dt.max()]
+            qd = last[last._days.between(80, 100)]
+            bal["dilsh"] = float((qd if len(qd) else last).val.iloc[-1])
     res["bal"], res["cur"] = bal, cur
     return res
 
@@ -301,7 +326,10 @@ def fin_metrics(fc):
          "roe": div(T["ni"], eq), "roa": div(T["ni"], B.get("assets")),
          "de": div(B.get("ltd"), eq), "cr": div(B.get("ca"), B.get("cl")),
          "rnd": div(T["rnd"], T["rev"]), "fq": max(ks) if ks else None, "cur": fc["cur"],
-         "_buyback": T["buyback"], "_divpaid": T["divpaid"], "_equity": eq, "_shares": B.get("shares")}
+         "_buyback": T["buyback"], "_divpaid": T["divpaid"], "_equity": eq, "_shares": B.get("shares"), "_dilsh": B.get("dilsh"),
+         # 부실 위험 등급 입력 (잔액은 최근 값, 흐름은 최근 4분기 합)
+         "_assets": B.get("assets"), "_liab": B.get("liab"), "_ca": B.get("ca"), "_cl": B.get("cl"), "_cash": B.get("cash"), "_re": B.get("re"),
+         "_opi_ttm": T["opi"], "_bal_date": B.get("assets_date")}
     om0 = div(P["opi"], P["rev"])
     m["om_chg"] = (m["om"] - om0) if m["om"] is not None and om0 is not None else None
     return m
@@ -1038,6 +1066,42 @@ def run(limit=0, **_):
         et = c_snap[(c_snap.block == "eps_trend") & (c_snap.period == "+1y")]
         if len(et):
             ET = et.pivot_table(index="ticker", columns="field", values="value", aggfunc="last")
+    # ---- 부실 위험 등급 (연구 과제 2-5): 칩이 대상 종목 전체 기준이라 종목별 저장 전에 한 번에 계산
+    DZ, SH_BAD = {}, []
+    try:
+        from . import distress
+        spy_g, cands = pxg.get("SPY"), []
+        for r in S.itertuples():
+            t = r.ticker
+            g = pxg.get(t)
+            if g is None or not len(g):
+                continue
+            p = P.loc[t] if t in P.index else pd.Series(dtype=object)
+            cik = int(r.cik) if r.cik == r.cik else None
+            fm = fin.get(cik, {}) if cik else {}
+            px = float(g.close.iloc[-1])                 # 오늘 종가 = 실제 주가 (그 뒤 분할이 없으므로)
+            mc = nz(float(p.get("marketCap"))) if p.get("marketCap") == p.get("marketCap") and p.get("marketCap") is not None else None
+            if mc is None:
+                sh = sec_shares(fm.get("_shares"), fm.get("_dilsh"), nz(p.get("sharesOutstanding")))
+                mc = px * sh if sh else None
+            tail = g.tail(252)
+            adv = float((tail.close * tail.volume).mean()) if len(tail) >= 200 else None
+            sec_ = p.get("sector") if isinstance(p.get("sector"), str) else getattr(r, "gics_sector", None)
+            cands.append({"t": t, "cik": cik, "mcap": mc, "country": p.get("country") if isinstance(p.get("country"), str) else None,
+                          "sector": sec_, "adv": adv, "x": distress.inputs(fm, mc, g, spy_g, px)})
+            # F3: SEC 주식수 × 주가 vs 시세 정보 시가총액 (단위 오류 점검)
+            shs = sec_shares(fm.get("_shares"), fm.get("_dilsh"), nz(p.get("sharesOutstanding")))
+            pm = nz(float(p.get("marketCap"))) if p.get("marketCap") == p.get("marketCap") and p.get("marketCap") is not None else None
+            if shs and pm and not (0.5 <= shs * px / pm <= 2):
+                SH_BAD.append(f"{t} {shs * px / pm:.2f}배")
+        DZ, live = distress.run(cands, str(PX.date.max().date()), DATA / "research_live")
+        n_g = pd.Series([v["g"] for v in DZ.values()]).value_counts().to_dict()
+        log(f"부실 위험 등급: 대상 {live['n_universe']}종목 · 등급별 {n_g}")
+        R.set(distress_n=live["n_universe"], distress_hi=int(sum(1 for v in DZ.values() if v["g"] >= 2)))
+    except Exception as e:
+        R.warning(f"부실 위험 등급 계산 실패: {str(e)[:120]}")
+    if SH_BAD:
+        R.warning(f"SEC 주식수 × 주가가 시세 시가총액과 0.5~2배 밖: {len(SH_BAD)}종목 ({', '.join(SH_BAD[:8])})")
     log("종목별 지표 계산·저장 중")
     rows, n_files = [], 0
     asof_s = str(PX.date.max().date())                  # 트레일 끝점(지금 점)의 날짜 = 마지막 거래일
@@ -1052,13 +1116,16 @@ def run(limit=0, **_):
         cik = int(r.cik) if r.cik == r.cik else None
         fm = fin.get(cik, {}) if cik else {}
         mcap = nz(float(p.get("marketCap"))) if p.get("marketCap") == p.get("marketCap") and p.get("marketCap") is not None else None
-        if mcap is None and tc.get("px") and fm.get("_shares"):
-            mcap = tc["px"] * fm["_shares"]
+        if mcap is None and tc.get("px"):                # 시세 정보 시가총액이 없을 때만 SEC 주식수로 (F1·F2)
+            sh = sec_shares(fm.get("_shares"), fm.get("_dilsh"), nz(p.get("sharesOutstanding")))
+            mcap = tc["px"] * sh if sh else None
         usd = fm.get("cur", "USD") == "USD"
         row = {"t": t, "n": p.get("shortName") if isinstance(p.get("shortName"), str) else r.name, "k": "stock",
                "sec": p.get("sector"), "ind": p.get("industry"), "mcap": mcap,
                "idx": ",".join(x for x, f in (("S&P500", "in_sp500"), ("NDX", "in_ndx"), ("DOW", "in_dji"), ("R1000", "in_r1000")) if getattr(r, f, False)),
                **{k: v for k, v in tc.items() if k != "asof"}, **{k: v for k, v in fm.items() if not k.startswith("_")}}
+        if t in DZ:                                      # 부실 위험 등급 0~3 (보통·주의·높음·매우 높음) + 근거 칩
+            row["dz"], row["dz_c"] = DZ[t]["g"], ",".join(DZ[t]["c"])
         if usd and mcap:
             row.update(pe=div(mcap, fm.get("ni")) if (fm.get("ni") or 0) > 0 else None, ps=div(mcap, fm.get("rev")),
                        pb=div(mcap, fm.get("_equity")) if (fm.get("_equity") or 0) > 0 else None, fcfy=div(fm.get("fcf"), mcap),
@@ -1362,7 +1429,7 @@ def run(limit=0, **_):
     # ---- universe.json + market.json + meta.json
     U2 = pd.DataFrame(rows)
     fields = {k: {"label": v[0], "cat": v[1], "fmt": v[2], "tier": v[3]} for k, v in FIELDS.items()}
-    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs"]
+    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c"]
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")

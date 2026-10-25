@@ -15,6 +15,7 @@
 """
 import html, json, math, os
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 from .core import DATA, Run, log, now_utc
 from .check import HOLIDAYS
@@ -122,6 +123,14 @@ def stock_json(t):
         return {}
 
 
+_DZ = None
+def dz_spec():
+    global _DZ
+    if _DZ is None:
+        _DZ = json.loads((Path(__file__).resolve().parent / "spec" / "tickermap_spec.json").read_text(encoding="utf-8"))["distress"]
+    return _DZ
+
+
 def detect(U, prev, init):
     """전 종목 이벤트 {티커: [ {k, kind, title, desc, v(검증), ord} ]} + 오늘 상태"""
     rows = [r for r in U["rows"] if r.get("k") == "stock" or r.get("k") is None]
@@ -200,6 +209,19 @@ def detect(U, prev, init):
                 who = f"{top.get('title') or ''} {top.get('who') or ''}".strip()
                 out.append({"k": f"ins:{s['ib_last']}", "kind": "ins", "ord": 2, "v": True, "title": f"임원 장내 매수 {usd(tot)}",
                             "desc": f"{who} 외 {len(buys) - 1}건" if len(buys) > 1 else f"{who} · {top.get('d', '')[5:].replace('-', '/')}"})
+        # 부실 위험 등급이 '높음' 이상으로 올라가면 한 번 (연구 과제 2-5, 과거 비율은 spec 값)
+        dz = r.get("dz")
+        dz = int(dz) if isinstance(dz, (int, float)) and dz == dz else None
+        s["dz"] = dz
+        if not init and dz is not None and dz >= 2 and (p.get("dz") is None or p.get("dz") < 2) and "dz" in p:
+            sp = dz_spec()
+            name = ["보통", "주의", "높음", "매우 높음"][dz]
+            rate = sp["hist_rate_1y_large"][name]
+            chip = {"vol": "변동성 높음", "debt": "부채 비율 높음", "px": "주가 낮음", "loss": "적자", "ret": "1년 수익률 부진"}
+            cs = [chip[c] for c in str(r.get("dz_c") or "").split(",") if c in chip]
+            rs = f"약 {round(rate * 100)}%" if rate >= 0.05 else f"{rate * 100:.1f}%"
+            out.append({"k": f"dz:{dz}:{asof}", "kind": "warn", "ord": 0, "title": f"부실 위험 {name}",
+                        "desc": (" · ".join(cs) + " — " if cs else "") + f"같은 등급 회사의 과거 1년 내 파산·부실 상장폐지 비율 {rs} (전체 {sp['hist_rate_1y_large']['전체'] * 100:.1f}%)"})
         # 점검표 새 경고
         now_w = warns(r, sec_med)
         for k, (title, desc, v) in now_w.items():
