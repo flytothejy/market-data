@@ -6,7 +6,7 @@ from scipy.stats import norm
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data"); OUT = os.path.join(ROOT, "task1", "out")
-PX = os.path.join(DATA, "prices"); PXD = os.path.join(DATA, "prices_delisted")
+PX = os.path.join(DATA, "prices"); PXD = os.path.join(DATA, "prices_delisted_clean")
 E = pd.read_csv(os.path.join(DATA, "events_R.csv"), parse_dates=["date", "rday"]).reset_index(drop=True)
 spy = pd.read_parquet(os.path.join(PX, "SPY.parquet"))["Close"]; cal = spy.index; ls = np.log(spy.values)
 
@@ -68,7 +68,7 @@ for sig, y, cl, neg, raw, cross in TESTS:
         res[c] = test(E[E["cell"] == c], sig, y, cl, neg, raw, cross)
     for c, r in res.items():
         rows.append({"signal": sig, "target": y, "dir": "-" if neg else "+", "cell": c, **r})
-        logs.append([f"T1R-{sig}-{y}-{c}", today, 1, "생존편향 재검증(상장폐지 포함)", "1R", sig, y, c, r["n"],
+        logs.append([f"T1Rc-{sig}-{y}-{c}", today, 1, "생존편향 재검증(상장폐지 포함)", "1R", sig, y, c, r["n"],
                      "D(부호 뒤집음)" if neg else "D", round(r["D"], 5), "", "", round(r["p1"], 4), f"n_on={r['n_on']}"])
 with open(os.path.join(ROOT, "log.csv"), "a") as fh:
     for l in logs: fh.write(",".join(str(x) for x in l) + "\n")

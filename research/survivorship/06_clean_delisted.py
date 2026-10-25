@@ -11,6 +11,13 @@ SRC = os.path.join(ROOT, "data", "prices_delisted"); DST = os.path.join(ROOT, "d
 os.makedirs(DST, exist_ok=True)
 log = []
 for p in glob.glob(os.path.join(SRC, "*.parquet")):
+    dst = os.path.join(DST, os.path.basename(p))
+    if os.path.exists(dst) and os.environ.get("RESUME") == "1":
+        x0 = pd.read_parquet(p).groupby(level=0).last(); y0 = pd.read_parquet(dst)   # 이미 처리됨: 로그만 다시 계산
+        n_sp = int((x0["Close"].reindex(y0.index).notna() & y0["Close"].isna()).sum())
+        cut0 = len(y0) < len(x0) and y0.index.max() < x0.index.max()
+        if n_sp or cut0: log.append((os.path.basename(p)[:-8], n_sp, str(y0.index.max().date()) if cut0 else ""))
+        continue
     x = pd.read_parquet(p).groupby(level=0).last()
     c = x["Close"].where(x["Close"] > 0)
     v = c.values.astype(float); n = len(v); spike = np.zeros(n, bool)

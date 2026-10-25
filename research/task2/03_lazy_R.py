@@ -20,7 +20,7 @@ prev_unc = f.drop_duplicates("acc").set_index("acc")["md_unc"]
 f["unc_d"] = f["md_unc"] - f["prev_acc"].map(prev_unc)
 f = f[f["prev_acc"].notna()].reset_index(drop=True)
 f = f.rename(columns={"ticker": "t"})
-PXD = os.path.join(DATA, "prices_delisted")
+PXD = os.path.join(DATA, "prices_delisted_clean")
 def ppath(t):
     return os.path.join(PXD, t[2:].replace("/", "_") + ".parquet") if t.startswith("D:") else os.path.join(DATA, "prices", f"{t}.parquet")
 _spy = pd.read_parquet(os.path.join(DATA, "prices", "SPY.parquet"))["Close"]; _cal = _spy.index

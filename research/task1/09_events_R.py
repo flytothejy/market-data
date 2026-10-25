@@ -6,7 +6,7 @@ import numpy as np, pandas as pd, requests
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data"); SB = os.path.join(DATA, "raw", "sb"); CF = os.path.join(SB, "companyfacts")
-PX = os.path.join(DATA, "prices"); PXD = os.path.join(DATA, "prices_delisted")
+PX = os.path.join(DATA, "prices"); PXD = os.path.join(DATA, "prices_delisted_clean")
 H = {"User-Agent": "tickermap-research flytothejy@gmail.com"}
 S = requests.Session(); S.headers.update(H)
 
