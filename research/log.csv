@@ -980,3 +980,15 @@ T11-M_minus_B1_auc-확인2,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVI
 T11-M_minus_B1_top10-설계,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,M_minus_B1_top10,13d12m,설계,10331,M_minus_B1_top10,0.01531,0.0,,0.0015,events=105
 T11-M_minus_B1_top10-확인1,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,M_minus_B1_top10,13d12m,확인1,10546,M_minus_B1_top10,0.00655,0.0,,0.041,events=102
 T11-M_minus_B1_top10-확인2,2026-10-25,11,행동주의 13D 12개월 표적,ACTIVIST,M_minus_B1_top10,13d12m,확인2,9824,M_minus_B1_top10,0.00201,0.0,,0.3475,events=93
+T12-B1_auc-설계,2026-10-25,12,주식분할 예측(90~365일),SPLIT,B1_auc,split,설계,10235,B1_auc,0.69934,0.5,,0.0,events=113
+T12-B1_auc-확인1,2026-10-25,12,주식분할 예측(90~365일),SPLIT,B1_auc,split,확인1,10456,B1_auc,0.67182,0.5,,0.0,events=116
+T12-B1_auc-확인2,2026-10-25,12,주식분할 예측(90~365일),SPLIT,B1_auc,split,확인2,9687,B1_auc,0.68359,0.5,,0.0,events=145
+T12-B1_auc-최종,2026-10-25,12,주식분할 예측(90~365일),SPLIT,B1_auc,split,최종,9893,B1_auc,0.69325,0.5,,0.0,events=157
+T12-M_minus_B1_auc-설계,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_auc,split,설계,10235,M_minus_B1_auc,0.11345,0.0,,0.0,events=113
+T12-M_minus_B1_auc-확인1,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_auc,split,확인1,10456,M_minus_B1_auc,0.16924,0.0,,0.0,events=116
+T12-M_minus_B1_auc-확인2,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_auc,split,확인2,9687,M_minus_B1_auc,0.0822,0.0,,0.0,events=145
+T12-M_minus_B1_auc-최종,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_auc,split,최종,9893,M_minus_B1_auc,0.03389,0.0,,0.054,events=157
+T12-M_minus_B1_top10-설계,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_top10,split,설계,10235,M_minus_B1_top10,0.01354,0.0,,0.011,events=113
+T12-M_minus_B1_top10-확인1,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_top10,split,확인1,10456,M_minus_B1_top10,0.03211,0.0,,0.0,events=116
+T12-M_minus_B1_top10-확인2,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_top10,split,확인2,9687,M_minus_B1_top10,0.01427,0.0,,0.004,events=145
+T12-M_minus_B1_top10-최종,2026-10-25,12,주식분할 예측(90~365일),SPLIT,M_minus_B1_top10,split,최종,9893,M_minus_B1_top10,0.00299,0.0,,0.34,events=157
