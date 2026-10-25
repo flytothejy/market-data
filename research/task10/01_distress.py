@@ -98,6 +98,7 @@ for r in pn.itertuples():
     u = px["RawUnadj"].iloc[pos]; F["price"].append(np.log(min(u, 15)) if u == u and u > 0 else np.nan)
 for k, v in F.items(): pn[k] = v
 pn["rsize"] = np.log(pn["mcap"].where(pn["mcap"] > 0)); pn["nz"] = -pn["z"]
+pn = pn.replace([np.inf, -np.inf], np.nan)   # 가격 0 등에서 생긴 무한대는 결측
 grp = pd.read_csv(os.path.join(DATA, "split_groups.csv")); grp["t"] = grp["t"].str.replace(".", "-", regex=False); grp = grp.set_index("t")["grp"]
 pn["grp"] = [("A" if hashlib.md5(t[2:].encode()).digest()[0] % 2 == 0 else "B") if t.startswith("D:") else grp.get(t) for t in pn["t"]]
 pn = pn[pn["grp"].notna()].copy()
