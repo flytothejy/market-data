@@ -922,3 +922,39 @@ T9v2-B1_prec_rem_vs_base-최종,2026-10-25,9,Nasdaq-100 연말 재구성 예측,
 T9v2-B1_minus_B0_f1-설계,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_minus_B0_f1,add/rem,설계,8,B1_minus_B0_f1,-0.01932,0,,0.6465,n_add=23;n_rem=14
 T9v2-B1_minus_B0_f1-확인1,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_minus_B0_f1,add/rem,확인1,7,B1_minus_B0_f1,-0.0097,0,,0.6555,n_add=17;n_rem=16
 T9v2-B1_minus_B0_f1-확인2,2026-10-25,9,Nasdaq-100 연말 재구성 예측,NDX,B1_minus_B0_f1,add/rem,확인2,8,B1_minus_B0_f1,-0.0706,0,,0.988,n_add=13;n_rem=22
+T7v2-B1_auc-설계,2026-10-25,7,피인수 12개월 예측,MA,B1_auc,acquired12m,설계,10568,B1_auc,0.70377,0.5,,0.0,events=272
+T7v2-B1_auc-확인1,2026-10-25,7,피인수 12개월 예측,MA,B1_auc,acquired12m,확인1,10775,B1_auc,0.71263,0.5,,0.0,events=337
+T7v2-B1_auc-확인2,2026-10-25,7,피인수 12개월 예측,MA,B1_auc,acquired12m,확인2,10027,B1_auc,0.68151,0.5,,0.0,events=300
+T7v2-B1_auc-최종,2026-10-25,7,피인수 12개월 예측,MA,B1_auc,acquired12m,최종,10235,B1_auc,0.72169,0.5,,0.0,events=318
+T7v2-B1_lift10-설계,2026-10-25,7,피인수 12개월 예측,MA,B1_lift10,acquired12m,설계,10568,B1_lift10,2.18684,1.0,,0.0,events=272
+T7v2-B1_lift10-확인1,2026-10-25,7,피인수 12개월 예측,MA,B1_lift10,acquired12m,확인1,10775,B1_lift10,2.39873,1.0,,0.0,events=337
+T7v2-B1_lift10-확인2,2026-10-25,7,피인수 12개월 예측,MA,B1_lift10,acquired12m,확인2,10027,B1_lift10,2.24141,1.0,,0.0,events=300
+T7v2-B1_lift10-최종,2026-10-25,7,피인수 12개월 예측,MA,B1_lift10,acquired12m,최종,10235,B1_lift10,2.60712,1.0,,0.0,events=318
+T7v2-M_minus_B1_auc-설계,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_auc,acquired12m,설계,10568,M_minus_B1_auc,0.016,0.0,,0.084,events=272
+T7v2-M_minus_B1_auc-확인1,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_auc,acquired12m,확인1,10775,M_minus_B1_auc,0.01489,0.0,,0.0825,events=337
+T7v2-M_minus_B1_auc-확인2,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_auc,acquired12m,확인2,10027,M_minus_B1_auc,-0.0186,0.0,,0.951,events=300
+T7v2-M_minus_B1_top10-설계,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_top10,acquired12m,설계,10568,M_minus_B1_top10,0.01414,0.0,,0.013,events=272
+T7v2-M_minus_B1_top10-확인1,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_top10,acquired12m,확인1,10775,M_minus_B1_top10,0.00388,0.0,,0.279,events=337
+T7v2-M_minus_B1_top10-확인2,2026-10-25,7,피인수 12개월 예측,MA,M_minus_B1_top10,acquired12m,확인2,10027,M_minus_B1_top10,0.01578,0.0,,0.033,events=300
+T8v2-y_up-B1_auc-설계,2026-10-25,8,배당 증액·삭감 예측,DIV,B1_auc,y_up,설계,7167,B1_auc,0.87206,0.5,,0.0,events=1543
+T8v2-y_up-B1_auc-확인1,2026-10-25,8,배당 증액·삭감 예측,DIV,B1_auc,y_up,확인1,6492,B1_auc,0.87018,0.5,,0.0,events=1417
+T8v2-y_up-B1_auc-확인2,2026-10-25,8,배당 증액·삭감 예측,DIV,B1_auc,y_up,확인2,6830,B1_auc,0.89211,0.5,,0.0,events=1460
+T8v2-y_up-B1_auc-최종,2026-10-25,8,배당 증액·삭감 예측,DIV,B1_auc,y_up,최종,6213,B1_auc,0.89537,0.5,,0.0,events=1350
+T8v2-y_up-M_minus_B1_auc-설계,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_auc,y_up,설계,7167,M_minus_B1_auc,0.01064,0.0,,0.0005,events=1543
+T8v2-y_up-M_minus_B1_auc-확인1,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_auc,y_up,확인1,6492,M_minus_B1_auc,0.00737,0.0,,0.0325,events=1417
+T8v2-y_up-M_minus_B1_auc-확인2,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_auc,y_up,확인2,6830,M_minus_B1_auc,0.00313,0.0,,0.191,events=1460
+T8v2-y_up-M_minus_B1_top10-설계,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_up,설계,7167,M_minus_B1_top10,-0.01264,0.0,,0.3105,events=1543
+T8v2-y_up-M_minus_B1_top10-확인1,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_up,확인1,6492,M_minus_B1_top10,-0.008,0.0,,0.606,events=1417
+T8v2-y_up-M_minus_B1_top10-확인2,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_up,확인2,6830,M_minus_B1_top10,-0.00517,0.0,,0.2755,events=1460
+T8v2-y_cut-B1_auc-설계,2026-10-25,8,배당 증액·삭감 예측,DIV,B1_auc,y_cut,설계,6302,B1_auc,0.69688,0.5,,0.0,events=362
+T8v2-y_cut-B1_auc-확인1,2026-10-25,8,배당 증액·삭감 예측,DIV,B1_auc,y_cut,확인1,6081,B1_auc,0.68924,0.5,,0.0,events=316
+T8v2-y_cut-B1_auc-확인2,2026-10-25,8,배당 증액·삭감 예측,DIV,B1_auc,y_cut,확인2,5977,B1_auc,0.67791,0.5,,0.0,events=286
+T8v2-y_cut-B1_auc-최종,2026-10-25,8,배당 증액·삭감 예측,DIV,B1_auc,y_cut,최종,5845,B1_auc,0.72216,0.5,,0.0,events=285
+T8v2-y_cut-M_minus_B1_auc-설계,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_auc,y_cut,설계,6302,M_minus_B1_auc,0.10825,0.0,,0.0,events=362
+T8v2-y_cut-M_minus_B1_auc-확인1,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_auc,y_cut,확인1,6081,M_minus_B1_auc,0.09188,0.0,,0.0,events=316
+T8v2-y_cut-M_minus_B1_auc-확인2,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_auc,y_cut,확인2,5977,M_minus_B1_auc,0.07721,0.0,,0.0,events=286
+T8v2-y_cut-M_minus_B1_auc-최종,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_auc,y_cut,최종,5845,M_minus_B1_auc,0.04487,0.0,,0.0,events=285
+T8v2-y_cut-M_minus_B1_top10-설계,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_cut,설계,6302,M_minus_B1_top10,0.05838,0.0,,0.0,events=362
+T8v2-y_cut-M_minus_B1_top10-확인1,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_cut,확인1,6081,M_minus_B1_top10,0.02423,0.0,,0.021,events=316
+T8v2-y_cut-M_minus_B1_top10-확인2,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_cut,확인2,5977,M_minus_B1_top10,0.02791,0.0,,0.009,events=286
+T8v2-y_cut-M_minus_B1_top10-최종,2026-10-25,8,배당 증액·삭감 예측,DIV,M_minus_B1_top10,y_cut,최종,5845,M_minus_B1_top10,0.01839,0.0,,0.0485,events=285
