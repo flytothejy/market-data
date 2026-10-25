@@ -95,6 +95,13 @@ for t, g in f.groupby("t"):
 f["entry"] = pd.Series(cal[np.minimum(f["_pos"].values, len(cal) - 1)])
 f.loc[f["_pos"] >= len(cal), "entry"] = pd.NaT
 f["month"] = f["entry"].dt.strftime("%Y-%m")
+# 결과 확인 후 보완 (PLAN 변경 이력 2026-10-25): 진입 월별 상·하위 1% 윈저화 (과제 5와 같은 규칙). WINS=0이면 끔
+if os.environ.get("WINS", "1") == "1":
+    for h in H:
+        for c in (f"y_{h}", f"raw_{h}"):
+            lo = f.groupby("month")[c].transform(lambda x: x.quantile(0.01)); hi = f.groupby("month")[c].transform(lambda x: x.quantile(0.99))
+            f[c] = f[c].clip(lo, hi)
+TAG = os.environ.get("TAG", "R")
 grp = pd.read_csv(os.path.join(DATA, "split_groups.csv")).set_index("t")["grp"]
 f["grp"] = [("A" if hashlib.md5(t[2:].encode()).digest()[0] % 2 == 0 else "B") if t.startswith("D:") else grp.get(t) for t in f["t"]]
 par = np.where(f["entry"].dt.year % 2 == 1, "odd", "even")
@@ -139,13 +146,13 @@ for sig in SIGS:
             if r is None:
                 continue
             rows.append({"signal": sig, "dir": "-" if ng else "+", "h": h, "cell": c, **r})
-            logs.append([f"T2R-{sig}-{h}-{c}", today, 2, "10-K 변화 → 이후 초과수익", "LazyPrices", sig, f"Y_{h}", c,
+            logs.append([f"T2{TAG}-{sig}-{h}-{c}", today, 2, "10-K 변화 → 이후 초과수익", "LazyPrices", sig, f"Y_{h}", c,
                          r["n"], "D(부호 뒤집음)" if ng else "D", round(r["D"], 5), "", "", round(r["p1"], 4),
                          f"n_on={r['n_on']}"])
 with open(os.path.join(ROOT, "log.csv"), "a") as fh:
     for l in logs:
         fh.write(",".join(str(x) for x in l) + "\n")
-res = pd.DataFrame(rows); res.to_csv(os.path.join(OUT, "R_results.csv"), index=False)
+res = pd.DataFrame(rows); res.to_csv(os.path.join(OUT, f"{TAG}_results.csv"), index=False)
 
 ref = []
 dz = f[f.cell == "설계"]
@@ -156,10 +163,10 @@ for sig in SIGS:
                 r = test(sub, sig, h, False)
                 if r:
                     ref.append({"signal": sig, "h": h, "split": col, "value": str(v), "n_on": r["n_on"], "D": r["D"]})
-pd.DataFrame(ref).to_csv(os.path.join(OUT, "R_design_splits.csv"), index=False)
+pd.DataFrame(ref).to_csv(os.path.join(OUT, f"{TAG}_design_splits.csv"), index=False)
 meta = {"events": int(len(f)), "tickers": int(f.t.nunique()), "with_y252": int(f.y_252.notna().sum()),
         "cells": f.cell.value_counts().to_dict(), "first": str(f.filed.min().date()), "last": str(f.filed.max().date())}
-json.dump(meta, open(os.path.join(OUT, "R_meta.json"), "w"), ensure_ascii=False, indent=1)
+json.dump(meta, open(os.path.join(OUT, f"{TAG}_meta.json"), "w"), ensure_ascii=False, indent=1)
 
 pd.set_option("display.width", 250, "display.max_columns", 30, "display.float_format", "{:.4f}".format)
 print(meta)
@@ -177,4 +184,4 @@ q = f.dropna(subset=["p_sim_full"]).copy(); q["q"] = pd.cut(q.p_sim_full, [-.01,
 tab = pd.concat({**{f"지금종목_{h}": q[~q.dl].groupby("q", observed=True)[f"y_{h}"].mean() for h in H},
                  **{f"포함_{h}": q.groupby("q", observed=True)[f"y_{h}"].mean() for h in H},
                  "상장폐지비율": q.groupby("q", observed=True)["dl"].mean()}, axis=1)
-tab.to_csv(os.path.join(OUT, "R_quintile_simfull.csv")); print("\n유사도 5구간별 평균 초과수익"); print(tab.round(4).to_string())
+tab.to_csv(os.path.join(OUT, f"{TAG}_quintile_simfull.csv")); print("\n유사도 5구간별 평균 초과수익"); print(tab.round(4).to_string())
