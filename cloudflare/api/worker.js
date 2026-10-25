@@ -172,7 +172,7 @@ function pfDoc(pf, env) {
     items: (Array.isArray(p.items) ? p.items : []).slice(0, 30).filter(x => x && TICK.test(x.t)).map(x => ({ t: x.t, w: Math.max(0, Math.min(100, +x.w || 0)) })),
     start: day.test(p.start) ? p.start : null,
     cap: Math.max(100, Math.min(1e9, +p.cap || 10000)),
-    rb: p.rb === 'q' ? 'q' : 'none',
+    rb: ['q', 'y', 'band'].includes(p.rb) ? p.rb : 'none',
   }));
   return { v: 2, pfs, u: Math.floor(+pf.u) };
 }

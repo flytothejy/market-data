@@ -33,6 +33,7 @@ const Data = {
   universe: () => getJSON('free/universe.json'),
   px3m: () => getJSON('free/px3m.json'),          // 최근 약 3개월 일별 수정종가 (말풍선 미니 차트·히트맵 재생)
   market: () => getJSON('free/market.json'),
+  fx: () => getJSON('free/fx.json'),              // 원/달러 주간 (포트폴리오 원화 기준)
   stock: t => getJSON(`free/stock/${encodeURIComponent(t)}.json`),
   stockPro: t => Plan.isPro() ? getJSON(`pro/stock/${encodeURIComponent(t)}.json`) : Promise.resolve(null),
   etf: t => getJSON(`free/etf/${encodeURIComponent(t)}.json`),

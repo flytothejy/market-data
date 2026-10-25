@@ -37,6 +37,7 @@
 .pf-b2 .bb i.rf{background:#8a8984;opacity:.55}
 .pf-b2 .v{text-align:right;line-height:1.15}
 .pf-b2 .v small{display:block;color:var(--faint);font-size:11px}
+.pf-ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .cmp-pick{display:flex;gap:6px;flex-wrap:wrap}
 .cmp-pick label{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13.5px;cursor:pointer;background:var(--card)}
 .cmp-pick input{accent-color:var(--ink)}
@@ -46,10 +47,19 @@
 <div class="wrap" id="app"><div class="skel" role="status" aria-label="불러오는 중"><i class="sk sk-h"></i><i class="sk sk-p"></i><div class="sk-grid"><i class="sk sk-c"></i><i class="sk sk-c"></i><i class="sk sk-c"></i></div><i class="sk sk-b"></i></div></div>
 <script>
 header('포트폴리오');
-const st = { id: qs('p'), tab: qs('tab') === 'cmp' ? 'cmp' : '', per: '3y', edit: false, draft: null, cmp: null, bench: { SPY: true, QQQ: false } };
+const st = { id: qs('p'), tab: qs('tab') === 'cmp' ? 'cmp' : '', per: '3y', cur: 'usd', mode: 'lump', dcaU: 500, dcaK: 500000, edit: false, draft: null, cmp: null, bench: { SPY: true, QQQ: false } };
 let U, byT, SER = {};
 const money = v => v == null ? '-' : '$' + Math.round(v).toLocaleString();
 const today = () => new Date().toISOString().slice(0, 10);
+const won = v => v == null ? '-' : v >= 1e8 ? (v / 1e8).toFixed(2) + '억원' : Math.round(v / 1e4).toLocaleString() + '만원';
+const wonS = v => !v ? '0' : v >= 1e8 ? (v / 1e8).toFixed(1) + '억' : Math.round(v / 1e4).toLocaleString() + '만';
+// 매달 적립: 넣은 돈·지금 가치·내부수익률
+function dcaBlock(lines, M) {
+  const rows = lines.map(l => { const x = l.x, last = x.v[x.v.length - 1]; return `<tr><td class="l"><i class="pfx-dot" style="background:${l.color}"></i>${esc(l.name)}</td><td class="num">${M(x.inv)}</td><td class="num"><b>${M(last)}</b></td><td class="num ${cls(last - x.inv)}">${(last >= x.inv ? '+' : '-') + M(Math.abs(last - x.inv))}</td><td>${pctS(last / x.inv - 1)}</td><td>${pctS(PFX.xirr(x.flows))}</td></tr>`; }).join('');
+  return `${PFX.legend([...lines, { name: '넣은 돈', color: '#0ea5e9' }])}<div id="ch-s"></div>
+    <div class="tbl-wrap"><table class="t pfx-t"><thead><tr><th class="l"></th><th>넣은 돈</th><th>지금 가치</th><th>수익</th><th>수익률</th><th title="돈을 나눠 넣은 시점까지 고려한 연 환산 수익률 (내부수익률)">연 환산</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="small faint">매달 첫 거래 주에 목표 비중대로 사는 것으로 계산 · 연 환산 = 넣은 시점을 고려한 내부수익률</div>`;
+}
 const NOTE = '주간 수정종가(배당 재투자 포함) 기준 · 수수료·세금 제외 · 샤프 지수는 무위험 수익률 0으로 계산';
 
 async function need(ts) {                                   // 필요한 종목 시계열만 받아 둠
@@ -90,7 +100,7 @@ function editor(p) {
       <span class="mut s13" id="e-msg"></span>
       <span style="margin-left:auto;display:flex;gap:6px"><button class="btn" id="e-eq">같은 비중</button><button class="btn" id="e-100">합계 100%로</button></span></div>
     <div class="row"><label class="s13 mut">가상 시작 금액 $ <input class="f" type="number" id="e-cap" value="${d.cap}" min="100" step="100" style="width:110px"></label>
-      <label class="s13 mut">리밸런싱 <select class="f" id="e-rb"><option value="none">안 함 (처음 비중으로 사서 그대로)</option><option value="q" ${d.rb === 'q' ? 'selected' : ''}>분기마다 처음 비중으로</option></select></label></div>
+      <label class="s13 mut">리밸런싱 <select class="f" id="e-rb"><option value="none">안 함 (처음 비중으로 사서 그대로)</option><option value="q" ${d.rb === 'q' ? 'selected' : ''}>분기마다 처음 비중으로</option><option value="y" ${d.rb === 'y' ? 'selected' : ''}>1년마다 처음 비중으로</option><option value="band" ${d.rb === 'band' ? 'selected' : ''}>비중이 5%p 넘게 벗어나면 되돌림</option></select></label></div>
     <div class="small faint">비중 합계가 100%가 아니면 계산할 때 비율대로 맞춰요 · 종목이나 비중을 바꾸면 ‘만든 뒤 성과’는 바꾼 날부터 다시 시작해요</div>
     <div class="row"><button class="btn dark" id="e-save">저장</button><button class="btn" id="e-cancel">취소</button><button class="btn" id="e-del" style="margin-left:auto;color:var(--dn)">포트폴리오 삭제</button></div>
     <datalist id="tick">${U.rows.map(r => `<option value="${r.t}">${esc(r.n)}</option>`).join('')}</datalist></div>`;
@@ -131,37 +141,55 @@ function bindEditor(p) {
 async function view(p) {
   const el = $('#pf-body');
   el.innerHTML = '<div class="loading">계산하는 중…</div>';
-  const [E] = await Promise.all([PFX.etfs([...p.items, { t: 'SPY', w: 1 }], byT), need([...p.items.map(x => x.t), 'SPY', 'QQQ'])]);
+  const [E, FX] = await Promise.all([PFX.etfs([...p.items, { t: 'SPY', w: 1 }], byT), Data.fx().catch(() => null), need([...p.items.map(x => x.t), 'SPY', 'QQQ'])]);
   if (!el.isConnected) return;
   const dates = calendar(), ts = [...p.items.map(x => x.t), 'SPY', 'QQQ'], A = aligned(ts, dates);
   const col = PFX.COLORS[0];
+  const fxA = FX && FX.krw ? PFX.align(FX.krw, dates) : null, krw = st.cur === 'krw' && !!fxA, fx = krw ? fxA : null;
+  const M = v => krw ? won(v) : money(v), capAt = i => krw ? p.cap * (fxA[i] || fxA.filter(Boolean).pop()) : p.cap;
+  const RB = { none: '안 함', q: '분기마다', y: '1년마다', band: '5%p 벗어나면' };
   // 만든 뒤 성과
   const i0 = PFX.idxOn(dates, p.start || today());
-  const fwd = PFX.run(p.items, A, dates, i0, p.cap, p.rb), fS = PFX.bench(A, dates, i0, 'SPY');
+  const fwd = PFX.run(p.items, A, dates, i0, capAt(i0), p.rb, { fx }), fS = PFX.bench(A, dates, i0, 'SPY', { fx });
   const fm = fwd && !fwd.empty ? PFX.metrics(fwd) : null, fsm = fS && !fS.empty ? PFX.metrics(fS) : null;
-  // 과거 시뮬레이션
-  const s0 = perStart(dates, st.per);
-  const sim = PFX.run(p.items, A, dates, s0, p.cap, p.rb), bS = PFX.bench(A, dates, s0, 'SPY'), bQ = PFX.bench(A, dates, s0, 'QQQ');
-  const ok = sim && !sim.empty;
-  const lines = ok ? [{ name: p.name, color: col, d: sim.d, v: sim.v, bold: 1 }, bS && { name: 'S&P 500', color: PFX.BCOL.SPY, d: bS.d, v: bS.v }, bQ && { name: '나스닥 100', color: PFX.BCOL.QQQ, d: bQ.d, v: bQ.v }].filter(Boolean) : [];
-  // 같은 시작점에서 비교되게 벤치마크도 포트폴리오 시작에 맞춤
-  if (ok) lines.forEach(l => { const k = l.d.indexOf(sim.start); if (k > 0) { l.d = l.d.slice(k); l.v = l.v.slice(k); } });
-  const mRows = ok ? lines.map((l, k) => ({ name: l.name, color: l.color, m: PFX.metrics(l, k === 0 ? (lines[1] || null) : lines[1]) })) : [];
+  // 과거 시뮬레이션 (한 번에 / 매달 적립, 달러 / 원화)
+  const s0 = perStart(dates, st.per), dca = st.mode === 'dca' ? (krw ? st.dcaK : st.dcaU) : 0;
+  const sim0 = PFX.run(p.items, A, dates, s0, capAt(s0), p.rb, { fx, dca });
+  const ok = sim0 && !sim0.empty, i1 = ok ? dates.indexOf(sim0.start) : s0;
+  const sim = sim0, bS = PFX.bench(A, dates, i1, 'SPY', { fx, dca }), bQ = PFX.bench(A, dates, i1, 'QQQ', { fx, dca });
+  const lines = ok ? [{ name: p.name, color: col, d: sim.d, v: sim.v, bold: 1, x: sim }, bS && !bS.empty && { name: 'S&P 500', color: PFX.BCOL.SPY, d: bS.d, v: bS.v, x: bS }, bQ && !bQ.empty && { name: '나스닥 100', color: PFX.BCOL.QQQ, d: bQ.d, v: bQ.v, x: bQ }].filter(Boolean) : [];
+  const mRows = ok && !dca ? lines.map(l => ({ name: l.name, color: l.color, m: PFX.metrics(l, lines[1] || null) })) : [];
   const perL = PFX.PER.find(x => x[0] === st.per)[1];
+  // 리밸런싱 규칙 비교 (한 번에 넣은 경우)
+  const rbRows = ok && !dca ? Object.keys(RB).map(k => { const r = PFX.run(p.items, A, dates, i1, capAt(i1), k, { fx }); return { k, r, m: r && !r.empty ? PFX.metrics(r) : null }; }) : [];
+  // 위기 구간 (전체 기간을 한 번에 넣었다고 보고)
+  const full = PFX.run(p.items, A, dates, 0, capAt(0), p.rb, { fx }), fullS = PFX.bench(A, dates, 0, 'SPY', { fx });
+  const crises = PFX.CRISES.map(([n, a, b]) => ({ n, a, b, me: PFX.crisis(full, a, b), sp: PFX.crisis(fullS, a, b) }));
   // 구성
-  const comp = (ok ? sim.contrib : p.items.map(x => ({ t: x.t, w: x.w / p.items.reduce((a, y) => a + y.w, 0), c: null }))).slice().sort((a, b) => b.w - a.w);
+  const comp = (ok && !dca ? sim.contrib : p.items.map(x => ({ t: x.t, w: x.w / p.items.reduce((a, y) => a + y.w, 0), c: null }))).slice().sort((a, b) => b.w - a.w);
   // 진단: ETF 안까지 펼친 실제 노출, S&P 500(SPY)과 같은 방법으로 비교
   const L = PFX.look(p.items, byT, E), Ls = PFX.look([{ t: 'SPY', w: 1 }], byT, E), C = PFX.conc(L), ch = PFX.chars(L, p.items, byT), chS = PFX.chars(Ls, [{ t: 'SPY', w: 1 }], byT);
   const days = Math.round((Date.now() - Date.parse(p.start || today())) / 864e5);
+  const pS = v => v == null ? '-' : `<span class="${cls(v)}">${(v >= 0 ? '+' : '') + (v * 100).toFixed(1)}%</span>`;
   let h = '';
-  h += `<div class="card"><h3>만든 뒤 성과 <span class="mut s13" style="font-weight:400">· ${esc(p.start || today())}부터${days ? ` (${days}일)` : ''}</span></h3>
-    ${fm ? `<div class="pf-big"><div><span>${esc(p.name)}</span><b class="${cls(fm.tot)}">${(fm.tot >= 0 ? '+' : '') + (fm.tot * 100).toFixed(1)}%</b></div>${fsm ? `<div><span>같은 기간 S&P 500</span><b class="${cls(fsm.tot)}">${(fsm.tot >= 0 ? '+' : '') + (fsm.tot * 100).toFixed(1)}%</b></div>` : ''}<div><span>가상 금액</span><b>${money(fwd.v[fwd.v.length - 1])}</b></div></div>
+  h += `<div class="card"><h3>만든 뒤 성과 <span class="mut s13" style="font-weight:400">· ${esc(p.start || today())}부터${days ? ` (${days}일)` : ''}${krw ? ' · 원화 기준' : ''}</span></h3>
+    ${fm ? `<div class="pf-big"><div><span>${esc(p.name)}</span><b class="${cls(fm.tot)}">${(fm.tot >= 0 ? '+' : '') + (fm.tot * 100).toFixed(1)}%</b></div>${fsm ? `<div><span>같은 기간 S&P 500</span><b class="${cls(fsm.tot)}">${(fsm.tot >= 0 ? '+' : '') + (fsm.tot * 100).toFixed(1)}%</b></div>` : ''}<div><span>가상 금액</span><b>${M(fwd.v[fwd.v.length - 1])}</b></div></div>
       <div id="ch-f"></div>` : `<div class="s13 mut">만든 지 얼마 안 돼서 아직 쌓인 기록이 없어요. 다음 주부터 그래프가 그려져요 — 과거 시뮬레이션과 달리 결과를 모르고 고른 뒤의 성적이라, 전략을 점검하는 데 더 정직한 기록이에요.</div>`}</div>`;
-  h += `<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">과거 시뮬레이션</h3><span class="mut s13">${perL} 전에 이 비중으로 샀다면 · 리밸런싱 ${p.rb === 'q' ? '분기마다' : '안 함'}</span><span style="margin-left:auto">${segPer(st.per)}</span></div>
-    ${ok ? `${PFX.legend(lines)}<div id="ch-s"></div>${PFX.table(mRows)}` : '<div class="s13 mut">계산할 수 있는 종목 자료가 없어요</div>'}
+  const seg = (attr, cur, opts) => `<div class="seg">${opts.map(([k, l]) => `<button class="btn ${cur === k ? 'on' : ''}" ${attr}="${k}" ${k === 'krw' && !fxA ? 'disabled title="환율 자료를 불러오지 못했어요"' : ''}>${l}</button>`).join('')}</div>`;
+  h += `<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">과거 시뮬레이션</h3><span class="mut s13">${perL} 전부터 이 비중으로 ${dca ? `매달 ${M(dca)}씩 샀다면` : '샀다면'} · 리밸런싱 ${RB[p.rb] || '안 함'}</span><span style="margin-left:auto">${segPer(st.per)}</span></div>
+    <div class="pf-ctl">${seg('data-cur', krw ? 'krw' : 'usd', [['usd', '달러'], ['krw', '원화']])}${seg('data-pm', st.mode, [['lump', '한 번에'], ['dca', '매달 적립']])}
+      ${dca ? `<label class="s13 mut">매달 ${krw ? '₩' : '$'} <input class="f" type="number" id="dca-amt" value="${dca}" min="1" step="${krw ? 100000 : 100}" style="width:120px"></label>` : ''}</div>
+    ${ok ? (dca ? dcaBlock(lines, M) : `${PFX.legend(lines)}<div id="ch-s"></div>${PFX.table(mRows)}`) : '<div class="s13 mut">계산할 수 있는 종목 자료가 없어요</div>'}
     ${ok && sim.late.length ? `<div class="small" style="color:var(--warn)">${esc(sim.late.join(', '))} 상장 뒤인 ${esc(sim.start)}부터 계산했어요</div>` : ''}
     ${sim && sim.missing && sim.missing.length ? `<div class="small" style="color:var(--warn)">주가 자료가 없어 뺀 종목: ${esc(sim.missing.join(', '))}</div>` : ''}
-    <div class="small faint">지금 고른 종목을 과거에 대 본 결과라 실제보다 좋게 나오기 쉬워요 (이미 오른 종목을 고르게 되므로) · ${NOTE}</div></div>`;
+    ${rbRows.length ? `<div class="s13" style="margin-top:6px"><b>리밸런싱 규칙 비교</b> <span class="mut">· 같은 기간, 처음 비중으로 되돌리는 시점만 다르게</span></div>
+      <div class="tbl-wrap"><table class="t pfx-t"><thead><tr><th class="l">규칙</th><th>총 수익률</th><th>연평균</th><th>변동성(연)</th><th>최대 낙폭</th><th>되돌린 횟수</th></tr></thead><tbody>
+      ${rbRows.map(({ k, r, m }) => `<tr${k === p.rb ? ' style="font-weight:600"' : ''}><td class="l">${RB[k]}${k === p.rb ? ' <span class="tag">지금 설정</span>' : ''}</td><td>${m ? pctS(m.tot) : '-'}</td><td>${m ? pctS(m.cagr) : '-'}</td><td class="num">${m && m.vol != null ? (m.vol * 100).toFixed(1) + '%' : '-'}</td><td>${m ? pctS(m.mdd) : '-'}</td><td class="num">${r && !r.empty ? r.nrb + '번' : '-'}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    <div class="small faint">지금 고른 종목을 과거에 대 본 결과라 실제보다 좋게 나오기 쉬워요 (이미 오른 종목을 고르게 되므로) · ${NOTE}${krw ? ' · 원화 기준은 주간 원/달러 환율로 환산 (환전 비용 제외)' : ''}</div></div>`;
+  h += `<div class="card"><h3>위기 구간 <span class="mut s13" style="font-weight:400">· 이 비중으로 들고 있었다면${krw ? ' (원화 기준)' : ''}</span></h3>
+    <div class="tbl-wrap"><table class="t pfx-t"><thead><tr><th class="l">구간</th><th>${esc(p.name)} 최대 하락</th><th>S&P 500</th><th>회복까지</th><th>S&P 500 회복</th></tr></thead><tbody>
+    ${crises.map(c => `<tr><td class="l">${c.n} <span class="small faint">${c.a.slice(0, 7).replace('-', '.')}~${c.b.slice(0, 7).replace('-', '.')}</span></td>${c.me ? `<td>${pS(c.me.dd)}</td>` : '<td class="small faint">자료 없음</td>'}<td>${c.sp ? pS(c.sp.dd) : '-'}</td><td class="num">${c.me ? (c.me.months != null ? c.me.months + '개월' : '<span class="faint">아직</span>') : '-'}</td><td class="num mut">${c.sp ? (c.sp.months != null ? c.sp.months + '개월' : '아직') : '-'}</td></tr>`).join('')}</tbody></table></div>
+    <div class="small faint">구간 시작(S&P 500 고점 무렵) 가치 대비 바닥 무렵까지 가장 크게 빠진 폭 · 회복 = 시작 가치를 되찾을 때까지 · ‘자료 없음’은 그때 상장 전이던 종목이 있어서예요</div></div>`;
   h += `<div class="card"><h3>구성</h3><div class="tbl-wrap"><table class="t"><thead><tr><th class="l">종목</th><th>비중</th><th>1개월</th><th>1년</th>${ok ? `<th title="과거 시뮬레이션 기간 동안 포트폴리오 수익률에 보탠 몫">기여 (${perL})</th>` : ''}<th>점검표</th></tr></thead><tbody>
       ${comp.map(x => { const r = byT[x.t]; const ck = r && r.k !== 'etf' ? checklist(r, U) : []; const nw = ck.filter(c => c.s === 'warn').length; return `<tr><td class="l"><a href="${stockUrl(x.t)}"><b>${esc(x.t)}</b></a> <span class="mut small">${esc(r ? shortName(r.ko || r.n) : '')}</span>${r && r.k === 'etf' ? ' <span class="tag">ETF</span>' : ''}</td><td class="num">${(x.w * 100).toFixed(1)}%</td><td>${r ? pctS(r.r1m) : '-'}</td><td>${r ? pctS(r.r1y) : '-'}</td>${ok ? `<td>${pctS(x.c)}</td>` : ''}<td>${nw ? `<span style="color:var(--warn)">경고 ${nw}</span>` : '<span class="faint">-</span>'}</td></tr>`; }).join('')}</tbody></table></div></div>`;
   // 실제 노출
@@ -185,8 +213,12 @@ async function view(p) {
     <div class="small faint">S&P 500도 같은 방법(SPY 공개 구성 상위 종목)으로 계산 · PER·매출 성장·이익률은 펼친 종목 중 자료가 있는 ${(ch.cov * 100).toFixed(0)}% 기준</div></div></div>`;
   h += `<div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 직접 고른 종목과 비중으로 계산한 가상 결과예요</div>`;
   el.innerHTML = h;
-  if (fm) PFX.chart(el.querySelector('#ch-f'), [{ name: p.name, color: col, d: fwd.d, v: fwd.v, bold: 1 }, fS && { name: 'S&P 500', color: PFX.BCOL.SPY, d: fS.d, v: fS.v }], { h: 180 });
-  if (ok) PFX.chart(el.querySelector('#ch-s'), lines);
+  if (fm) PFX.chart(el.querySelector('#ch-f'), [{ name: p.name, color: col, d: fwd.d, v: fwd.v, bold: 1 }, fS && !fS.empty && { name: 'S&P 500', color: PFX.BCOL.SPY, d: fS.d, v: fS.v }], { h: 180 });
+  if (ok && !dca) PFX.chart(el.querySelector('#ch-s'), lines);
+  if (ok && dca) PFX.chart(el.querySelector('#ch-s'), [...lines, { name: '넣은 돈', color: '#0ea5e9', d: sim.d, v: sim.iv }], { abs: true, fmt: v => krw ? wonS(v) : '$' + (v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : Math.round(v / 1e3) + 'k') });
+  el.querySelectorAll('[data-cur]').forEach(b => b.onclick = () => { st.cur = b.dataset.cur; view(p); });
+  el.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => { st.mode = b.dataset.pm; view(p); });
+  const da = el.querySelector('#dca-amt'); if (da) da.onchange = () => { const v = Math.max(1, +da.value || 0); if (krw) st.dcaK = v; else st.dcaU = v; view(p); };
   el.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { st.per = b.dataset.per; view(p); });
 }
 
@@ -253,7 +285,7 @@ function renderMain() {
     bindEditor(p); return;
   }
   const W = p.items.reduce((a, x) => a + x.w, 0);
-  m.innerHTML = `<div class="pf-head"><h2>${esc(p.name)}</h2><span class="mut s13">${p.items.length}종목 · 가상 ${money(p.cap)} · 리밸런싱 ${p.rb === 'q' ? '분기마다' : '안 함'}${Math.abs(W - 100) > 0.5 ? ' · 비중 합계를 100%로 맞춰 계산' : ''}</span>
+  m.innerHTML = `<div class="pf-head"><h2>${esc(p.name)}</h2><span class="mut s13">${p.items.length}종목 · 가상 ${money(p.cap)} · 리밸런싱 ${({ q: '분기마다', y: '1년마다', band: '5%p 벗어나면' })[p.rb] || '안 함'}${Math.abs(W - 100) > 0.5 ? ' · 비중 합계를 100%로 맞춰 계산' : ''}</span>
       <span class="act"><button class="btn" data-edit>편집</button><a class="btn" href="report.html?p=${p.id}" style="text-decoration:none">주간 리포트</a></span></div>
     <div id="pf-body" style="display:flex;flex-direction:column;gap:12px"></div>`;
   m.querySelector('[data-edit]').onclick = () => { st.edit = true; st.draft = JSON.parse(JSON.stringify(p)); renderMain(); };

@@ -1385,6 +1385,10 @@ def run(limit=0, **_):
         f = pd.read_csv(fx, usecols=["Date", "Close"]).dropna()
         f = f[f.Date >= str((pd.Timestamp.now() - pd.Timedelta(days=740)).date())]
         mk["krw"] = {"d": f.Date.tolist(), "c": f.Close.round(2).tolist()}
+        fa = pd.read_csv(fx, usecols=["Date", "Close"]).dropna()      # 포트폴리오 원화 기준 시뮬레이션용: 전체 기간 주간(금요일 기준)
+        fa = fa[(fa.Close > 500) & (fa.Close < 3000)]                  # 가끔 섞이는 튀는 값 제외
+        wf = fa.assign(Date=pd.to_datetime(fa.Date)).set_index("Date").Close.resample("W-FRI").last().dropna()
+        dump(OUT / "free" / "fx.json", {"krw": {"d": wf.index.strftime("%Y-%m-%d").tolist(), "c": wf.round(2).tolist()}})
     dump(OUT / "free" / "market.json", mk)
     dump(OUT / "free" / "sector_trails.json", group_trails(ALL_TR))
     dump(OUT / "free" / "patterns.json", PAT)

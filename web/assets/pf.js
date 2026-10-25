@@ -87,27 +87,63 @@ const PFX = {
   },
   idxOn(dates, day) { let i = 0; while (i + 1 < dates.length && dates[i + 1] <= day) i++; return i; },   // day 이전(같은 날 포함) 마지막 주
   // 포트폴리오 가치 흐름. items [{t, w}], A = {t: aligned[]}, i0 = 시작 위치, rb = 'none' | 'q'
-  run(items, A, dates, i0, cap = 10000, rb = 'none') {
+  // opt: { dca: 매달 넣는 금액(표시 통화), fx: 원/달러 배열(있으면 원화로 표시), end: 끝 위치(포함) }
+  // rb: 'none' | 'q'(분기) | 'y'(연 1회) | 'band'(목표 비중에서 5%p 넘게 벗어나면)
+  run(items, A, dates, i0, cap = 10000, rb = 'none', opt = {}) {
     const its = items.filter(x => x.w > 0 && A[x.t]);
     const missing = items.filter(x => x.w > 0 && !A[x.t]).map(x => x.t);
     if (!its.length) return null;
-    // 모든 종목 값이 있는 첫 주부터 (늦게 상장한 종목이 있으면 시작이 늦어짐)
+    const fx = opt.fx || null, end = Math.min(dates.length - 1, opt.end ?? dates.length - 1);
+    // 모든 종목 값(원화면 환율도)이 있는 첫 주부터 (늦게 상장한 종목이 있으면 시작이 늦어짐)
     let s = i0; const late = [];
-    for (const x of its) { let k = s; while (k < dates.length && A[x.t][k] == null) k++; if (k > s) { late.push(x.t); } s = Math.max(s, k); }
-    if (s >= dates.length - 1) return { missing, late, empty: true };
-    const W = its.reduce((a, x) => a + x.w, 0), wt = its.map(x => x.w / W);
-    let units = its.map((x, k) => cap * wt[k] / A[x.t][s]);
-    const v = [], d = [], contrib = its.map(() => 0);
+    for (const x of its) { let k = s; while (k <= end && A[x.t][k] == null) k++; if (k > s) late.push(x.t); s = Math.max(s, k); }
+    if (fx) while (s <= end && fx[s] == null) s++;
+    if (s >= end) return { missing, late, empty: true };
+    const W = its.reduce((a, x) => a + x.w, 0), wt = its.map(x => x.w / W), F = i => fx ? fx[i] : 1;
+    const P = (k, i) => A[its[k].t][i];
+    const first = opt.dca ? opt.dca : cap;                       // 표시 통화 기준 첫 투입
+    let units = its.map((x, k) => first / F(s) * wt[k] / P(k, s)), inv = first, nrb = 0;
+    const v = [], d = [], iv = [], flows = [[dates[s], -first]], contrib = its.map(() => 0);
     const q = day => day.slice(0, 4) + Math.floor((+day.slice(5, 7) - 1) / 3);
-    for (let i = s; i < dates.length; i++) {
-      if (i > s) its.forEach((x, k) => { contrib[k] += units[k] * (A[x.t][i] - A[x.t][i - 1]) / cap; });
-      const val = its.reduce((a, x, k) => a + units[k] * A[x.t][i], 0);
-      v.push(val); d.push(dates[i]);
-      if (rb === 'q' && i + 1 < dates.length && q(dates[i + 1]) !== q(dates[i])) units = its.map((x, k) => val * wt[k] / A[x.t][i]);
+    for (let i = s; i <= end; i++) {
+      if (i > s) {
+        if (!opt.dca) its.forEach((x, k) => { contrib[k] += units[k] * (P(k, i) - P(k, i - 1)) / (cap / F(s)); });
+        if (opt.dca && dates[i].slice(0, 7) !== dates[i - 1].slice(0, 7)) {     // 매달 첫 주에 목표 비중대로 삼
+          const usd = opt.dca / F(i); units = units.map((u, k) => u + usd * wt[k] / P(k, i)); inv += opt.dca; flows.push([dates[i], -opt.dca]);
+        }
+      }
+      const usdV = its.reduce((a, x, k) => a + units[k] * P(k, i), 0);
+      v.push(usdV * F(i)); d.push(dates[i]); iv.push(inv);
+      if (i < end && rb !== 'none') {
+        let go = false;
+        if (rb === 'q') go = q(dates[i + 1]) !== q(dates[i]);
+        else if (rb === 'y') go = dates[i + 1].slice(0, 4) !== dates[i].slice(0, 4);
+        else if (rb === 'band') go = its.some((x, k) => Math.abs(units[k] * P(k, i) / usdV - wt[k]) > 0.05);
+        if (go) { units = its.map((x, k) => usdV * wt[k] / P(k, i)); nrb++; }
+      }
     }
-    return { d, v, missing, late, start: dates[s], contrib: its.map((x, k) => ({ t: x.t, w: wt[k], c: contrib[k] })) };
+    flows.push([dates[end], v[v.length - 1]]);
+    return { d, v, iv, inv, flows, nrb, missing, late, start: dates[s], contrib: its.map((x, k) => ({ t: x.t, w: wt[k], c: opt.dca ? null : contrib[k] })) };
   },
-  bench(A, dates, i0, t) { return A[t] ? this.run([{ t, w: 1 }], A, dates, i0) : null; },
+  bench(A, dates, i0, t, opt = {}) { return A[t] ? this.run([{ t, w: 1 }], A, dates, i0, 10000, 'none', opt) : null; },
+  // 돈을 나눠 넣은 경우의 연 환산 수익률 (내부수익률)
+  xirr(flows) {
+    const t0 = Date.parse(flows[0][0]), f = r => flows.reduce((a, [d, c]) => a + c / Math.pow(1 + r, (Date.parse(d) - t0) / 31557600000), 0);
+    let lo = -0.99, hi = 10; if (f(lo) * f(hi) > 0) return null;
+    for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; if (f(lo) * f(m) <= 0) hi = m; else lo = m; }
+    return (lo + hi) / 2;
+  },
+  // 위기 구간: [이름, 시작(S&P 고점 무렵), 바닥 무렵]
+  CRISES: [['2008 금융위기', '2007-10-09', '2009-03-09'], ['2020 코로나 폭락', '2020-02-19', '2020-03-23'], ['2022 금리 인상기', '2022-01-03', '2022-10-12']],
+  // 구간 시작 가치 대비 바닥까지 최대 하락, 시작 가치를 되찾은 날
+  crisis(x, from, to) {
+    if (!x || x.empty || !x.v || x.start > from) return null;
+    const a = x.d.findIndex(d => d >= from); if (a < 0) return null;
+    let b = x.d.findIndex(d => d > to); if (b < 0) b = x.d.length;
+    let mn = 0; for (let i = a; i < b; i++) mn = Math.min(mn, x.v[i] / x.v[a] - 1);
+    let rec = null; for (let i = a + 1; i < x.d.length; i++) if (i >= b && x.v[i] >= x.v[a]) { rec = x.d[i]; break; }
+    return { dd: mn, rec, months: rec ? Math.round((Date.parse(rec) - Date.parse(x.d[a])) / (30.44 * 864e5)) : null };
+  },
   rets(v) { const r = []; for (let i = 1; i < v.length; i++) r.push(v[i] / v[i - 1] - 1); return r; },
   // 지표: 수익률·연평균·변동성(주간×√52)·최대 낙폭·샤프(무위험 0)·베타(대비 b)
   metrics(x, b) {
@@ -133,14 +169,15 @@ const PFX = {
     lines = lines.filter(l => l && l.v && l.v.length >= 2);
     if (!lines.length) { el.innerHTML = `<div class="mut s13" style="padding:20px 0">${opt.empty || '그릴 자료가 없어요'}</div>`; return; }
     const dates = [...new Set(lines.flatMap(l => l.d))].sort();
-    const P = lines.map(l => { const m = {}; l.d.forEach((d, i) => m[d] = l.v[i] / l.v[0] - 1); return dates.map(d => m[d] ?? null); });
+    const ab = !!opt.abs, P = lines.map(l => { const m = {}; l.d.forEach((d, i) => m[d] = ab ? l.v[i] : l.v[i] / l.v[0] - 1); return dates.map(d => m[d] ?? null); });
+    const yl = v => ab ? opt.fmt(v) : (v * 100).toFixed(Math.abs(v) < 0.1 && v ? 1 : 0) + '%', tl = v => ab ? opt.fmt(v) : (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
     const draw = () => {
       const W = Math.max(280, el.clientWidth || 600), H = opt.h || 240, L = 6, R = 58, T = 12, B = 24;
-      const all = P.flat().filter(v => v != null); let lo = Math.min(0, ...all), hi = Math.max(0, ...all); if (hi - lo < 0.02) { hi += 0.01; lo -= 0.01; }
+      const all = P.flat().filter(v => v != null); let lo = Math.min(0, ...all), hi = Math.max(0, ...all); if (!ab && hi - lo < 0.02) { hi += 0.01; lo -= 0.01; } if (ab && hi === lo) hi = lo + 1;
       const X = i => L + (dates.length < 2 ? 0 : i / (dates.length - 1)) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
       const step = (hi - lo) / 4, mag = Math.pow(10, Math.floor(Math.log10(step))), nice = [1, 2, 2.5, 5, 10].map(k => k * mag).find(k => k >= step) || step;
       let g = '';
-      for (let v = Math.ceil(lo / nice) * nice; v <= hi + 1e-9; v += nice) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line2)"/><text x="${W - R + 6}" y="${(Y(v) + 4).toFixed(1)}" font-size="10.5" fill="var(--faint)">${(v * 100).toFixed(Math.abs(nice) < 0.01 ? 1 : 0)}%</text>`;
+      for (let v = Math.ceil(lo / nice) * nice; v <= hi + 1e-9; v += nice) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line2)"/><text x="${W - R + 6}" y="${(Y(v) + 4).toFixed(1)}" font-size="10.5" fill="var(--faint)">${yl(v)}</text>`;
       g += `<line x1="${L}" x2="${W - R}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}" stroke="var(--line)"/>`;
       const span = (Date.parse(dates[dates.length - 1]) - Date.parse(dates[0])) / 864e5, ylab = span > 900;
       let prev = '', px = -99;
@@ -156,7 +193,7 @@ const PFX = {
         const rc = svg.getBoundingClientRect(), x = (e.touches ? e.touches[0].clientX : e.clientX) - rc.left;
         const i = Math.max(0, Math.min(dates.length - 1, Math.round((x - L) / (W - L - R) * (dates.length - 1))));
         hl.setAttribute('x1', X(i)); hl.setAttribute('x2', X(i)); hl.style.display = '';
-        tip.innerHTML = `<b>${dates[i]}</b>` + lines.map((l, k) => P[k][i] == null ? '' : `<div><i style="background:${l.color}"></i>${esc(l.name)} <b class="${cls(P[k][i])}">${(P[k][i] >= 0 ? '+' : '') + (P[k][i] * 100).toFixed(1)}%</b></div>`).join('');
+        tip.innerHTML = `<b>${dates[i]}</b>` + lines.map((l, k) => P[k][i] == null ? '' : `<div><i style="background:${l.color}"></i>${esc(l.name)} <b class="${ab ? '' : cls(P[k][i])}">${tl(P[k][i])}</b></div>`).join('');
         tip.style.display = 'block'; const tw = tip.offsetWidth; tip.style.left = Math.min(Math.max(0, X(i) + 10), W - tw) + 'px'; tip.style.top = '4px';
       };
       svg.onmousemove = move; svg.ontouchmove = move; svg.onmouseleave = () => { hl.style.display = 'none'; tip.style.display = 'none'; };
