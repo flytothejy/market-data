@@ -104,7 +104,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2011,1065280,105.0,True,False,False,False,False,True,False,True,NFLX,B,확인2
 2011,877890,43.0,True,False,False,False,False,False,False,False,D:CTXS,A,설계
 2011,712515,74.0,False,True,False,True,True,False,False,False,D:EA,A,설계
-2011,1075531,28.0,False,False,False,True,True,False,True,False,BKNG,B,확인2
+2011,1075531,28.0,True,False,False,False,False,False,False,False,BKNG,B,확인2
 2011,1652044,,True,False,False,False,False,True,False,True,GOOGL,A,설계
 2011,1043277,50.0,True,False,False,False,False,False,False,False,CHRW,A,설계
 2011,1486159,145.0,False,False,False,True,False,False,False,False,CHRD,A,설계
@@ -120,7 +120,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2011,1109357,23.0,False,False,False,True,True,False,True,False,EXC,A,설계
 2011,896878,38.0,True,False,False,False,False,False,False,False,INTU,A,설계
 2011,1310067,66.0,True,False,False,False,False,False,False,False,D:SHLD_old,B,확인2
-2011,769397,70.0,True,False,False,False,False,False,False,True,ADSK,A,설계
+2011,769397,70.0,True,False,False,False,False,False,False,False,ADSK,A,설계
 2011,1094005,92.0,False,False,False,True,False,False,False,False,D:SINA,A,설계
 2011,1010552,140.0,False,False,False,True,False,False,False,False,D:PLCM,A,설계
 2011,1324424,76.0,True,False,False,False,False,False,False,True,EXPE,B,확인2
@@ -129,7 +129,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2011,804753,53.0,True,False,False,False,False,False,False,False,D:CERN,B,확인2
 2011,743316,75.0,True,False,False,False,False,False,False,True,D:MXIM,A,설계
 2011,1357204,127.0,False,False,False,True,False,False,False,False,D:DNKN,A,설계
-2011,1418135,69.0,False,False,False,True,True,False,False,False,KDP,A,설계
+2011,1418135,69.0,False,False,False,True,True,False,True,False,KDP,A,설계
 2011,1048477,117.0,False,False,False,True,False,False,False,False,BMRN,B,확인2
 2011,1012140,148.0,False,False,False,True,False,False,False,False,D:ONXX,A,설계
 2011,882095,20.0,True,False,False,False,False,False,False,False,GILD,A,설계
@@ -153,7 +153,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2011,900075,141.0,False,False,False,True,False,False,False,False,CPRT,A,설계
 2011,864749,96.0,False,False,False,True,False,False,False,False,TRMB,A,설계
 2011,1058290,30.0,True,False,False,False,False,False,False,False,CTSH,A,설계
-2011,849399,46.0,False,False,False,True,True,False,True,False,GEN,B,확인2
+2011,849399,46.0,True,False,False,False,False,False,False,False,GEN,B,확인2
 2011,1341439,4.0,True,False,False,False,False,False,False,False,ORCL,A,설계
 2012,46080,126.0,False,False,False,True,False,False,False,False,HAS,B,최종
 2012,1308161,13.0,False,False,False,True,True,False,True,False,D:TFCF,B,최종
@@ -168,7 +168,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2012,883241,107.0,False,False,False,True,False,False,False,False,SNPS,A,확인1
 2012,1066026,128.0,False,False,False,True,False,False,False,False,D:CNQR,B,최종
 2012,743988,67.0,True,False,False,False,False,False,False,False,D:XLNX,A,확인1
-2012,106040,69.0,False,True,False,True,True,False,False,False,WDC,B,최종
+2012,106040,69.0,False,True,False,True,True,False,True,False,WDC,B,최종
 2012,6201,117.0,False,False,False,True,False,False,False,False,AAL,B,최종
 2012,1002047,61.0,True,False,False,False,False,False,False,False,NTAP,A,확인1
 2012,866374,121.0,True,False,True,False,False,False,False,True,FLEX,B,최종
@@ -221,7 +221,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2012,1318605,141.0,False,False,False,True,False,False,False,False,TSLA,B,최종
 2012,1022671,146.0,False,False,False,True,False,False,False,False,STLD,B,최종
 2012,773840,16.0,False,False,False,True,True,False,True,False,HON,A,확인1
-2012,1326801,14.0,False,False,False,True,True,False,True,False,META,A,확인1
+2012,1326801,14.0,False,True,False,True,True,False,True,False,META,A,확인1
 2012,1013462,89.0,False,False,False,True,False,False,False,False,D:ANSS,B,최종
 2012,874716,100.0,False,False,False,True,False,False,False,False,IDXX,B,최종
 2012,1048286,55.0,False,False,False,True,True,False,True,False,MAR,A,확인1
@@ -257,7 +257,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2012,1065280,114.0,True,False,True,False,False,True,False,True,NFLX,B,최종
 2012,877890,54.0,True,False,False,False,False,False,False,False,D:CTXS,A,확인1
 2012,712515,118.0,True,False,True,False,False,False,False,True,D:EA,A,확인1
-2012,1075531,27.0,False,False,False,True,True,False,True,False,BKNG,B,최종
+2012,1075531,27.0,True,False,False,False,False,False,False,False,BKNG,B,최종
 2012,1652044,,True,False,False,False,False,True,False,True,GOOGL,A,확인1
 2012,1043277,63.0,True,False,False,False,False,False,False,False,CHRW,A,확인1
 2012,1486159,148.0,False,False,False,True,False,False,False,False,CHRD,A,확인1
@@ -276,7 +276,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2012,1094005,131.0,False,False,False,True,False,False,False,False,D:SINA,A,확인1
 2012,1111928,150.0,False,False,False,True,False,False,False,False,IPGP,B,최종
 2012,1060736,140.0,False,False,False,True,False,False,False,False,D:SGEN,A,확인1
-2012,1324424,70.0,True,False,False,False,False,False,False,True,EXPE,B,최종
+2012,1324424,70.0,True,False,False,False,False,False,False,False,EXPE,B,최종
 2012,1174922,50.0,True,False,False,False,False,False,False,False,WYNN,B,최종
 2012,916365,83.0,False,False,False,True,False,False,False,False,TSCO,B,최종
 2012,779152,136.0,False,False,False,True,False,False,False,False,JKHY,B,최종
@@ -287,7 +287,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2012,1048477,110.0,False,False,False,True,False,False,False,False,BMRN,B,최종
 2012,1012140,103.0,False,False,False,True,False,False,False,False,D:ONXX,A,확인1
 2012,882095,15.0,True,False,False,False,False,False,False,False,GILD,A,확인1
-2012,1437107,29.0,False,False,False,True,True,False,True,False,D:WBD,A,확인1
+2012,1437107,29.0,False,True,False,True,True,False,True,False,D:WBD,A,확인1
 2012,863157,81.0,False,False,False,True,False,False,False,False,D:PETM,A,확인1
 2012,97210,147.0,False,False,False,True,False,False,False,False,TER,A,확인1
 2012,895419,135.0,False,False,False,True,False,False,False,False,D:CREE,A,확인1
@@ -306,7 +306,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2012,900075,133.0,False,False,False,True,False,False,False,False,CPRT,A,확인1
 2012,864749,94.0,False,False,False,True,False,False,False,False,TRMB,A,확인1
 2012,1058290,34.0,True,False,False,False,False,False,False,False,CTSH,A,확인1
-2012,849399,48.0,False,False,False,True,True,False,True,False,GEN,B,최종
+2012,849399,48.0,True,False,False,False,False,False,False,False,GEN,B,최종
 2012,884731,132.0,False,False,False,True,False,False,False,False,D:ARIA_old,B,최종
 2012,1341439,4.0,True,False,False,False,False,False,False,False,ORCL,A,확인1
 2013,46080,109.0,False,False,False,True,False,False,False,False,HAS,B,확인2
@@ -321,7 +321,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2013,875045,21.0,True,False,False,False,False,False,False,False,BIIB,B,확인2
 2013,883241,122.0,False,False,False,True,False,False,False,False,SNPS,A,설계
 2013,1066026,119.0,False,False,False,True,False,False,False,False,D:CNQR,B,확인2
-2013,743988,70.0,True,False,False,False,False,False,False,True,D:XLNX,A,설계
+2013,743988,70.0,True,False,False,False,False,False,False,False,D:XLNX,A,설계
 2013,106040,53.0,True,False,False,False,False,False,False,False,WDC,B,확인2
 2013,6201,104.0,False,False,False,True,False,False,False,False,AAL,B,확인2
 2013,1002047,65.0,True,False,False,False,False,False,False,False,NTAP,A,설계
@@ -350,12 +350,12 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2013,72331,134.0,False,False,False,True,False,False,False,False,NDSN,B,확인2
 2013,872589,29.0,True,False,False,False,False,False,False,False,REGN,B,확인2
 2013,891024,139.0,False,False,False,True,False,False,False,False,D:PDCO,B,확인2
-2013,882835,68.0,False,False,False,True,True,False,False,False,ROP,A,설계
+2013,882835,68.0,False,False,False,True,True,False,True,False,ROP,A,설계
 2013,1043604,85.0,False,False,False,True,False,False,False,False,D:JNPR,A,설계
 2013,8858,125.0,False,False,False,True,False,False,False,False,AVT,A,설계
 2013,816284,18.0,True,False,False,False,False,False,False,False,D:CELG,B,확인2
 2013,77476,6.0,False,False,False,True,True,False,True,False,PEP,B,확인2
-2013,100517,69.0,False,False,False,True,True,False,False,False,UAL,A,설계
+2013,100517,69.0,False,False,False,True,True,False,True,False,UAL,A,설계
 2013,827054,94.0,True,False,True,False,False,False,False,True,MCHP,B,확인2
 2013,50863,9.0,True,False,False,False,False,False,False,False,INTC,A,설계
 2013,1403568,97.0,False,False,False,True,False,False,False,False,ULTA,B,확인2
@@ -373,7 +373,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2013,318154,13.0,True,False,False,False,False,False,False,False,AMGN,B,확인2
 2013,1318605,44.0,True,False,False,False,False,False,False,False,TSLA,B,확인2
 2013,773840,17.0,False,False,False,True,True,False,True,False,HON,A,설계
-2013,1326801,8.0,False,False,False,True,True,False,True,False,META,A,설계
+2013,1326801,8.0,True,False,False,False,False,False,False,False,META,A,설계
 2013,1013462,99.0,False,False,False,True,False,False,False,False,D:ANSS,B,확인2
 2013,874716,123.0,False,False,False,True,False,False,False,False,IDXX,B,확인2
 2013,1048286,62.0,False,True,False,True,True,False,True,False,MAR,A,설계
@@ -391,7 +391,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2013,1470215,98.0,False,False,False,True,False,False,False,False,D:TW2,B,확인2
 2013,1086222,101.0,True,False,False,False,False,False,False,True,AKAM,B,확인2
 2013,1287950,141.0,False,False,False,True,False,False,False,False,D:SPRD,B,확인2
-2013,1110803,71.0,False,True,False,True,True,False,False,False,ILMN,B,확인2
+2013,1110803,71.0,False,True,False,True,True,False,True,False,ILMN,B,확인2
 2013,773910,24.0,False,False,False,True,True,False,True,False,D:APC_old,A,설계
 2013,935703,67.0,True,False,False,False,False,False,False,False,DLTR,A,설계
 2013,899866,35.0,True,False,False,False,False,False,False,False,D:ALXN,B,확인2
@@ -412,7 +412,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2013,1560385,49.0,False,False,False,True,True,False,True,False,FWONA,A,설계
 2013,877890,76.0,True,False,False,False,False,False,False,True,D:CTXS,A,설계
 2013,712515,100.0,False,False,False,True,False,False,False,False,D:EA,A,설계
-2013,1075531,22.0,False,False,False,True,True,False,True,False,BKNG,B,확인2
+2013,1075531,22.0,True,False,False,False,False,False,False,False,BKNG,B,확인2
 2013,1652044,,True,False,False,False,False,True,False,True,GOOGL,A,설계
 2013,1043277,82.0,True,False,False,False,False,False,False,True,CHRW,A,설계
 2013,1486159,127.0,False,False,False,True,False,False,False,False,CHRD,A,설계
@@ -441,7 +441,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2013,1418135,83.0,False,False,False,True,False,False,False,False,KDP,A,설계
 2013,1048477,87.0,False,False,False,True,False,False,False,False,BMRN,B,확인2
 2013,882095,12.0,True,False,False,False,False,False,False,False,GILD,A,설계
-2013,1437107,30.0,False,False,False,True,True,False,True,False,D:WBD,A,설계
+2013,1437107,30.0,True,False,False,False,False,False,False,False,D:WBD,A,설계
 2013,863157,102.0,False,False,False,True,False,False,False,False,D:PETM,A,설계
 2013,895419,105.0,False,False,False,True,False,False,False,False,D:CREE,A,설계
 2013,277948,32.0,False,False,False,True,True,False,True,False,CSX,A,설계
@@ -461,7 +461,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2013,864749,106.0,False,False,False,True,False,False,False,False,TRMB,A,설계
 2013,769520,142.0,False,False,False,True,False,False,False,False,MIDD,B,확인2
 2013,1058290,33.0,True,False,False,False,False,False,False,False,CTSH,A,설계
-2013,849399,54.0,False,False,False,True,True,False,True,False,GEN,B,확인2
+2013,849399,54.0,True,False,False,False,False,False,False,False,GEN,B,확인2
 2013,1341439,5.0,False,False,False,True,True,False,True,False,ORCL,A,설계
 2014,46080,114.0,False,False,False,True,False,False,False,False,HAS,B,최종
 2014,1308161,16.0,False,False,False,True,True,False,True,False,D:TFCFA,A,확인1
@@ -470,7 +470,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2014,746515,104.0,True,False,False,False,False,False,False,True,EXPD,A,확인1
 2014,1286681,142.0,False,False,False,True,False,False,False,False,DPZ,A,확인1
 2014,789019,2.0,True,False,False,False,False,False,False,False,MSFT,B,최종
-2014,718877,67.0,True,False,False,False,False,False,False,True,D:ATVI,B,최종
+2014,718877,67.0,True,False,False,False,False,False,False,False,D:ATVI,B,최종
 2014,4127,82.0,False,False,False,True,False,False,False,False,SWKS,A,확인1
 2014,874015,136.0,False,False,False,True,False,False,False,False,IONS,A,확인1
 2014,1564708,99.0,False,False,False,True,False,False,False,False,NWSA,A,확인1
@@ -482,7 +482,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2014,743988,79.0,True,False,False,False,False,False,False,True,D:XLNX,A,확인1
 2014,106040,47.0,True,False,False,False,False,False,False,False,WDC,B,최종
 2014,6201,37.0,False,True,False,True,True,False,True,False,AAL,B,최종
-2014,1002047,69.0,True,False,False,False,False,False,False,True,NTAP,A,확인1
+2014,1002047,69.0,True,False,False,False,False,False,False,False,NTAP,A,확인1
 2014,879169,80.0,False,False,False,True,False,False,False,False,INCY,A,확인1
 2014,1353283,108.0,False,False,False,True,False,False,False,False,D:SPLK,A,확인1
 2014,866374,127.0,False,False,False,True,False,False,False,False,FLEX,B,최종
@@ -534,7 +534,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2014,1318605,35.0,True,False,False,False,False,False,False,False,TSLA,B,최종
 2014,1022671,133.0,False,False,False,True,False,False,False,False,STLD,B,최종
 2014,773840,18.0,False,False,False,True,True,False,True,False,HON,A,확인1
-2014,1326801,4.0,False,False,False,True,True,False,True,False,META,A,확인1
+2014,1326801,4.0,True,False,False,False,False,False,False,False,META,A,확인1
 2014,1013462,118.0,False,False,False,True,False,False,False,False,D:ANSS,B,최종
 2014,874716,123.0,False,False,False,True,False,False,False,False,IDXX,B,최종
 2014,1048286,49.0,True,False,False,False,False,False,False,False,MAR,A,확인1
@@ -572,20 +572,20 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2014,1560385,63.0,False,False,False,True,True,False,True,False,FWONK,A,확인1
 2014,877890,86.0,True,False,False,False,False,False,False,True,D:CTXS,A,확인1
 2014,712515,74.0,False,True,False,True,True,False,False,False,D:EA,A,확인1
-2014,1075531,20.0,False,False,False,True,True,False,True,False,BKNG,B,최종
+2014,1075531,20.0,True,False,False,False,False,False,False,False,BKNG,B,최종
 2014,1652044,,True,False,False,False,False,True,False,True,GOOGL,A,확인1
 2014,1043277,92.0,True,False,False,False,False,False,False,True,CHRW,A,확인1
 2014,878927,125.0,False,False,False,True,False,False,False,False,ODFL,A,확인1
 2014,1478484,143.0,False,False,False,True,False,False,False,False,D:ZU,A,확인1
 2014,1355096,,True,False,False,False,False,True,False,True,D:QVCA,B,최종
-2014,16732,68.0,False,False,False,True,True,False,False,False,CPB,A,확인1
+2014,16732,68.0,False,False,False,True,True,False,True,False,CPB,A,확인1
 2014,1442145,89.0,True,False,False,False,False,False,False,True,VRSK,A,확인1
 2014,1166691,8.0,True,False,False,False,False,False,False,False,CMCSA,A,확인1
 2014,1018724,10.0,True,False,False,False,False,False,False,False,AMZN,A,확인1
 2014,791907,91.0,True,False,False,False,False,False,False,True,D:LLTC,B,최종
 2014,1109357,34.0,False,False,False,True,True,False,True,False,EXC,A,확인1
 2014,896878,42.0,True,False,False,False,False,False,False,False,INTU,A,확인1
-2014,769397,71.0,True,False,False,False,False,False,False,True,ADSK,A,확인1
+2014,769397,71.0,True,False,False,False,False,False,False,False,ADSK,A,확인1
 2014,1060736,150.0,False,False,False,True,False,False,False,False,D:SGEN,A,확인1
 2014,1324424,81.0,True,False,True,False,False,False,False,True,EXPE,B,최종
 2014,1174922,51.0,True,False,False,False,False,False,False,False,WYNN,B,최종
@@ -594,10 +594,10 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2014,804753,48.0,True,False,False,False,False,False,False,False,D:CERN,B,최종
 2014,743316,105.0,True,False,True,False,False,False,False,True,D:MXIM,A,확인1
 2014,1357204,146.0,False,False,False,True,False,False,False,False,D:DNKN,A,확인1
-2014,1418135,70.0,False,False,False,True,True,False,False,False,KDP,A,확인1
+2014,1418135,70.0,False,False,False,True,True,False,True,False,KDP,A,확인1
 2014,1048477,78.0,False,False,False,True,False,False,False,False,BMRN,B,최종
 2014,882095,6.0,True,False,False,False,False,False,False,False,GILD,A,확인1
-2014,1437107,77.0,False,False,False,True,False,False,False,False,D:WBD,A,확인1
+2014,1437107,77.0,True,False,False,False,False,False,False,True,D:WBD,A,확인1
 2014,863157,119.0,False,False,False,True,False,False,False,False,D:PETM,A,확인1
 2014,277948,31.0,False,False,False,True,True,False,True,False,CSX,A,확인1
 2014,949699,95.0,False,False,False,True,False,False,False,False,D:PCYC,A,확인1
@@ -615,7 +615,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2014,864749,121.0,False,False,False,True,False,False,False,False,TRMB,A,확인1
 2014,769520,139.0,False,False,False,True,False,False,False,False,MIDD,B,최종
 2014,1058290,36.0,True,False,False,False,False,False,False,False,CTSH,A,확인1
-2014,849399,58.0,False,False,False,True,True,False,True,False,GEN,B,최종
+2014,849399,58.0,True,False,False,False,False,False,False,False,GEN,B,최종
 2014,1341439,5.0,False,False,False,True,True,False,True,False,ORCL,A,확인1
 2015,46080,97.0,False,False,False,True,False,False,False,False,HAS,B,확인2
 2015,1308161,21.0,False,False,False,True,True,False,True,False,D:TFCF,B,확인2
@@ -632,7 +632,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2015,883241,110.0,False,False,False,True,False,False,False,False,SNPS,A,설계
 2015,1178670,114.0,False,False,False,True,False,False,False,False,ALNY,B,확인2
 2015,743988,81.0,True,False,False,False,False,False,False,True,D:XLNX,A,설계
-2015,106040,67.0,True,False,False,False,False,False,False,True,WDC,B,확인2
+2015,106040,67.0,True,False,False,False,False,False,False,False,WDC,B,확인2
 2015,6201,35.0,True,False,False,False,False,False,False,False,AAL,B,확인2
 2015,1002047,95.0,True,False,False,False,False,False,False,True,NTAP,A,설계
 2015,879169,50.0,True,False,False,False,False,False,False,False,INCY,A,설계
@@ -689,7 +689,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2015,1318605,41.0,True,False,False,False,False,False,False,False,TSLA,B,확인2
 2015,1022671,150.0,False,False,False,True,False,False,False,False,STLD,B,확인2
 2015,773840,18.0,False,False,False,True,True,False,True,False,HON,A,설계
-2015,1326801,4.0,False,False,False,True,True,False,True,False,META,A,설계
+2015,1326801,4.0,True,False,False,False,False,False,False,False,META,A,설계
 2015,1013462,103.0,False,False,False,True,False,False,False,False,D:ANSS,B,확인2
 2015,874716,125.0,False,False,False,True,False,False,False,False,IDXX,B,확인2
 2015,1048286,54.0,True,False,False,False,False,False,False,False,MAR,A,설계
@@ -700,7 +700,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2015,1461993,144.0,False,False,False,True,False,False,False,False,D:CEMP,B,확인2
 2015,1014507,127.0,False,False,False,True,False,False,False,False,D:SIRO,A,설계
 2015,711404,112.0,False,False,False,True,False,False,False,False,COO,B,확인2
-2015,768251,65.0,False,False,False,True,True,False,False,False,D:ALTR_old,B,확인2
+2015,768251,65.0,False,False,False,True,True,False,True,False,D:ALTR_old,B,확인2
 2015,858877,11.0,True,False,False,False,False,False,False,False,CSCO,B,확인2
 2015,1539838,147.0,False,False,False,True,False,False,False,False,FANG,B,확인2
 2015,813828,44.0,False,False,False,True,True,False,True,False,D:VIAC,A,설계
@@ -709,7 +709,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2015,1086222,89.0,True,False,False,False,False,False,False,True,AKAM,B,확인2
 2015,1110803,51.0,True,False,False,False,False,False,False,False,ILMN,B,확인2
 2015,773910,31.0,False,False,False,True,True,False,True,False,D:APC_old,A,설계
-2015,935703,68.0,True,False,False,False,False,False,False,True,DLTR,A,설계
+2015,935703,68.0,True,False,False,False,False,False,False,False,DLTR,A,설계
 2015,899866,30.0,True,False,False,False,False,False,False,False,D:ALXN,B,확인2
 2015,352541,120.0,False,False,False,True,False,False,False,False,LNT,B,확인2
 2015,1513761,72.0,False,True,False,True,True,False,False,False,NCLH,A,설계
@@ -718,7 +718,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2015,829224,17.0,True,False,False,False,False,False,False,False,SBUX,A,설계
 2015,4904,37.0,False,False,False,True,True,False,True,False,AEP,B,확인2
 2015,63276,106.0,True,False,False,False,False,False,False,True,MAT,A,설계
-2015,1045810,69.0,True,False,False,False,False,False,False,True,NVDA,B,확인2
+2015,1045810,69.0,True,False,False,False,False,False,False,False,NVDA,B,확인2
 2015,723254,94.0,False,False,False,True,False,False,False,False,CTAS,A,설계
 2015,875320,34.0,True,False,False,False,False,False,False,False,VRTX,B,확인2
 2015,1016125,131.0,False,False,False,True,False,False,False,False,D:ULTI_old,A,설계
@@ -726,12 +726,12 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2015,1560385,75.0,False,False,False,True,True,False,False,False,FWONA,A,설계
 2015,877890,76.0,True,False,False,False,False,False,False,True,D:CTXS,A,설계
 2015,712515,47.0,True,False,False,False,False,False,False,False,D:EA,A,설계
-2015,1075531,19.0,False,False,False,True,True,False,True,False,BKNG,B,확인2
+2015,1075531,19.0,True,False,False,False,False,False,False,False,BKNG,B,확인2
 2015,1652044,,True,False,False,False,False,True,False,True,GOOGL,A,설계
 2015,1043277,96.0,True,False,True,False,False,False,False,True,CHRW,A,설계
 2015,878927,138.0,False,False,False,True,False,False,False,False,ODFL,A,설계
 2015,1355096,,True,False,False,False,False,True,False,True,D:QVCA,B,확인2
-2015,16732,66.0,False,False,False,True,True,False,False,False,CPB,A,설계
+2015,16732,66.0,False,False,False,True,True,False,True,False,CPB,A,설계
 2015,1442145,82.0,True,False,False,False,False,False,False,True,VRSK,A,설계
 2015,1166691,9.0,True,False,False,False,False,False,False,False,CMCSA,A,설계
 2015,1018724,3.0,True,False,False,False,False,False,False,False,AMZN,A,설계
@@ -749,6 +749,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2015,1418135,64.0,False,False,False,True,True,False,True,False,KDP,A,설계
 2015,1048477,56.0,True,False,False,False,False,False,False,False,BMRN,B,확인2
 2015,882095,8.0,True,False,False,False,False,False,False,False,GILD,A,설계
+2015,1437107,,True,False,False,False,False,True,False,True,D:WBD,A,설계
 2015,1093557,121.0,False,False,False,True,False,False,False,False,DXCM,A,설계
 2015,1056696,137.0,False,False,False,True,False,False,False,False,MANH,B,확인2
 2015,277948,40.0,False,False,False,True,True,False,True,False,CSX,A,설계
@@ -770,7 +771,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2015,769520,118.0,False,False,False,True,False,False,False,False,MIDD,B,확인2
 2015,1594864,139.0,False,False,False,True,False,False,False,False,D:JUNO,B,확인2
 2015,1058290,28.0,True,False,False,False,False,False,False,False,CTSH,A,설계
-2015,849399,73.0,False,False,False,True,True,False,False,False,GEN,B,확인2
+2015,849399,73.0,True,False,False,False,False,False,False,True,GEN,B,확인2
 2015,1341439,6.0,False,False,False,True,True,False,True,False,ORCL,A,설계
 2016,46080,89.0,False,True,False,True,False,False,False,False,HAS,B,최종
 2016,1308161,27.0,False,False,False,True,True,False,True,False,D:TFCF,B,최종
@@ -823,7 +824,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2016,1604778,117.0,False,False,False,True,False,False,False,False,D:QRVO,A,확인1
 2016,827054,80.0,True,False,False,False,False,False,False,True,MCHP,B,최종
 2016,50863,6.0,True,False,False,False,False,False,False,False,INTC,A,확인1
-2016,1403568,73.0,True,False,False,False,False,False,False,True,ULTA,B,최종
+2016,1403568,73.0,True,False,False,False,False,False,False,False,ULTA,B,최종
 2016,861361,130.0,False,False,False,True,False,False,False,False,D:BEAV,A,확인1
 2016,802481,134.0,False,False,False,True,False,False,False,False,PPC,A,확인1
 2016,723125,61.0,True,False,False,False,False,False,False,False,MU,A,확인1
@@ -840,7 +841,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2016,1318605,40.0,True,False,False,False,False,False,False,False,TSLA,B,최종
 2016,1022671,122.0,False,False,False,True,False,False,False,False,STLD,B,최종
 2016,773840,16.0,False,False,False,True,True,False,True,False,HON,A,확인1
-2016,1326801,3.0,False,False,False,True,True,False,True,False,META,A,확인1
+2016,1326801,3.0,True,False,False,False,False,False,False,False,META,A,확인1
 2016,1013462,110.0,False,False,False,True,False,False,False,False,D:ANSS,B,최종
 2016,874716,95.0,False,False,False,True,False,False,False,False,IDXX,B,최종
 2016,1048286,65.0,True,False,False,False,False,False,False,False,MAR,A,확인1
@@ -874,7 +875,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2016,1560385,100.0,False,False,False,True,False,False,False,False,FWONA,A,확인1
 2016,877890,78.0,True,False,False,False,False,False,False,True,D:CTXS,A,확인1
 2016,712515,49.0,True,False,False,False,False,False,False,False,D:EA,A,확인1
-2016,1075531,19.0,False,False,False,True,True,False,True,False,BKNG,B,최종
+2016,1075531,19.0,True,False,False,False,False,False,False,False,BKNG,B,최종
 2016,1652044,,True,False,False,False,False,True,False,True,GOOGL,A,확인1
 2016,1043277,93.0,False,False,False,True,False,False,False,False,CHRW,A,확인1
 2016,878927,128.0,False,False,False,True,False,False,False,False,ODFL,A,확인1
@@ -886,7 +887,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2016,791907,75.0,False,False,False,True,True,False,False,False,D:LLTC,B,최종
 2016,1109357,37.0,False,False,False,True,True,False,True,False,EXC,A,확인1
 2016,896878,43.0,True,False,False,False,False,False,False,False,INTU,A,확인1
-2016,769397,70.0,True,False,False,False,False,False,False,True,ADSK,A,확인1
+2016,769397,70.0,True,False,False,False,False,False,False,False,ADSK,A,확인1
 2016,1094005,140.0,False,False,False,True,False,False,False,False,D:SINA,A,확인1
 2016,1111928,138.0,False,False,False,True,False,False,False,False,IPGP,B,최종
 2016,1060736,114.0,False,False,False,True,False,False,False,False,D:SGEN,A,확인1
@@ -896,10 +897,11 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2016,779152,126.0,False,False,False,True,False,False,False,False,JKHY,B,최종
 2016,804753,57.0,True,False,False,False,False,False,False,False,D:CERN,B,최종
 2016,743316,86.0,True,False,False,False,False,False,False,True,D:MXIM,A,확인1
-2016,1418135,69.0,False,False,False,True,True,False,False,False,KDP,A,확인1
+2016,1418135,69.0,False,False,False,True,True,False,True,False,KDP,A,확인1
 2016,1048477,79.0,True,False,False,False,False,False,False,True,BMRN,B,최종
 2016,857005,135.0,False,False,False,True,False,False,False,False,PTC,B,최종
 2016,882095,15.0,True,False,False,False,False,False,False,False,GILD,A,확인1
+2016,1437107,,True,False,False,False,False,True,False,True,D:WBD,A,확인1
 2016,1093557,123.0,False,False,False,True,False,False,False,False,DXCM,A,확인1
 2016,1645494,137.0,False,False,False,True,False,False,False,False,D:ARRS,B,최종
 2016,2488,121.0,False,False,False,True,False,False,False,False,AMD,A,확인1
@@ -912,7 +914,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2016,728535,98.0,False,False,False,True,False,False,False,False,JBHT,A,확인1
 2016,865752,44.0,True,False,False,False,False,False,False,False,MNST,B,최종
 2016,1262039,133.0,False,False,False,True,False,False,False,False,FTNT,B,최종
-2016,707549,71.0,True,False,False,False,False,False,False,True,LRCX,B,최종
+2016,707549,71.0,True,False,False,False,False,False,False,False,LRCX,B,최종
 2016,8670,31.0,True,False,False,False,False,False,False,False,ADP,B,최종
 2016,791519,144.0,False,False,False,True,False,False,False,False,D:SPLS_old,B,최종
 2016,355811,142.0,False,False,False,True,False,False,False,False,GNTX,B,최종
@@ -924,7 +926,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2016,769520,124.0,False,False,False,True,False,False,False,False,MIDD,B,최종
 2016,1058290,39.0,True,False,False,False,False,False,False,False,CTSH,A,확인1
 2016,815094,149.0,False,False,False,True,False,False,False,False,D:ABMD,B,최종
-2016,849399,72.0,False,False,False,True,True,False,False,False,GEN,B,최종
+2016,849399,72.0,True,False,False,False,False,False,False,False,GEN,B,최종
 2016,1341439,7.0,False,False,False,True,True,False,True,False,ORCL,A,확인1
 2017,46080,99.0,True,False,False,False,False,False,False,True,HAS,B,확인2
 2017,1308161,34.0,False,False,False,True,True,False,True,False,D:TFCFA,A,설계
@@ -941,7 +943,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2017,875045,26.0,True,False,False,False,False,False,False,False,BIIB,B,확인2
 2017,883241,88.0,False,True,False,True,False,False,False,False,SNPS,A,설계
 2017,1178670,101.0,False,False,False,True,False,False,False,False,ALNY,B,확인2
-2017,743988,74.0,True,False,False,False,False,False,False,True,D:XLNX,A,설계
+2017,743988,74.0,True,False,False,False,False,False,False,False,D:XLNX,A,설계
 2017,106040,56.0,True,False,False,False,False,False,False,False,WDC,B,확인2
 2017,6201,66.0,True,False,False,False,False,False,False,False,AAL,B,확인2
 2017,1002047,93.0,False,False,False,True,False,False,False,False,NTAP,A,설계
@@ -961,7 +963,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2017,1048695,131.0,False,False,False,True,False,False,False,False,FFIV,B,확인2
 2017,1491576,143.0,False,False,False,True,False,False,False,False,D:TSRO,B,확인2
 2017,1730168,,True,False,False,False,False,True,False,True,AVGO,A,설계
-2017,898173,73.0,True,False,False,False,False,False,False,True,ORLY,A,설계
+2017,898173,73.0,True,False,False,False,False,False,False,False,ORLY,A,설계
 2017,1065088,42.0,True,False,False,False,False,False,False,False,EBAY,B,확인2
 2017,59527,150.0,False,False,False,True,False,False,False,False,LECO,A,설계
 2017,1097864,117.0,False,False,False,True,False,False,False,False,ON,B,확인2
@@ -974,7 +976,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2017,816284,22.0,True,False,False,False,False,False,False,False,D:CELG,B,확인2
 2017,877212,146.0,False,False,False,True,False,False,False,False,ZBRA,A,설계
 2017,77476,10.0,False,False,False,True,True,False,True,False,PEP,B,확인2
-2017,100517,75.0,False,False,False,True,True,False,False,False,UAL,A,설계
+2017,100517,75.0,False,False,False,True,True,False,True,False,UAL,A,설계
 2017,1604778,113.0,False,False,False,True,False,False,False,False,D:QRVO,A,설계
 2017,827054,67.0,True,False,False,False,False,False,False,False,MCHP,B,확인2
 2017,50863,6.0,True,False,False,False,False,False,False,False,INTC,A,설계
@@ -993,13 +995,13 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2017,1318605,29.0,True,False,False,False,False,False,False,False,TSLA,B,확인2
 2017,1022671,119.0,False,False,False,True,False,False,False,False,STLD,B,확인2
 2017,773840,14.0,False,False,False,True,True,False,True,False,HON,A,설계
-2017,1326801,4.0,False,False,False,True,True,False,True,False,META,A,설계
+2017,1326801,4.0,True,False,False,False,False,False,False,False,META,A,설계
 2017,1013462,98.0,False,False,False,True,False,False,False,False,D:ANSS,B,확인2
 2017,874716,82.0,True,False,False,False,False,False,False,True,IDXX,B,확인2
 2017,1048286,39.0,True,False,False,False,False,False,False,False,MAR,A,설계
 2017,891103,130.0,False,False,False,True,False,False,False,False,MTCH,B,확인2
 2017,1065696,97.0,False,False,False,True,False,False,False,False,LKQ,B,확인2
-2017,319201,76.0,True,False,False,False,False,False,False,True,KLAC,A,설계
+2017,319201,76.0,True,False,False,False,False,False,False,False,KLAC,A,설계
 2017,1005284,139.0,False,False,False,True,False,False,False,False,OLED,B,확인2
 2017,104169,5.0,False,False,False,True,True,False,True,False,WMT,A,설계
 2017,711404,95.0,False,False,False,True,False,False,False,False,COO,B,확인2
@@ -1031,7 +1033,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2017,1065280,21.0,True,False,False,False,False,False,False,False,NFLX,B,확인2
 2017,877890,90.0,True,False,False,False,False,False,False,True,D:CTXS,A,설계
 2017,712515,46.0,True,False,False,False,False,False,False,False,D:EA,A,설계
-2017,1075531,18.0,False,False,False,True,True,False,True,False,BKNG,B,확인2
+2017,1075531,18.0,True,False,False,False,False,False,False,False,BKNG,B,확인2
 2017,1652044,,True,False,False,False,False,True,False,True,GOOGL,A,설계
 2017,1043277,102.0,False,False,False,True,False,False,False,False,CHRW,A,설계
 2017,878927,112.0,False,False,False,True,False,False,False,False,ODFL,A,설계
@@ -1057,10 +1059,11 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2017,1048477,83.0,True,False,False,False,False,False,False,True,BMRN,B,확인2
 2017,857005,132.0,False,False,False,True,False,False,False,False,PTC,B,확인2
 2017,882095,15.0,True,False,False,False,False,False,False,False,GILD,A,설계
+2017,1437107,,True,False,True,False,False,True,False,True,D:WBD,A,설계
 2017,2488,109.0,False,False,False,True,False,False,False,False,AMD,A,설계
 2017,97210,124.0,False,False,False,True,False,False,False,False,TER,A,설계
 2017,277948,37.0,True,False,False,False,False,False,False,False,CSX,A,설계
-2017,1097149,72.0,True,False,False,False,False,False,False,True,ALGN,B,확인2
+2017,1097149,72.0,True,False,False,False,False,False,False,False,ALGN,B,확인2
 2017,815556,87.0,True,False,False,False,False,False,False,True,FAST,A,설계
 2017,1327567,86.0,False,False,False,True,False,False,False,False,PANW,B,확인2
 2017,936402,11.0,True,False,False,False,False,False,False,False,D:SHPG,B,확인2
@@ -1077,7 +1080,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2017,769520,140.0,False,False,False,True,False,False,False,False,MIDD,B,확인2
 2017,1058290,38.0,True,False,False,False,False,False,False,False,CTSH,A,설계
 2017,815094,123.0,False,False,False,True,False,False,False,False,D:ABMD,B,확인2
-2017,849399,70.0,False,False,False,True,True,False,True,False,GEN,B,확인2
+2017,849399,70.0,True,False,False,False,False,False,False,False,GEN,B,확인2
 2017,1341439,7.0,False,False,False,True,True,False,True,False,ORCL,A,설계
 2018,46080,108.0,True,False,False,False,False,False,False,True,HAS,B,최종
 2018,1308161,24.0,False,False,False,True,True,False,True,False,D:TFCFA,A,확인1
@@ -1133,7 +1136,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2018,1050797,146.0,False,False,False,True,False,False,False,False,COLM,B,최종
 2018,827054,83.0,True,False,False,False,False,False,False,True,MCHP,B,최종
 2018,50863,6.0,True,False,False,False,False,False,False,False,INTC,A,확인1
-2018,1403568,80.0,True,False,False,False,False,False,False,True,ULTA,B,최종
+2018,1403568,80.0,True,False,False,False,False,False,False,False,ULTA,B,최종
 2018,723125,40.0,True,False,False,False,False,False,False,False,MU,A,확인1
 2018,796343,15.0,True,False,False,False,False,False,False,False,ADBE,A,확인1
 2018,320193,1.0,True,False,False,False,False,False,False,False,AAPL,B,최종
@@ -1146,7 +1149,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2018,1318605,34.0,True,False,False,False,False,False,False,False,TSLA,B,최종
 2018,1022671,126.0,False,False,False,True,False,False,False,False,STLD,B,최종
 2018,773840,16.0,False,False,False,True,True,False,True,False,HON,A,확인1
-2018,1326801,4.0,False,False,False,True,True,False,True,False,META,A,확인1
+2018,1326801,4.0,True,False,False,False,False,False,False,False,META,A,확인1
 2018,1013462,98.0,False,False,False,True,False,False,False,False,D:ANSS,B,최종
 2018,874716,73.0,True,False,False,False,False,False,False,False,IDXX,B,최종
 2018,1048286,42.0,True,False,False,False,False,False,False,False,MAR,A,확인1
@@ -1203,7 +1206,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2018,743316,90.0,True,False,False,False,False,False,False,True,D:MXIM,A,확인1
 2018,946581,87.0,True,False,False,False,False,False,False,True,TTWO,A,확인1
 2018,1357204,150.0,False,False,False,True,False,False,False,False,D:DNKN,A,확인1
-2018,1048477,79.0,True,False,False,False,False,False,False,True,BMRN,B,최종
+2018,1048477,79.0,True,False,False,False,False,False,False,False,BMRN,B,최종
 2018,857005,123.0,False,False,False,True,False,False,False,False,PTC,B,최종
 2018,882095,23.0,True,False,False,False,False,False,False,False,GILD,A,확인1
 2018,1093557,106.0,False,False,False,True,False,False,False,False,DXCM,A,확인1
@@ -1228,7 +1231,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2018,769520,147.0,False,False,False,True,False,False,False,False,MIDD,B,최종
 2018,1058290,43.0,True,False,False,False,False,False,False,False,CTSH,A,확인1
 2018,815094,84.0,False,False,False,True,False,False,False,False,D:ABMD,B,최종
-2018,849399,109.0,False,False,False,True,False,False,False,False,GEN,B,최종
+2018,849399,109.0,True,False,False,False,False,False,False,True,GEN,B,최종
 2018,1341439,8.0,False,False,False,True,True,False,True,False,ORCL,A,확인1
 2019,46080,116.0,True,False,True,False,False,True,False,True,HAS,B,확인2
 2019,1035267,30.0,True,False,False,False,False,False,False,False,ISRG,B,확인2
@@ -1299,8 +1302,8 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2019,1402057,85.0,False,True,False,True,False,False,False,False,CDW,B,확인2
 2019,1318605,31.0,True,False,False,False,False,False,False,False,TSLA,B,확인2
 2019,773840,15.0,False,False,False,True,True,False,True,False,HON,A,설계
-2019,1326801,4.0,False,False,False,True,True,False,True,False,META,A,설계
-2019,1013462,83.0,False,True,False,True,False,False,False,False,D:ANSS,B,확인2
+2019,1326801,4.0,True,False,False,False,False,False,False,False,META,A,설계
+2019,1013462,83.0,False,True,False,True,False,False,True,False,D:ANSS,B,확인2
 2019,874716,66.0,True,False,False,False,False,False,False,False,IDXX,B,확인2
 2019,1048286,43.0,True,False,False,False,False,False,False,False,MAR,A,설계
 2019,891103,69.0,False,False,False,True,True,False,True,False,MTCH,B,확인2
@@ -1347,7 +1350,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2019,1145197,136.0,False,False,False,True,False,False,False,False,PODD,B,확인2
 2019,1585521,78.0,False,False,False,True,False,False,True,False,ZM,A,설계
 2019,769397,56.0,True,False,False,False,False,False,False,False,ADSK,A,설계
-2019,1060736,84.0,False,True,False,True,False,False,False,False,D:SGEN,A,설계
+2019,1060736,84.0,False,True,False,True,False,False,True,False,D:SGEN,A,설계
 2019,1324424,76.0,True,False,False,False,False,False,False,False,EXPE,B,확인2
 2019,1174922,110.0,True,False,True,False,False,True,False,True,WYNN,B,확인2
 2019,1385867,138.0,False,False,False,True,False,False,False,False,D:COUP,A,설계
@@ -1380,7 +1383,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2019,864749,126.0,False,False,False,True,False,False,False,False,TRMB,A,설계
 2019,1058290,53.0,True,False,False,False,False,False,False,False,CTSH,A,설계
 2019,815094,131.0,False,False,False,True,False,False,False,False,D:ABMD,B,확인2
-2019,849399,98.0,False,False,False,True,False,False,False,False,GEN,B,확인2
+2019,849399,98.0,True,False,True,False,False,False,False,True,GEN,B,확인2
 2019,1341439,10.0,False,False,False,True,True,False,True,False,ORCL,A,설계
 2020,46080,136.0,False,False,False,True,False,False,False,False,HAS,B,최종
 2020,1035267,28.0,True,False,False,False,False,False,False,False,ISRG,B,최종
@@ -1449,7 +1452,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2020,1402057,99.0,True,False,False,False,False,False,False,True,CDW,B,최종
 2020,1318605,6.0,True,False,False,False,False,False,False,False,TSLA,B,최종
 2020,773840,24.0,False,False,False,True,True,False,True,False,HON,A,확인1
-2020,1326801,3.0,False,False,False,True,True,False,True,False,META,A,확인1
+2020,1326801,3.0,True,False,False,False,False,False,False,False,META,A,확인1
 2020,1013462,79.0,True,False,False,False,False,False,False,False,D:ANSS,B,최종
 2020,874716,55.0,True,False,False,False,False,False,False,False,IDXX,B,최종
 2020,1048286,69.0,True,False,False,False,False,False,False,False,MAR,A,확인1
@@ -1486,7 +1489,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2020,1075531,32.0,True,False,False,False,False,False,False,False,BKNG,B,최종
 2020,1652044,,True,False,False,False,False,True,False,True,GOOGL,A,확인1
 2020,1043277,129.0,False,False,False,True,False,False,False,False,CHRW,A,확인1
-2020,878927,85.0,False,False,False,True,False,False,False,False,ODFL,A,확인1
+2020,878927,85.0,False,False,False,True,False,False,True,False,ODFL,A,확인1
 2020,1576280,138.0,False,False,False,True,False,False,False,False,GH,A,확인1
 2020,16732,114.0,False,False,False,True,False,False,False,False,CPB,A,확인1
 2020,1442145,75.0,True,False,False,False,False,False,False,False,VRSK,A,확인1
@@ -1602,7 +1605,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2021,1014473,102.0,True,False,False,False,False,False,False,True,VRSN,A,설계
 2021,1318605,4.0,True,False,False,False,False,False,False,False,TSLA,B,확인2
 2021,773840,21.0,True,False,False,False,False,False,False,False,HON,A,설계
-2021,1326801,5.0,False,False,False,True,True,False,True,False,META,A,설계
+2021,1326801,5.0,True,False,False,False,False,False,False,False,META,A,설계
 2021,1013462,90.0,True,False,False,False,False,False,False,True,D:ANSS,B,확인2
 2021,874716,50.0,True,False,False,False,False,False,False,False,IDXX,B,확인2
 2021,1048286,55.0,True,False,False,False,False,False,False,False,MAR,A,설계
@@ -1681,7 +1684,7 @@ year,cik,rank,member,true_add,true_rem,cand,b1_add,b1_rem,b0_add,b0_rem,key,grp,
 2021,1751008,87.0,False,False,False,True,False,False,False,False,APP,A,설계
 2021,804328,22.0,True,False,False,False,False,False,False,False,QCOM,B,확인2
 2021,55785,73.0,False,False,False,True,True,False,True,False,KMB,B,확인2
-2021,900075,85.0,True,False,False,False,False,False,False,True,CPRT,A,설계
+2021,900075,85.0,True,False,False,False,False,False,False,False,CPRT,A,설계
 2021,864749,113.0,False,False,False,True,False,False,False,False,TRMB,A,설계
 2021,1058290,78.0,True,False,False,False,False,False,False,False,CTSH,A,설계
 2021,1101302,131.0,False,False,False,True,False,False,False,False,ENTG,B,확인2
