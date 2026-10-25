@@ -13,6 +13,20 @@ src = open(os.path.join(ROOT, "task5", "03_build_panel_R.py")).read().split("# -
 src = src.replace('"WeightedAverageNumberOfDilutedSharesOutstanding"]', '"WeightedAverageNumberOfDilutedSharesOutstanding", "RetainedEarningsAccumulatedDeficit", "OperatingIncomeLoss", "Liabilities"]', 1)
 gx = {"__file__": os.path.join(ROOT, "task5", "03_build_panel_R.py")}; exec(src, gx)
 inst, ttm, rev = gx["inst"], gx["ttm"], gx["rev"]
+# R2 재무 자료에는 이익잉여금이 없고 상장폐지 회사 자료는 태그가 적다 → SEC 원본 companyfacts에서 세 태그를 직접 읽어 넣는다 (결과 보기 전 수정)
+EXTRA = ("Liabilities", "RetainedEarningsAccumulatedDeficit", "OperatingIncomeLoss")
+def load_extra(c):
+    p = os.path.join(CF, f"{c}.json")
+    try: j = json.load(open(p))
+    except Exception: return
+    ug = j.get("facts", {}).get("us-gaap", {})
+    for tag in EXTRA:
+        rows = [(pd.Timestamp(x["filed"]), pd.Timestamp(x["start"]) if "start" in x else pd.NaT, pd.Timestamp(x["end"]), x["val"])
+                for x in ug.get(tag, {}).get("units", {}).get("USD", []) if "filed" in x and "end" in x]
+        if not rows: continue
+        g = pd.DataFrame(rows, columns=["filed", "start", "end", "val"]).sort_values("filed").drop_duplicates(["start", "end"], keep="first")
+        g["dur"] = (g["end"] - g["start"]).dt.days
+        gx["F"][(c, tag)] = (g["filed"].values, g["start"].values, g["end"].values, g["dur"].values.astype(float), g["val"].values.astype(float))
 
 cur = pd.DataFrame(json.load(open(os.path.join(SB, "company_tickers.json"))).values())
 cur["ticker"] = cur["ticker"].str.replace(".", "-", regex=False); now2cik = dict(zip(cur["ticker"], cur["cik_str"]))
@@ -76,6 +90,8 @@ evm = dict(zip(EVD["cik"], EVD["event"]))
 pn["ev"] = pn["cik"].map(evm)
 pn["y"] = ((pn["ev"] > pn["date"]) & (pn["ev"] <= pn["date"] + pd.Timedelta(days=365))).astype(int)
 pn = pn[~((pn["ev"] <= pn["date"]) & (pn["ev"] > pn["date"] - pd.Timedelta(days=730)))]
+for c in pn["cik"].unique(): load_extra(int(c))
+print("extra tag series loaded:", sum(1 for k in gx["F"] if k[1] in EXTRA))
 F = {k: [] for k in ("z", "nimta", "tlmta", "cashmta", "exret", "sigma", "price")}
 cache = {}
 for r in pn.itertuples():
