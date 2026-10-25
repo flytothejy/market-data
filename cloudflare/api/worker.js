@@ -173,6 +173,11 @@ function pfDoc(pf, env) {
     start: day.test(p.start) ? p.start : null,
     cap: Math.max(100, Math.min(1e9, +p.cap || 10000)),
     rb: ['q', 'y', 'band'].includes(p.rb) ? p.rb : 'none',
+    why: String(p.why || '').slice(0, 80),
+    hist: (Array.isArray(p.hist) ? p.hist : []).slice(-20).filter(h => h && day.test(h.d)).map(h => ({
+      d: h.d, rb: ['q', 'y', 'band'].includes(h.rb) ? h.rb : 'none', why: String(h.why || '').slice(0, 80),
+      items: (Array.isArray(h.items) ? h.items : []).slice(0, 30).filter(x => x && TICK.test(x.t)).map(x => ({ t: x.t, w: Math.max(0, Math.min(100, +x.w || 0)) })),
+    })),
   }));
   return { v: 2, pfs, u: Math.floor(+pf.u) };
 }

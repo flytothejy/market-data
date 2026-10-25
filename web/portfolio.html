@@ -101,7 +101,8 @@ function editor(p) {
       <span style="margin-left:auto;display:flex;gap:6px"><button class="btn" id="e-eq">같은 비중</button><button class="btn" id="e-100">합계 100%로</button></span></div>
     <div class="row"><label class="s13 mut">가상 시작 금액 $ <input class="f" type="number" id="e-cap" value="${d.cap}" min="100" step="100" style="width:110px"></label>
       <label class="s13 mut">리밸런싱 <select class="f" id="e-rb"><option value="none">안 함 (처음 비중으로 사서 그대로)</option><option value="q" ${d.rb === 'q' ? 'selected' : ''}>분기마다 처음 비중으로</option><option value="y" ${d.rb === 'y' ? 'selected' : ''}>1년마다 처음 비중으로</option><option value="band" ${d.rb === 'band' ? 'selected' : ''}>비중이 5%p 넘게 벗어나면 되돌림</option></select></label></div>
-    <div class="small faint">비중 합계가 100%가 아니면 계산할 때 비율대로 맞춰요 · 종목이나 비중을 바꾸면 ‘만든 뒤 성과’는 바꾼 날부터 다시 시작해요</div>
+    ${p.items.length ? `<div class="row"><label class="s13 mut" style="flex:1;display:flex;gap:6px;align-items:center">바꾸는 이유 <input class="f" id="e-why" maxlength="80" placeholder="구성을 바꿀 때 한 줄 남기면, 나중에 그 판단이 도움이 됐는지 비교해 드려요" value="${esc(d.whyNew || '')}" style="flex:1;min-width:200px"></label></div>` : ''}
+    <div class="small faint">비중 합계가 100%가 아니면 계산할 때 비율대로 맞춰요 · 종목·비중·리밸런싱을 바꾸면 이전 구성은 기록으로 남고, 바꾼 날부터 새 구성으로 이어서 계산해요</div>
     <div class="row"><button class="btn dark" id="e-save">저장</button><button class="btn" id="e-cancel">취소</button><button class="btn" id="e-del" style="margin-left:auto;color:var(--dn)">포트폴리오 삭제</button></div>
     <datalist id="tick">${U.rows.map(r => `<option value="${r.t}">${esc(r.n)}</option>`).join('')}</datalist></div>`;
 }
@@ -127,10 +128,15 @@ function bindEditor(p) {
   $('#e-name').oninput = e => d.name = e.target.value;
   $('#e-cap').oninput = e => d.cap = Math.max(100, +e.target.value || 10000);
   $('#e-rb').onchange = e => d.rb = e.target.value;
+  const ew2 = $('#e-why'); if (ew2) ew2.oninput = e => d.whyNew = e.target.value;
   $('#e-save').onclick = () => {
     const key = a => JSON.stringify(a.filter(x => x.w > 0).map(x => [x.t, +x.w]).sort());
     const patch = { name: d.name.trim() || p.name, items: d.items.filter(x => x.w > 0), cap: d.cap, rb: d.rb };
-    if (key(p.items) !== key(d.items) || p.rb !== d.rb) patch.start = today();      // 구성이 바뀌면 만든 뒤 성과를 새로 시작
+    if (key(p.items) !== key(d.items) || p.rb !== d.rb) {                             // 구성이 바뀌면 이전 구성을 기록으로 남기고 오늘부터 새 구성
+      const why = (d.whyNew || '').trim().slice(0, 80);
+      if (p.start && p.start < today() && p.items.length) patch.hist = [...(p.hist || []), { d: p.start, items: p.items, rb: p.rb, why: p.why || '' }].slice(-20);
+      patch.start = today(); patch.why = why;
+    }
     PF.update(p.id, patch); st.edit = false; st.draft = null; render();
   };
   $('#e-cancel').onclick = () => { st.edit = false; st.draft = null; if (!p.items.length) { PF.remove(p.id); st.id = null; } render(); };
@@ -152,6 +158,9 @@ async function view(p) {
   const i0 = PFX.idxOn(dates, p.start || today());
   const fwd = PFX.run(p.items, A, dates, i0, capAt(i0), p.rb, { fx }), fS = PFX.bench(A, dates, i0, 'SPY', { fx });
   const fm = fwd && !fwd.empty ? PFX.metrics(fwd) : null, fsm = fS && !fS.empty ? PFX.metrics(fS) : null;
+  // 버전 기록이 있으면: 실제 기록(이어 붙임) · 처음 구성 그대로 뒀다면 · 같은 기간 S&P 500
+  const hasH = (p.hist || []).length > 0, h0 = hasH ? PFX.idxOn(dates, PFX.versions(p)[0].d) : 0;
+  const CH = hasH ? PFX.chain(p, A, dates, capAt(h0), { fx }) : null, hS = hasH ? PFX.bench(A, dates, h0, 'SPY', { fx }) : null;
   // 과거 시뮬레이션 (한 번에 / 매달 적립, 달러 / 원화)
   const s0 = perStart(dates, st.per), dca = st.mode === 'dca' ? (krw ? st.dcaK : st.dcaU) : 0;
   const sim0 = PFX.run(p.items, A, dates, s0, capAt(s0), p.rb, { fx, dca });
@@ -172,9 +181,23 @@ async function view(p) {
   const days = Math.round((Date.now() - Date.parse(p.start || today())) / 864e5);
   const pS = v => v == null ? '-' : `<span class="${cls(v)}">${(v >= 0 ? '+' : '') + (v * 100).toFixed(1)}%</span>`;
   let h = '';
-  h += `<div class="card"><h3>만든 뒤 성과 <span class="mut s13" style="font-weight:400">· ${esc(p.start || today())}부터${days ? ` (${days}일)` : ''}${krw ? ' · 원화 기준' : ''}</span></h3>
-    ${fm ? `<div class="pf-big"><div><span>${esc(p.name)}</span><b class="${cls(fm.tot)}">${(fm.tot >= 0 ? '+' : '') + (fm.tot * 100).toFixed(1)}%</b></div>${fsm ? `<div><span>같은 기간 S&P 500</span><b class="${cls(fsm.tot)}">${(fsm.tot >= 0 ? '+' : '') + (fsm.tot * 100).toFixed(1)}%</b></div>` : ''}<div><span>가상 금액</span><b>${M(fwd.v[fwd.v.length - 1])}</b></div></div>
-      <div id="ch-f"></div>` : `<div class="s13 mut">만든 지 얼마 안 돼서 아직 쌓인 기록이 없어요. 다음 주부터 그래프가 그려져요 — 과거 시뮬레이션과 달리 결과를 모르고 고른 뒤의 성적이라, 전략을 점검하는 데 더 정직한 기록이에요.</div>`}</div>`;
+  const tr = x => x && x.v && x.v.length >= 2 ? x.v[x.v.length - 1] / x.v[0] - 1 : null, big = (n, v, cl = 1) => `<div><span>${n}</span><b class="${cl && v != null ? cls(v) : ''}">${v == null ? '-' : (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%'}</b></div>`;
+  if (CH && CH.d.length >= 2) {
+    const real = tr(CH), orig = tr(CH.orig), sp = tr(hS && !hS.empty ? hS : null), chg = CH.segs.slice(1);
+    h += `<div class="card"><h3>실제 기록 <span class="mut s13" style="font-weight:400">· ${esc(CH.first)}부터, 구성 ${CH.n}번째 버전${krw ? ' · 원화 기준' : ''}</span></h3>
+      <div class="pf-big">${big('바꿔 온 실제 기록', real)}${big('처음 구성 그대로 뒀다면', orig)}${big('같은 기간 S&P 500', sp)}<div><span>가상 금액</span><b>${M(CH.v[CH.v.length - 1])}</b></div></div>
+      ${real != null && orig != null ? `<div class="s13">${Math.abs(real - orig) < 0.001 ? '지금까지는 바꾼 것과 그대로 둔 것의 차이가 거의 없어요' : `구성을 바꿔 온 판단이 처음 구성 그대로보다 <b class="${cls(real - orig)}">${Math.abs((real - orig) * 100).toFixed(1)}%p ${real > orig ? '앞서' : '뒤처져'}</b> 있어요`}</div>` : ''}
+      ${PFX.legend([{ name: '실제 기록', color: col }, CH.orig && { name: '처음 구성 그대로', color: PFX.COLORS[1] }, { name: 'S&P 500', color: PFX.BCOL.SPY }])}<div id="ch-f"></div>
+      <div class="s13" style="margin-top:4px"><b>바꾼 기록</b> <span class="mut">· 바꾼 날부터 다음에 바꿀 때(또는 오늘)까지, 바꾼 구성 vs 직전 구성 그대로</span></div>
+      <div class="tbl-wrap"><table class="t pfx-t"><thead><tr><th class="l">#</th><th class="l">날짜</th><th class="l">바꾼 내용</th><th class="l">이유</th><th>바꾼 뒤</th><th>그대로 뒀다면</th><th>차이</th></tr></thead><tbody>
+      ${chg.map((g, n) => `<tr><td class="l">${n + 1}</td><td class="l">${esc(g.d)}</td><td class="l small" style="white-space:normal;min-width:160px">${esc(PFX.diff(g.prevItems, g.items))}</td><td class="l small mut" style="white-space:normal;min-width:120px">${esc(g.why) || '-'}</td><td>${g.ret == null ? '<span class="faint">쌓이는 중</span>' : pctS(g.ret)}</td><td>${g.alt == null ? '-' : pctS(g.alt)}</td><td>${g.ret == null || g.alt == null ? '-' : `<b class="${cls(g.ret - g.alt)}">${((g.ret - g.alt) >= 0 ? '+' : '') + ((g.ret - g.alt) * 100).toFixed(1)}%p</b>`}</td></tr>`).join('')}</tbody></table></div>
+      <div class="small faint">주간 종가 기준이라 같은 주 안에서 바꾼 효과는 다음 주부터 보여요 · 이전 구성은 최근 20개까지 남겨요</div></div>`;
+  } else {
+    h += `<div class="card"><h3>만든 뒤 성과 <span class="mut s13" style="font-weight:400">· ${esc(p.start || today())}부터${days ? ` (${days}일)` : ''}${krw ? ' · 원화 기준' : ''}</span></h3>
+    ${fm ? `<div class="pf-big">${big(esc(p.name), fm.tot)}${fsm ? big('같은 기간 S&P 500', fsm.tot) : ''}<div><span>가상 금액</span><b>${M(fwd.v[fwd.v.length - 1])}</b></div></div>
+      <div id="ch-f"></div>` : `<div class="s13 mut">만든 지 얼마 안 돼서 아직 쌓인 기록이 없어요. 다음 주부터 그래프가 그려져요 — 과거 시뮬레이션과 달리 결과를 모르고 고른 뒤의 성적이라, 전략을 점검하는 데 더 정직한 기록이에요.</div>`}
+    <div class="small faint">구성을 바꾸면 이전 구성이 기록으로 남아, 바꾼 판단이 도움이 됐는지 ‘그대로 뒀다면’과 비교해 보여 드려요</div></div>`;
+  }
   const seg = (attr, cur, opts) => `<div class="seg">${opts.map(([k, l]) => `<button class="btn ${cur === k ? 'on' : ''}" ${attr}="${k}" ${k === 'krw' && !fxA ? 'disabled title="환율 자료를 불러오지 못했어요"' : ''}>${l}</button>`).join('')}</div>`;
   h += `<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">과거 시뮬레이션</h3><span class="mut s13">${perL} 전부터 이 비중으로 ${dca ? `매달 ${M(dca)}씩 샀다면` : '샀다면'} · 리밸런싱 ${RB[p.rb] || '안 함'}</span><span style="margin-left:auto">${segPer(st.per)}</span></div>
     <div class="pf-ctl">${seg('data-cur', krw ? 'krw' : 'usd', [['usd', '달러'], ['krw', '원화']])}${seg('data-pm', st.mode, [['lump', '한 번에'], ['dca', '매달 적립']])}
@@ -213,7 +236,8 @@ async function view(p) {
     <div class="small faint">S&P 500도 같은 방법(SPY 공개 구성 상위 종목)으로 계산 · PER·매출 성장·이익률은 펼친 종목 중 자료가 있는 ${(ch.cov * 100).toFixed(0)}% 기준</div></div></div>`;
   h += `<div class="small faint">정보 제공용이며 투자 권유가 아닙니다 · 직접 고른 종목과 비중으로 계산한 가상 결과예요</div>`;
   el.innerHTML = h;
-  if (fm) PFX.chart(el.querySelector('#ch-f'), [{ name: p.name, color: col, d: fwd.d, v: fwd.v, bold: 1 }, fS && !fS.empty && { name: 'S&P 500', color: PFX.BCOL.SPY, d: fS.d, v: fS.v }], { h: 180 });
+  if (CH && CH.d.length >= 2) PFX.chart(el.querySelector('#ch-f'), [{ name: '실제 기록', color: col, d: CH.d, v: CH.v, bold: 1 }, CH.orig && { name: '처음 구성 그대로', color: PFX.COLORS[1], d: CH.orig.d, v: CH.orig.v }, hS && !hS.empty && { name: 'S&P 500', color: PFX.BCOL.SPY, d: hS.d, v: hS.v }], { h: 200, marks: CH.segs.slice(1).map(g => g.from) });
+  else if (fm) PFX.chart(el.querySelector('#ch-f'), [{ name: p.name, color: col, d: fwd.d, v: fwd.v, bold: 1 }, fS && !fS.empty && { name: 'S&P 500', color: PFX.BCOL.SPY, d: fS.d, v: fS.v }], { h: 180 });
   if (ok && !dca) PFX.chart(el.querySelector('#ch-s'), lines);
   if (ok && dca) PFX.chart(el.querySelector('#ch-s'), [...lines, { name: '넣은 돈', color: '#0ea5e9', d: sim.d, v: sim.iv }], { abs: true, fmt: v => krw ? wonS(v) : '$' + (v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : Math.round(v / 1e3) + 'k') });
   el.querySelectorAll('[data-cur]').forEach(b => b.onclick = () => { st.cur = b.dataset.cur; view(p); });

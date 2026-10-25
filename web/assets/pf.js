@@ -133,6 +133,33 @@ const PFX = {
     for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; if (f(lo) * f(m) <= 0) hi = m; else lo = m; }
     return (lo + hi) / 2;
   },
+  // ---- 버전 기록: 구성을 바꿀 때마다 이전 구성을 hist에 남김 { d: 그 구성을 시작한 날, items, rb, why }
+  versions(p) { return [...(p.hist || []), { d: p.start, items: p.items, rb: p.rb, why: p.why || '', cur: true }].filter(v => v.d).sort((a, b) => a.d < b.d ? -1 : 1); },
+  // 실제 기록(버전을 이어 붙임) · 처음 구성 그대로 뒀다면 · 바꿀 때마다 "바꾼 뒤 vs 그대로"
+  chain(p, A, dates, cap, opt = {}) {
+    const V = this.versions(p); if (!V.length) return null;
+    const d = [], v = [], segs = [];
+    let val = cap;
+    for (let k = 0; k < V.length; k++) {
+      const a = this.idxOn(dates, V[k].d), b = k + 1 < V.length ? this.idxOn(dates, V[k + 1].d) : dates.length - 1;
+      const seg = b > a ? this.run(V[k].items, A, dates, a, val, V[k].rb, { ...opt, end: b }) : null;
+      const prev = k ? (b > a ? this.run(V[k - 1].items, A, dates, a, val, V[k - 1].rb, { ...opt, end: b }) : null) : null;
+      if (seg && !seg.empty) {
+        seg.d.forEach((x, i) => { if (d.length && d[d.length - 1] === x) { v[v.length - 1] = seg.v[i]; return; } d.push(x); v.push(seg.v[i]); });
+        val = seg.v[seg.v.length - 1];
+      }
+      const ret = seg && !seg.empty ? seg.v[seg.v.length - 1] / seg.v[0] - 1 : null, alt = prev && !prev.empty ? prev.v[prev.v.length - 1] / prev.v[0] - 1 : null;
+      segs.push({ ...V[k], from: dates[a], to: dates[b], ret, alt, prevItems: k ? V[k - 1].items : null });
+    }
+    const a0 = this.idxOn(dates, V[0].d), orig = this.run(V[0].items, A, dates, a0, cap, V[0].rb, opt);
+    return { d, v, segs, orig: orig && !orig.empty ? orig : null, first: V[0].d, n: V.length };
+  },
+  diff(a, b) {                                            // 구성 변화 한 줄: 추가·제외·비중
+    const W = x => x.reduce((s, y) => s + y.w, 0) || 1, ma = Object.fromEntries(a.map(x => [x.t, x.w / W(a)])), mb = Object.fromEntries(b.map(x => [x.t, x.w / W(b)]));
+    const add = b.filter(x => !(x.t in ma)).map(x => x.t), del = a.filter(x => !(x.t in mb)).map(x => x.t);
+    const chg = b.filter(x => x.t in ma && Math.abs(mb[x.t] - ma[x.t]) >= 0.005).map(x => `${x.t} ${(ma[x.t] * 100).toFixed(0)}→${(mb[x.t] * 100).toFixed(0)}%`);
+    return [add.length ? '추가 ' + add.join(', ') : '', del.length ? '제외 ' + del.join(', ') : '', chg.length ? '비중 ' + chg.join(', ') : ''].filter(Boolean).join(' · ') || '리밸런싱 규칙만 바꿈';
+  },
   // 위기 구간: [이름, 시작(S&P 고점 무렵), 바닥 무렵]
   CRISES: [['2008 금융위기', '2007-10-09', '2009-03-09'], ['2020 코로나 폭락', '2020-02-19', '2020-03-23'], ['2022 금리 인상기', '2022-01-03', '2022-10-12']],
   // 구간 시작 가치 대비 바닥까지 최대 하락, 시작 가치를 되찾은 날
@@ -186,6 +213,7 @@ const PFX = {
       lines.slice().reverse().forEach((l, ri) => { const k = lines.length - 1 - ri; g += `<path d="${path(P[k])}" fill="none" stroke="${l.color}" stroke-width="${l.bold ? 2.4 : 1.5}" stroke-linejoin="round"/>`; });
       const ends = lines.map((l, k) => { let i = P[k].length - 1; while (i > 0 && P[k][i] == null) i--; return { k, i, y: Y(P[k][i]) }; }).sort((a, b) => a.y - b.y);
       for (let j = 1; j < ends.length; j++) if (ends[j].y - ends[j - 1].y < 13) ends[j].y = ends[j - 1].y + 13;
+      (opt.marks || []).forEach((m, n) => { const i = dates.findIndex(x => x >= m); if (i > 0) g += `<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${T}" y2="${H - B}" stroke="var(--line)"/><text x="${(X(i) + 3).toFixed(1)}" y="${T + 9}" font-size="10" fill="var(--faint)">${n + 1}</text>`; });
       ends.forEach(e => { g += `<circle cx="${X(e.i).toFixed(1)}" cy="${Y(P[e.k][e.i]).toFixed(1)}" r="3" fill="${lines[e.k].color}"/>`; });
       el.innerHTML = `<div style="position:relative"><svg width="${W}" height="${H}" style="display:block;overflow:visible">${g}<line class="pfx-h" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-width="1" style="display:none"/></svg><div class="pfx-tip"></div></div>`;
       const svg = el.querySelector('svg'), hl = el.querySelector('.pfx-h'), tip = el.querySelector('.pfx-tip');
