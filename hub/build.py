@@ -1131,7 +1131,8 @@ def run(limit=0, **_):
             si_ = STINC.get(int(r.cik)) if r.cik == r.cik else None
             ctry = p.get("country") if isinstance(p.get("country"), str) else None
             us_ok = (si_ in US_ST) if si_ else (ctry == "United States")
-            if _flag(getattr(r, "in_sp500", False)) or len(g) < 252 or (not si_ and ctry != "United States"):
+            # 설립지·사업장 둘 다 외국이면 제외, 설립지만 외국(사업장 미국: QSR·RPRX 등)이면 '확인 필요'로 남김
+            if _flag(getattr(r, "in_sp500", False)) or len(g) < 252 or (not us_ok and ctry != "United States"):
                 continue
             cik = int(r.cik) if r.cik == r.cik else None
             fm = fin.get(cik, {}) if cik else {}
