@@ -86,6 +86,46 @@ def run_filings(limit=0, **_):
     return R.done()
 
 
+def run_accepted_fix(limit=0, **_):
+    """접수 시각 다시 채우기 (한 번만): 예전에 쌓인 filings의 accepted 일부가 4~5시간 밀려 있어(연구 쪽 대조: 617종목 전부,
+    96종목 일부) SEC 제출 목록 JSON(recent + 이전 페이지)의 acceptanceDateTime(진짜 UTC)으로 덮어씀"""
+    R = Run("sec_accepted_fix")
+    http = sec_http()
+    U = universe.load("stock").dropna(subset=["cik"])
+    if limit:
+        U = U.head(limit)
+    acc = {}
+    for i, r in enumerate(U.itertuples()):
+        try:
+            j = http.get(f"https://data.sec.gov/submissions/CIK{_cik10(r.cik)}.json").json()
+            pages = [j.get("filings", {}).get("recent", {})]
+            for f in j.get("filings", {}).get("files", []):
+                try:
+                    pages.append(http.get(f"https://data.sec.gov/submissions/{f['name']}").json())
+                except Exception:
+                    pass
+            for p in pages:
+                for a, t in zip(p.get("accessionNumber", []), p.get("acceptanceDateTime", [])):
+                    if t:
+                        acc[a] = t
+        except Exception:
+            pass
+        if (i + 1) % 100 == 0:
+            log(f"  접수 시각 {i+1}/{len(U)}")
+    F = read(S_DIR / "filings.parquet")
+    if F.empty or not acc:
+        R.warning("치명: 받은 접수 시각이 없음")
+        return R.done(ok=False)
+    new = F.accession.map(acc)
+    changed = int((new.notna() & (new != F.accepted)).sum())
+    F["accepted"] = new.where(new.notna(), F.accepted)
+    tmp = (S_DIR / "filings.parquet").with_suffix(".tmp")
+    F.to_parquet(tmp, index=False)
+    tmp.replace(S_DIR / "filings.parquet")
+    R.set(http=http.stats(), accessions=len(acc), changed=changed, rows=len(F))
+    return R.done()
+
+
 # ---------------------------------------------------------------- Form 4
 def _t(e, path):
     x = e.find(path)
@@ -203,7 +243,8 @@ TAGS = {
                 "CashAndCashEquivalentsAtCarryingValue", "LongTermDebt", "LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations", "LongTermNotesPayable", "InventoryNet", "AccountsReceivableNetCurrent",
                 "NetCashProvidedByUsedInOperatingActivities", "PaymentsToAcquirePropertyPlantAndEquipment",
                 "PaymentsForRepurchaseOfCommonStock", "PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "ShareBasedCompensation",
-                "RetainedEarningsAccumulatedDeficit"],                  # 부실 위험 등급(Altman Z) 입력
+                "RetainedEarningsAccumulatedDeficit",                    # 부실 위험 등급(Altman Z) 입력
+                "LiabilitiesAndStockholdersEquity"],                     # 총부채 미보고 회사의 부채 파생용
     "ifrs-full": ["Revenue", "RevenueFromContractsWithCustomers", "InterestIncome", "GrossProfit", "ProfitLossFromOperatingActivities", "ProfitLoss", "ProfitLossAttributableToOwnersOfParent",
                   "DilutedEarningsLossPerShare", "Assets", "Liabilities", "Equity", "CashAndCashEquivalents",
                   "CashFlowsFromUsedInOperatingActivities", "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"],

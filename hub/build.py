@@ -104,7 +104,8 @@ CONCEPTS = {
 BAL = {"assets": ["Assets"], "liab": ["Liabilities"], "equity": ["StockholdersEquity", "Equity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
        "cash": ["CashAndCashEquivalentsAtCarryingValue", "CashAndCashEquivalents"], "ltd": ["LongTermDebtNoncurrent", "LongTermDebt", "LongTermDebtAndCapitalLeaseObligations", "LongTermNotesPayable"],
        "ca": ["AssetsCurrent"], "cl": ["LiabilitiesCurrent"], "shares": ["EntityCommonStockSharesOutstanding"],
-       "re": ["RetainedEarningsAccumulatedDeficit"]}
+       "re": ["RetainedEarningsAccumulatedDeficit"], "lse": ["LiabilitiesAndStockholdersEquity"],
+       "eq_nci": ["StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "StockholdersEquity"]}
 
 
 ANNUAL_FORMS = ("10-K", "20-F", "40-F")
@@ -330,7 +331,12 @@ def fin_metrics(fc):
          # 부실 위험 등급 입력 (잔액은 최근 값, 흐름은 최근 4분기 합)
          "_assets": B.get("assets"), "_liab": B.get("liab"), "_ca": B.get("ca"), "_cl": B.get("cl"), "_cash": B.get("cash"), "_re": B.get("re"),
          "_opi_ttm": T["opi"], "_bal_date": B.get("assets_date"),
-         "_ni_q": Q["ni"][max(Q["ni"])] if Q.get("ni") else None}
+         "_ni_q": Q["ni"][max(Q["ni"])] if Q.get("ni") else None,
+         # 부실 등급용 총부채: Liabilities, 없으면 (부채+자본 합계, 없으면 자산) − 자본(비지배 포함). 0 이하면 결측 (spec liabilities_rule)
+         "_liab_d": B.get("liab") if B.get("liab") is not None else
+                    (((B.get("lse") if B.get("lse") is not None else B.get("assets")) - B["eq_nci"])
+                     if (B.get("lse") is not None or B.get("assets") is not None) and B.get("eq_nci") is not None
+                     and ((B.get("lse") if B.get("lse") is not None else B.get("assets")) - B["eq_nci"]) > 0 else None)}
     om0 = div(P["opi"], P["rev"])
     m["om_chg"] = (m["om"] - om0) if m["om"] is not None and om0 is not None else None
     return m
@@ -1103,6 +1109,9 @@ def run(limit=0, **_):
         R.warning(f"부실 위험 등급 계산 실패: {str(e)[:120]}")
     # ---- 지수 편입 근접도 (연구 과제 1-3·2-4): 순위 사실만, 수익 표현 없음
     IX = {}
+    _co = read(DATA / "sec" / "company.parquet")
+    STINC = {int(r.cik): str(r.state_inc).strip().upper() for r in _co.itertuples() if isinstance(r.state_inc, str) and r.state_inc.strip()} if len(_co) and "state_inc" in _co else {}
+    US_ST = set("AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split())
     _flag = lambda v: False if v is None or (not isinstance(v, (bool, np.bool_)) and pd.isna(v)) else bool(v)
     try:
         today_ = PX.date.max()
@@ -1118,8 +1127,11 @@ def run(limit=0, **_):
             exch = p.get("exchange") if isinstance(p.get("exchange"), str) else ""
             if exch in ("NMS", "NGM") and sec_ != "Financial Services":
                 nq.append((t, mc, _flag(getattr(r, "in_ndx", False))))
+            # 미국 본사: SEC 설립지 코드(미국 주가 아니면 '확인 필요'로 표시만), 설립지가 없으면 시세 정보 국가
+            si_ = STINC.get(int(r.cik)) if r.cik == r.cik else None
             ctry = p.get("country") if isinstance(p.get("country"), str) else None
-            if _flag(getattr(r, "in_sp500", False)) or ctry != "United States" or len(g) < 252:
+            us_ok = (si_ in US_ST) if si_ else (ctry == "United States")
+            if _flag(getattr(r, "in_sp500", False)) or len(g) < 252 or (not si_ and ctry != "United States"):
                 continue
             cik = int(r.cik) if r.cik == r.cik else None
             fm = fin.get(cik, {}) if cik else {}
@@ -1131,8 +1143,10 @@ def run(limit=0, **_):
             dv = float((g.tail(252).close * g.tail(252).volume).sum())
             if len(mv) < 6 or (mv < 250_000).any() or dv / mc < 0.75:
                 continue
-            spc.append((t, mc))
+            spc.append((t, mc) if us_ok else (t, mc, "chk"))
         spc.sort(key=lambda x: -x[1])
+        CHK = {x[0] for x in spc if len(x) > 2}
+        spc = [(x[0], x[1]) for x in spc]
         XN = read(DATA / "profile" / "ndx_extra.parquet")
         have = {x[0] for x in nq}
         for x in XN.itertuples() if len(XN) else []:
@@ -1143,6 +1157,8 @@ def run(limit=0, **_):
         nq.sort(key=lambda x: -x[1])
         for i, (t, mc) in enumerate(spc[:50]):
             IX.setdefault(t, {})["sp"] = i + 1
+            if t in CHK:
+                IX[t]["sp_chk"] = 1
         for i, (t, mc, mem) in enumerate(nq[:150]):
             IX.setdefault(t, {})["nq"] = i + 1
         live_ix = {"date": str(today_.date()), "spec_version": json.loads((Path(__file__).resolve().parent / "spec" / "tickermap_spec.json").read_text(encoding="utf-8"))["version"],
@@ -1537,7 +1553,7 @@ def run(limit=0, **_):
     # ---- universe.json + market.json + meta.json
     U2 = pd.DataFrame(rows)
     fields = {k: {"label": v[0], "cat": v[1], "fmt": v[2], "tier": v[3]} for k, v in FIELDS.items()}
-    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c", "dvc_r", "dvc_m", "dvc_v", "dvc_y", "dvc_w", "er_n", "em_ind", "em_all", "ix_sp", "ix_nq", "ea_d"]
+    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c", "dvc_r", "dvc_m", "dvc_v", "dvc_y", "dvc_w", "er_n", "em_ind", "em_all", "ix_sp", "ix_nq", "ix_sp_chk", "ea_d"]
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")

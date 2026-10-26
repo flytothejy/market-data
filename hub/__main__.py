@@ -49,7 +49,7 @@ CLOSE = ["universe", "prices", "options", "build", "check"]
 def job(name):
     from . import universe, prices, sec, short, profile, etf, options, kr_etf, news, f13, tenk, build, consensus, check, cards, insider_hist, alerts
     return {"alerts": alerts.run, "insider_hist": insider_hist.run, "cards": cards.run, "check": check.run, "consensus": consensus.run, "build": build.run, "news": news.run, "f13": f13.run, "tenk": tenk.run, "etf": etf.run, "options": options.run, "kr_etf": kr_etf.run, "universe": universe.run, "prices": prices.run, "sec_filings": sec.run_filings,
-            "sec_insider": sec.run_insider, "sec_financials": sec.run_financials,
+            "sec_insider": sec.run_insider, "sec_financials": sec.run_financials, "sec_accepted_fix": sec.run_accepted_fix,
             "short_volume": short.run, "profile": profile.run}[name]
 
 

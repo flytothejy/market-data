@@ -50,7 +50,7 @@ def unadjusted(g, splits):
 
 def inputs(fm, mcap, g, spy, px_today):
     """한 종목의 입력값 dict (없는 값은 None). fm: build.fin_metrics 결과, g/spy: 가격 프레임(date·close·adj_close·volume)"""
-    A, L = _f(fm.get("_assets")), _f(fm.get("_liab"))
+    A, L = _f(fm.get("_assets")), _f(fm.get("_liab_d") if "_liab_d" in fm else fm.get("_liab"))   # 총부채: 미보고 시 파생값
     ca, cl, re_, cash = _f(fm.get("_ca")), _f(fm.get("_cl")), _f(fm.get("_re")), _f(fm.get("_cash"))
     opi, ni, rev = _f(fm.get("_opi_ttm")), _f(fm.get("ni")), _f(fm.get("rev"))
     mcap = _f(mcap)

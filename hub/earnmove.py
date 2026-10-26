@@ -1,7 +1,7 @@
 """실적 발표 반응 이력과 예상 변동폭 (연구 과제 2-1, 계수는 spec 값 그대로)
 
 반응 이력 (N5, data/hub/derived/earn_moves.parquet)
-- 8-K 항목 2.02의 접수 시각(뉴욕)으로 반응일을 정함 (JSON 시각 보정은 moves() 주석): 장 시작(9:30) 전이면 그날, 아니면 다음 거래일
+- 8-K 항목 2.02의 접수 시각(UTC → 뉴욕)으로 반응일을 정함: 장 시작(9:30) 전이면 그날, 아니면 다음 거래일
 - 반응 = 그날 종목 수익률 − SPY 수익률 (수정종가). 같은 회사 45일 안 중복은 첫 건만
 화면 값
 - 지난 8번 평균 = 반응일 |초과수익| 평균 (4번 이상일 때)
@@ -25,12 +25,7 @@ def moves(FL, pxg, sic=None):
     days = pd.DatetimeIndex(spy.date)
     sret = spy.set_index("date").adj_close.pct_change()
     e = FL[(FL.form == "8-K") & FL["items"].astype(str).str.contains("2.02", regex=False) & FL.accepted.notna()].copy()
-    # 주의: 제출 목록 JSON의 접수 시각은 'Z'가 붙어 있지만 실제 UTC보다 뉴욕 시차만큼 더 밀려 있음
-    #   (JPM 2026-10-13 JSON 14:30:38Z ↔ 공시 머리말 ACCEPTANCE-DATETIME 06:30:38 뉴욕, NVDA 00:21Z ↔ 16:21)
-    #   → 뉴욕 시각으로 바꾼 뒤 시차(−4~5시간)를 한 번 더 적용
-    ny = pd.to_datetime(e.accepted, utc=True, errors="coerce").dt.tz_convert("America/New_York")
-    e["ts"] = ny + pd.to_timedelta([x.utcoffset() if pd.notna(x) else pd.Timedelta(0) for x in ny]).values
-    e["ts"] = e["ts"].where(ny.notna())
+    e["ts"] = pd.to_datetime(e.accepted, utc=True, errors="coerce").dt.tz_convert("America/New_York")   # 접수 시각은 진짜 UTC (예전 밀린 값은 sec_accepted_fix로 다시 채움)
     e = e.dropna(subset=["ts"]).sort_values("ts")
     rep = FL[FL.form.isin(["10-Q", "10-K", "20-F", "40-F"])].groupby("ticker").filed.apply(lambda x: sorted(set(pd.to_datetime(x).dt.normalize())))
     out = []
