@@ -1103,6 +1103,7 @@ def run(limit=0, **_):
         R.warning(f"부실 위험 등급 계산 실패: {str(e)[:120]}")
     # ---- 지수 편입 근접도 (연구 과제 1-3·2-4): 순위 사실만, 수익 표현 없음
     IX = {}
+    _flag = lambda v: False if v is None or (not isinstance(v, (bool, np.bool_)) and pd.isna(v)) else bool(v)
     try:
         today_ = PX.date.max()
         spc, nq = [], []
@@ -1116,8 +1117,9 @@ def run(limit=0, **_):
             sec_ = p.get("sector") if isinstance(p.get("sector"), str) else None
             exch = p.get("exchange") if isinstance(p.get("exchange"), str) else ""
             if exch in ("NMS", "NGM") and sec_ != "Financial Services":
-                nq.append((t, mc, bool(getattr(r, "in_ndx", False))))
-            if getattr(r, "in_sp500", False) or p.get("country") != "United States" or len(g) < 252:
+                nq.append((t, mc, _flag(getattr(r, "in_ndx", False))))
+            ctry = p.get("country") if isinstance(p.get("country"), str) else None
+            if _flag(getattr(r, "in_sp500", False)) or ctry != "United States" or len(g) < 252:
                 continue
             cik = int(r.cik) if r.cik == r.cik else None
             fm = fin.get(cik, {}) if cik else {}
@@ -1134,9 +1136,10 @@ def run(limit=0, **_):
         XN = read(DATA / "profile" / "ndx_extra.parquet")
         have = {x[0] for x in nq}
         for x in XN.itertuples() if len(XN) else []:
-            if x.ticker in have or x.exchange not in ("NMS", "NGM") or x.sector == "Financial Services" or not (x.marketCap and x.marketCap >= 2e10):
+            ex_, se_, mc_ = (x.exchange if isinstance(x.exchange, str) else ""), (x.sector if isinstance(x.sector, str) else ""), (float(x.marketCap) if x.marketCap == x.marketCap and x.marketCap is not None else 0)
+            if x.ticker in have or ex_ not in ("NMS", "NGM") or se_ == "Financial Services" or mc_ < 2e10:
                 continue
-            nq.append((x.ticker, float(x.marketCap), False))
+            nq.append((x.ticker, mc_, False))
         nq.sort(key=lambda x: -x[1])
         for i, (t, mc) in enumerate(spc[:50]):
             IX.setdefault(t, {})["sp"] = i + 1
@@ -1301,6 +1304,8 @@ def run(limit=0, **_):
             row["er_avg"] = sum(mv) / len(mv)
         # 지난 8번 반응일 S&P 500 대비 |초과수익| 평균(4번 이상이면 이 값으로) + 이번 시즌 같은 업종 평균
         em = EMg.get(t)
+        if em is not None and len(em):                   # 가장 최근 실적 발표일 (미국 날짜, 실적 달력의 지난 날 표시용)
+            row["ea_d"] = str(em.accepted.iloc[-1])[:10]
         if em is not None and len(em) >= 4:
             row["er_avg"], row["er_n"] = float(em.sort_values("react").tail(8).ex.abs().mean()), int(min(len(em), 8))
         if SEAS:
@@ -1532,7 +1537,7 @@ def run(limit=0, **_):
     # ---- universe.json + market.json + meta.json
     U2 = pd.DataFrame(rows)
     fields = {k: {"label": v[0], "cat": v[1], "fmt": v[2], "tier": v[3]} for k, v in FIELDS.items()}
-    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c", "dvc_r", "dvc_m", "dvc_v", "dvc_y", "dvc_w", "er_n", "em_ind", "em_all", "ix_sp", "ix_nq"]
+    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c", "dvc_r", "dvc_m", "dvc_v", "dvc_y", "dvc_w", "er_n", "em_ind", "em_all", "ix_sp", "ix_nq", "ea_d"]
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")
@@ -1557,7 +1562,7 @@ def run(limit=0, **_):
         _p = DATA / "research_live" / "earn_move" / f"{_asof}.json"
         _p.parent.mkdir(parents=True, exist_ok=True)
         _p.write_text(json.dumps({"date": _asof, "spec_version": dividend.spec()["version"], "n_universe": len(_rows), "rows": _rows},
-                                 ensure_ascii=False, default=lambda o: None if o is None else float(o)), encoding="utf-8")
+                                 ensure_ascii=False, default=lambda o: None if o is None else (float(o) if isinstance(o, (int, float, np.number)) else str(o))), encoding="utf-8")
     except Exception as e:
         R.warning(f"실적 변동폭 기록 실패: {str(e)[:80]}")
     dump(OUT / "free" / "universe.json", {"asof": PX.date.max(), "consensus_asof": c_asof, "etf_base": etf_base, "fields": fields, "cats": CATS, "rows": free_rows})
