@@ -14,7 +14,7 @@ src = src.replace('"WeightedAverageNumberOfDilutedSharesOutstanding"]', '"Weight
 gx = {"__file__": os.path.join(ROOT, "task5", "03_build_panel_R.py")}; exec(src, gx)
 inst, ttm, rev = gx["inst"], gx["ttm"], gx["rev"]
 # R2 재무 자료에는 이익잉여금이 없고 상장폐지 회사 자료는 태그가 적다 → SEC 원본 companyfacts에서 세 태그를 직접 읽어 넣는다 (결과 보기 전 수정)
-EXTRA = ("Liabilities", "RetainedEarningsAccumulatedDeficit", "OperatingIncomeLoss")
+EXTRA = ("Liabilities", "RetainedEarningsAccumulatedDeficit", "OperatingIncomeLoss", "StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", "LiabilitiesAndStockholdersEquity")
 def load_extra(c):
     p = os.path.join(CF, f"{c}.json")
     try: j = json.load(open(p))
@@ -111,6 +111,12 @@ cache = {}
 for r in pn.itertuples():
     c, d, mc = r.cik, r.date, r.mcap
     A = inst(c, "Assets", d); TL = inst(c, "Liabilities", d); CA = inst(c, "AssetsCurrent", d); CL = inst(c, "LiabilitiesCurrent", d)
+    if os.environ.get("DERIVE_TL") == "1" and TL != TL:
+        # 2026-10-26 사후(구현 쪽 확인 3): 총부채 미보고 회사는 (부채+자본 합계 또는 자산) − 자본(비지배지분 포함, 없으면 지배 자본)
+        EQ = inst(c, "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest", d)
+        if EQ != EQ: EQ = inst(c, "StockholdersEquity", d)
+        LSE = inst(c, "LiabilitiesAndStockholdersEquity", d); base = LSE if LSE == LSE else A
+        if base == base and EQ == EQ and base - EQ > 0: TL = base - EQ
     RE = inst(c, "RetainedEarningsAccumulatedDeficit", d); EBIT = ttm(c, "OperatingIncomeLoss", d); S_ = rev(c, d)
     NI = ttm(c, "NetIncomeLoss", d); CASH = inst(c, "CashAndCashEquivalentsAtCarryingValue", d)
     ok = lambda *x: all(v == v for v in x)

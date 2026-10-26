@@ -6,7 +6,7 @@ from sklearn.metrics import roc_auc_score
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data"); SB = os.path.join(DATA, "raw", "sb"); DV = os.path.join(DATA, "raw", "eodhd", "div")
-PX = os.path.join(DATA, "prices"); PXD = os.path.join(DATA, "prices_delisted_clean"); OUT = os.path.join(ROOT, "task8", "out")
+PX = os.path.join(DATA, "prices"); PXD = os.path.join(DATA, "prices_delisted_clean"); OUT = os.path.join(ROOT, "task8", "out" + os.environ.get("TAG", ""))
 os.makedirs(OUT, exist_ok=True)
 spy = pd.read_parquet(os.path.join(PX, "SPY.parquet"))["Close"]; cal = spy.index; ls = np.log(spy.values)
 def prices(t):
@@ -29,6 +29,9 @@ for t in pn["t"].unique():
     keep, last = [], None
     for i, r in d.iterrows():
         if last is not None and (r["date"] - last).days < 45: continue
+        if os.environ.get("SPECIAL25") == "1" and len(keep) >= 3:
+            # 2026-10-26 사후(구현 쪽 확인 4): 직전 정기 배당 3~4회 중앙값의 2.5배를 넘으면 특별배당
+            if r["value"] > 2.5 * d.loc[keep[-4:], "value"].median(): continue
         keep.append(i); last = r["date"]
     d = d.loc[keep]
     if len(d) < 6 or not (80 <= d["date"].diff().dt.days.median() <= 100): continue
@@ -137,7 +140,7 @@ dz = S[S["cell"] == "설계"]; med = dz[U + Dd].median()
 for c in U + Dd:
     S[f"m_{c}"] = S[c].isna().astype(float); S[c] = S[c].fillna(med[c])
 ALL = U + Dd + [f"m_{c}" for c in U + Dd]
-S.to_csv(os.path.join(DATA, "task8_samples.csv"), index=False)
+S.to_csv(os.path.join(DATA, "task8_samples" + os.environ.get("TAG", "") + ".csv"), index=False)
 
 def fitpred(y, cols):
     dz = S[(S["cell"] == "설계") & S[y].notna()]
@@ -184,6 +187,6 @@ with open(os.path.join(ROOT, "log.csv"), "a") as fh:
     for l in logs: fh.write(",".join(str(x) for x in l) + "\n")
 R = pd.DataFrame(res_rows); R.to_csv(os.path.join(OUT, "results.csv"), index=False)
 json.dump(models, open(os.path.join(OUT, "models.json"), "w"), indent=1, ensure_ascii=False)
-S.to_csv(os.path.join(DATA, "task8_samples.csv"), index=False)
+S.to_csv(os.path.join(DATA, "task8_samples" + os.environ.get("TAG", "") + ".csv"), index=False)
 pd.set_option("display.width", 220, "display.float_format", "{:.4f}".format)
 print(R.to_string(index=False)); print(json.dumps({k: {kk: (None if vv is None else {x: round(z, 3) for x, z in vv.items()}) if kk != "base_design" else vv for kk, vv in v.items()} for k, v in models.items()}, ensure_ascii=False))
