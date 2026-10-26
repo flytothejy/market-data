@@ -1103,6 +1103,7 @@ def run(limit=0, **_):
         R.warning(f"부실 위험 등급 계산 실패: {str(e)[:120]}")
     # ---- 지수 편입 근접도 (연구 과제 1-3·2-4): 순위 사실만, 수익 표현 없음
     IX = {}
+    _flag = lambda v: False if v is None or (not isinstance(v, (bool, np.bool_)) and pd.isna(v)) else bool(v)
     try:
         today_ = PX.date.max()
         spc, nq = [], []
@@ -1116,8 +1117,9 @@ def run(limit=0, **_):
             sec_ = p.get("sector") if isinstance(p.get("sector"), str) else None
             exch = p.get("exchange") if isinstance(p.get("exchange"), str) else ""
             if exch in ("NMS", "NGM") and sec_ != "Financial Services":
-                nq.append((t, mc, bool(getattr(r, "in_ndx", False))))
-            if getattr(r, "in_sp500", False) or p.get("country") != "United States" or len(g) < 252:
+                nq.append((t, mc, _flag(getattr(r, "in_ndx", False))))
+            ctry = p.get("country") if isinstance(p.get("country"), str) else None
+            if _flag(getattr(r, "in_sp500", False)) or ctry != "United States" or len(g) < 252:
                 continue
             cik = int(r.cik) if r.cik == r.cik else None
             fm = fin.get(cik, {}) if cik else {}
@@ -1134,9 +1136,10 @@ def run(limit=0, **_):
         XN = read(DATA / "profile" / "ndx_extra.parquet")
         have = {x[0] for x in nq}
         for x in XN.itertuples() if len(XN) else []:
-            if x.ticker in have or x.exchange not in ("NMS", "NGM") or x.sector == "Financial Services" or not (x.marketCap and x.marketCap >= 2e10):
+            ex_, se_, mc_ = (x.exchange if isinstance(x.exchange, str) else ""), (x.sector if isinstance(x.sector, str) else ""), (float(x.marketCap) if x.marketCap == x.marketCap and x.marketCap is not None else 0)
+            if x.ticker in have or ex_ not in ("NMS", "NGM") or se_ == "Financial Services" or mc_ < 2e10:
                 continue
-            nq.append((x.ticker, float(x.marketCap), False))
+            nq.append((x.ticker, mc_, False))
         nq.sort(key=lambda x: -x[1])
         for i, (t, mc) in enumerate(spc[:50]):
             IX.setdefault(t, {})["sp"] = i + 1
@@ -1557,7 +1560,7 @@ def run(limit=0, **_):
         _p = DATA / "research_live" / "earn_move" / f"{_asof}.json"
         _p.parent.mkdir(parents=True, exist_ok=True)
         _p.write_text(json.dumps({"date": _asof, "spec_version": dividend.spec()["version"], "n_universe": len(_rows), "rows": _rows},
-                                 ensure_ascii=False, default=lambda o: None if o is None else float(o)), encoding="utf-8")
+                                 ensure_ascii=False, default=lambda o: None if o is None else (float(o) if isinstance(o, (int, float, np.number)) else str(o))), encoding="utf-8")
     except Exception as e:
         R.warning(f"실적 변동폭 기록 실패: {str(e)[:80]}")
     dump(OUT / "free" / "universe.json", {"asof": PX.date.max(), "consensus_asof": c_asof, "etf_base": etf_base, "fields": fields, "cats": CATS, "rows": free_rows})
