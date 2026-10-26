@@ -1304,6 +1304,8 @@ def run(limit=0, **_):
             row["er_avg"] = sum(mv) / len(mv)
         # 지난 8번 반응일 S&P 500 대비 |초과수익| 평균(4번 이상이면 이 값으로) + 이번 시즌 같은 업종 평균
         em = EMg.get(t)
+        if em is not None and len(em):                   # 가장 최근 실적 발표일 (미국 날짜, 실적 달력의 지난 날 표시용)
+            row["ea_d"] = str(em.accepted.iloc[-1])[:10]
         if em is not None and len(em) >= 4:
             row["er_avg"], row["er_n"] = float(em.sort_values("react").tail(8).ex.abs().mean()), int(min(len(em), 8))
         if SEAS:
@@ -1535,7 +1537,7 @@ def run(limit=0, **_):
     # ---- universe.json + market.json + meta.json
     U2 = pd.DataFrame(rows)
     fields = {k: {"label": v[0], "cat": v[1], "fmt": v[2], "tier": v[3]} for k, v in FIELDS.items()}
-    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c", "dvc_r", "dvc_m", "dvc_v", "dvc_y", "dvc_w", "er_n", "em_ind", "em_all", "ix_sp", "ix_nq"]
+    keys = [k for k in FIELDS if k in U2.columns] + ["grp", "fam", "cat", "aum", "exp", "c_next", "c_est", "ko", "c_rb", "c_rh", "c_rs", "dz", "dz_c", "dvc_r", "dvc_m", "dvc_v", "dvc_y", "dvc_w", "er_n", "em_ind", "em_all", "ix_sp", "ix_nq", "ea_d"]
     keys = list(dict.fromkeys(keys))
     pro_keys = [k for k, v in FIELDS.items() if v[3] == "pro"]
     free_rows = U2[[k for k in keys if k in U2.columns and k not in pro_keys]].to_dict("records")
