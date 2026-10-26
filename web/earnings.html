@@ -16,6 +16,23 @@
 .ratio{font-size:11px;padding:1px 6px;border-radius:99px;white-space:nowrap}
 .ratio.hi{background:color-mix(in srgb,var(--up) 14%,transparent);color:var(--up)}
 .ratio.lo{background:color-mix(in srgb,var(--dn) 14%,transparent);color:var(--dn)}
+.cal-nav{display:flex;align-items:center;gap:8px}
+.cal-nav b{font-size:17px;min-width:110px;text-align:center}
+.cal{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.cal .hd{font-size:12px;color:var(--muted);text-align:center;padding:2px 0}
+.cal .c{border:1px solid var(--line2);border-radius:10px;padding:6px 7px;min-height:86px;display:flex;flex-direction:column;gap:2px;cursor:pointer;background:var(--card);font-size:12px;text-align:left;font:inherit;color:inherit}
+.cal .c:hover{border-color:var(--line)}
+.cal .c.out{opacity:.35}
+.cal .c.past{background:var(--soft)}
+.cal .c.today{border-color:var(--ink)}
+.cal .c.sel{outline:2px solid var(--accent);outline-offset:-1px}
+.cal .c .dn{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px}
+.cal .c .dn b{font-size:14px}
+.cal .c .n{color:var(--muted);font-size:11.5px}
+.cal .c .tk{font-size:12px;font-weight:600;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal .c .tk.mine{color:var(--accent)}
+.cal .c .more{font-size:11px;color:var(--faint)}
+@media (max-width:640px){.cal{gap:3px}.cal .c{min-height:64px;padding:4px}.cal .c .tk:nth-of-type(n+4){display:none}.cal .c .tk{font-size:11px}}
 </style>
 </head>
 <body>
@@ -27,7 +44,7 @@ const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const nyToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const addDays = (s, n) => { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const dow = s => new Date(s + 'T12:00:00Z').getUTCDay();
-const state = { scope: qs('scope') || 'all', range: qs('range') || 'w0' };
+const state = { scope: qs('scope') || 'all', range: qs('range') || 'w0', mon: qs('mon') || null, sel: null };
 
 function ratioTag(r) {
   if (!r.er_imp || !r.er_avg) return '';
@@ -39,21 +56,53 @@ function ratioTag(r) {
 
 function render(U) {
   const today = nyToday();
-  const w0 = addDays(today, -((dow(today) + 6) % 7));            // 이번 주 월요일
-  const ranges = { w0: ['이번 주', w0, addDays(w0, 6)], w1: ['다음 주', addDays(w0, 7), addDays(w0, 13)], m1: ['4주', today, addDays(today, 27)] };
-  const [rl, from, to] = ranges[state.range] || ranges.w0;
+  // 이번 주 = 미국 동부 기준 오늘이 속한 월~금. 주말(토·일)이면 곧 시작할 다음 주를 이번 주로 봄 (한국 월요일 아침 = 미국 일요일 저녁)
+  const wd = dow(today), w0 = wd === 6 ? addDays(today, 2) : wd === 0 ? addDays(today, 1) : addDays(today, 1 - wd);
+  const ranges = { w0: ['이번 주', w0, addDays(w0, 4)], w1: ['다음 주', addDays(w0, 7), addDays(w0, 11)], m1: ['4주', today, addDays(today, 27)], cal: ['달력', null, null] };
+  const cal = state.range === 'cal';
+  if (cal && !state.mon) state.mon = today.slice(0, 7);
+  const mFirst = cal ? state.mon + '-01' : null;
+  const gStart = cal ? addDays(mFirst, -((dow(mFirst) + 6) % 7)) : null;            // 달력 첫 칸(월요일)
+  const mEnd = cal ? addDays(addDays((([y, m]) => `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}-01`)(state.mon.split('-').map(Number)), 0), -1) : null;
+  const gEnd = cal ? addDays(mEnd, (5 - dow(mEnd) + 7) % 7) : null;                  // 마지막 칸(금요일)
+  const [rl, from, to] = cal ? ['이 달', state.sel || gStart, state.sel || gEnd] : (ranges[state.range] || ranges.w0);
   const watch = new Set(Watch.list()), hold = new Set(portfolioTickers());
   const scopes = { all: ['전체', () => true], big: ['시가총액 100억 달러 이상', r => (r.mcap || 0) >= 1e10], watch: [`관심 종목 ${watch.size}`, r => watch.has(r.t)], hold: [`포트폴리오 ${hold.size}`, r => hold.has(r.t)] };
   const inScope = (scopes[state.scope] || scopes.all)[1];
   const S = U.rows.filter(r => r.k === 'stock' && r.c_next && r.c_next >= from && r.c_next <= to && inScope(r));
   const byDay = {};
   S.forEach(r => (byDay[r.c_next] = byDay[r.c_next] || []).push(r));
-  const days = Object.keys(byDay).sort();
+  const days = cal && !state.sel ? [] : Object.keys(byDay).sort();
+  // 달력: 앞으로 발표(다음 발표일) + 이미 발표(최근 발표일)
+  let calH = '';
+  if (cal) {
+    const mine = new Set([...watch, ...hold]), cnt = {};
+    U.rows.forEach(r => {
+      if (r.k !== 'stock' || !inScope(r)) return;
+      if (r.c_next && r.c_next >= gStart && r.c_next <= gEnd) (cnt[r.c_next] = cnt[r.c_next] || []).push(r);
+      const ed = r.ea_d || r.er_d; if (ed && ed >= gStart && ed <= gEnd && ed !== r.c_next && ed <= today) (cnt[ed] = cnt[ed] || []).push({ ...r, _done: 1 });
+    });
+    const ym = state.mon.split('-').map(Number), mv = k => { const d = new Date(Date.UTC(ym[0], ym[1] - 1 + k, 1)); return d.toISOString().slice(0, 7); };
+    let cells = '';
+    for (let d = gStart; d <= gEnd; d = addDays(d, 1)) {
+      const w = dow(d); if (w === 0 || w === 6) continue;
+      const xs = (cnt[d] || []).sort((a, b) => (mine.has(b.t) - mine.has(a.t)) || ((b.mcap || 0) - (a.mcap || 0)));
+      cells += `<button class="c ${d.slice(0, 7) !== state.mon ? 'out' : ''} ${d < today ? 'past' : ''} ${d === today ? 'today' : ''} ${d === state.sel ? 'sel' : ''}" data-day="${d}">
+        <span class="dn"><b>${+d.slice(8)}</b>${xs.length ? `<span class="n">${xs.length}개</span>` : ''}</span>
+        ${xs.slice(0, 4).map(r => `<span class="tk ${mine.has(r.t) ? 'mine' : ''}" title="${esc(r.ko || r.n || '')}">${esc(r.t)}${r.c_when && !r._done ? ` <span class="faint" style="font-weight:400">${r.c_when === '장 전' ? '전' : r.c_when === '장 후' ? '후' : ''}</span>` : ''}</span>`).join('')}
+        ${xs.length > 4 ? `<span class="more">+${xs.length - 4}</span>` : ''}</button>`;
+    }
+    calH = `<div class="card" style="gap:10px"><div class="cal-nav"><button class="btn" data-mon="${mv(-1)}" aria-label="이전 달">‹</button><b>${ym[0]}년 ${ym[1]}월</b><button class="btn" data-mon="${mv(1)}" aria-label="다음 달">›</button>
+      <span class="small mut" style="margin-left:auto">미국 날짜 · 관심·포트폴리오 종목은 색으로 · 지난 날은 이미 발표한 종목</span></div>
+      <div class="cal">${['월', '화', '수', '목', '금'].map(x => `<div class="hd">${x}</div>`).join('')}${cells}</div>
+      ${state.sel ? `<div class="s13">${state.sel.slice(5).replace('-', '월 ')}일 발표 종목은 아래에 · <a href="#" data-sel="">선택 해제</a></div>` : '<div class="small mut">날짜를 누르면 그날 발표 종목을 아래에 자세히 보여 줘요</div>'}</div>`;
+  }
 
-  let h = `<div class="hero"><h1>실적 발표 달력</h1><p>미국 동부 기준 날짜 · 다음 발표일은 회사 발표나 예상치(매주 갱신) · 옵션 예상 변동폭과 과거 발표 때 실제 변동을 함께 봅니다</p></div>`;
-  h += `<div class="card" style="gap:8px"><div class="seg">${Object.entries(ranges).map(([k, [l, a, b]]) => `<button class="btn ${k === state.range ? 'on' : ''}" data-range="${k}">${l} <span class="faint small">${a.slice(5).replace('-', '/')}~${b.slice(5).replace('-', '/')}</span></button>`).join('')}</div>
+  let h = `<div class="hero"><h1>실적 발표 달력</h1><p>미국 날짜 기준 (장 후 발표는 한국 시간으로 다음 날 새벽) · 다음 발표일은 회사 발표나 예상치(매주 갱신)</p></div>`;
+  h += `<div class="card" style="gap:8px"><div class="seg">${Object.entries(ranges).map(([k, [l, a, b]]) => `<button class="btn ${k === state.range ? 'on' : ''}" data-range="${k}">${l}${a ? ` <span class="faint small">${a.slice(5).replace('-', '/')}~${b.slice(5).replace('-', '/')}</span>` : ''}</button>`).join('')}</div>
     <div class="seg">${Object.entries(scopes).map(([k, [l]]) => `<button class="btn ${k === state.scope ? 'on' : ''}" data-scope="${k}">${esc(l)}</button>`).join('')}</div></div>`;
 
+  h += calH;
   // 주목: 옵션 시장이 평소보다 큰 움직임을 예상하는 종목
   const hot = S.filter(r => r.er_imp && r.er_avg && r.c_next >= today).map(r => ({ ...r, x: r.er_imp / r.er_avg })).sort((a, b) => b.x - a.x).slice(0, 6);
   if (hot.length >= 2) {
@@ -62,7 +111,7 @@ function render(U) {
   }
 
   // 최근 발표 결과 (지난 7일)
-  const rec = U.rows.filter(r => r.k === 'stock' && r.er_d && r.er_d >= addDays(today, -7) && inScope(r)).sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
+  const rec = cal ? [] : U.rows.filter(r => r.k === 'stock' && r.er_d && r.er_d >= addDays(today, -7) && inScope(r)).sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
   if (rec.length) {
     const lab = r => { const e = r.er_eps_s, v = r.er_rev_s, L = x => x == null ? null : x > 0.02 ? 1 : x < -0.02 ? -1 : 0, a = L(e), b = v == null ? null : v > 0.01 ? 1 : v < -0.01 ? -1 : 0;
       const k = a ?? b; if (k == null) return '<span class="faint">집계 중</span>';
@@ -76,7 +125,7 @@ function render(U) {
       </tbody></table></div>${rec.length > 12 ? `<button class="btn" id="rec-more" style="align-self:flex-start">${state.recAll ? '접기' : `${rec.length - 12}개 더 보기`}</button>` : ''}</div>`;
   }
 
-  if (!days.length) {
+  if (!days.length && !cal) {
     h += `<div class="card"><div class="mut s13">${esc(rl)}에 ${state.scope === 'all' ? '' : esc(scopes[state.scope][0].replace(/ \d+$/, '')) + ' 중 '}실적을 발표하는 종목이 없습니다.${state.scope === 'watch' && !watch.size ? ' 종목 화면에서 ☆ 관심 종목에 추가를 눌러 보세요.' : ''}</div></div>`;
   }
   for (const d of days) {
@@ -84,20 +133,23 @@ function render(U) {
     const past = d < today;
     h += `<div class="card day"><h3>${d.slice(5).replace('-', '월 ')}일 (${DOW[dow(d)]})${d === today ? ' <span class="tag">오늘</span>' : ''}<span class="mut">${rows.length}개${past ? ' · 발표 지남 (결과는 다음 갱신 때 반영)' : ''}</span></h3>
       <div class="tbl-wrap"><table class="t"><thead><tr><th></th><th class="l">종목</th><th>시점</th><th>시가총액</th><th>옵션 예상 변동${tip('er_imp')}</th><th>지난 8번 평균${tip('er_avg')}</th><th>같은 업종 이번 시즌${tip('em_ind')}</th><th></th><th>직전 서프라이즈${tip('c_surp')}</th><th>4분기 상회${tip('c_beats')}</th><th>전망 순상향률${tip('c_ratio')}</th><th>1개월</th></tr></thead><tbody>
-      ${rows.map(r => `<tr><td style="width:30px">${starBtn(r.t)}</td><td class="l nm"><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 22))}</span>${hold.has(r.t) ? ' <span class="tag">보유</span>' : ''}</td>
+      ${rows.map(r => `<tr><td style="width:30px">${starBtn(r.t)}</td><td class="l nm"><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a> <span class="mut small">${esc((r.n || '').slice(0, 22))}</span>${hold.has(r.t) ? ' <span class="tag">포트폴리오</span>' : ''}</td>
         <td>${r.c_when || (r.c_est ? '<span class="faint">예상일</span>' : '-')}</td><td class="num">${fmtUsd(r.mcap)}</td>
         <td class="num">${r.er_imp != null ? '±' + fmt(r.er_imp, 'pct') : '-'}</td><td class="num">${r.er_avg != null ? '±' + fmt(r.er_avg, 'pct') : '-'}</td><td class="num">${r.em_ind != null ? '±' + fmt(r.em_ind, 'pct') + (r.em_all ? '<span class="faint small"> 전체</span>' : '') : '-'}</td><td>${ratioTag(r)}</td>
         <td>${pctS(r.c_surp)}</td><td class="num">${r.c_beats != null ? r.c_beats + '/4' : '-'}</td><td>${pctS(r.c_ratio)}</td><td>${pctS(r.r1m)}</td></tr>`).join('')}
       </tbody></table></div></div>`;
   }
-  h += `<div class="small faint">옵션 예상 변동폭은 옵션을 수집하는 시가총액 상위 종목만, 발표 후 7일 안에 끝나는 옵션 만기가 있을 때(보통 발표 주간) 계산합니다 · 과거 평균 변동은 실적 발표 공시(8-K 2.02) 제출일 전날 종가 → 다음 날 종가 기준</div>`;
+  h += `<div class="small faint">옵션 예상 변동폭은 옵션을 수집하는 시가총액 상위 종목만, 발표 후 7일 안에 끝나는 옵션 만기가 있을 때(보통 발표 주간) 계산합니다 · 지난 8번 평균은 실적 발표 반응일(장 전 발표는 그날, 장 후 발표는 다음 거래일)의 S&P 500 대비 움직임, 방향 무시</div>`;
   $('#app').innerHTML = h;
-  document.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { state.range = b.dataset.range; sync(); render(U); });
+  document.querySelectorAll('[data-range]').forEach(b => b.onclick = () => { state.range = b.dataset.range; state.sel = null; sync(); render(U); });
+  document.querySelectorAll('[data-mon]').forEach(b => b.onclick = () => { state.mon = b.dataset.mon; state.sel = null; sync(); render(U); });
+  document.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { state.sel = state.sel === b.dataset.day ? null : b.dataset.day; render(U); if (state.sel) setTimeout(() => { const t = document.querySelector('.card.day'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); });
+  document.querySelectorAll('[data-sel]').forEach(a => a.onclick = e => { e.preventDefault(); state.sel = null; render(U); });
   const rm = document.getElementById('rec-more'); if (rm) rm.onclick = () => { state.recAll = !state.recAll; render(U); };
   document.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { state.scope = b.dataset.scope; sync(); render(U); });
   footer();
 }
-function sync() { const u = new URL(location.href); u.searchParams.set('range', state.range); u.searchParams.set('scope', state.scope); history.replaceState(null, '', u); }
+function sync() { const u = new URL(location.href); u.searchParams.set('range', state.range); u.searchParams.set('scope', state.scope); if (state.range === 'cal' && state.mon) u.searchParams.set('mon', state.mon); else u.searchParams.delete('mon'); history.replaceState(null, '', u); }
 
 (async () => {
   try { const U = await Data.universe(); render(U); document.addEventListener('watch-change', () => { if (state.scope === 'watch') render(U); }); }

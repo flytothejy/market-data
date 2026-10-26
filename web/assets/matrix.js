@@ -111,7 +111,7 @@ const PAD = { l: 12, r: 10, t: 30, b: 40 };   // 세로축 눈금 숫자가 없�
 
 const nyToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const addDays = (s, n) => { const d = new Date(s + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-function weekRange() { const t = nyToday(), dw = new Date(t + 'T12:00:00Z').getUTCDay(), m = addDays(t, -((dw + 6) % 7)); return [m, addDays(m, 6)]; }
+function weekRange() { const t = nyToday(), dw = new Date(t + 'T12:00:00Z').getUTCDay(), m = dw === 6 ? addDays(t, 2) : dw === 0 ? addDays(t, 1) : addDays(t, 1 - dw); return [m, addDays(m, 4)]; }   // 주말이면 다음 주
 const hash = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 997; return h / 997 - 0.5; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const isGroup = id => id.startsWith('sec:') || id.startsWith('ind:');
