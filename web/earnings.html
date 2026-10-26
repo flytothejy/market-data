@@ -104,14 +104,14 @@ function render(U) {
     const xs = (cnt[d] || []).sort((a, b) => (mine.has(b.t) - mine.has(a.t)) || ((b.mcap || 0) - (a.mcap || 0)));
     cells += `<button class="c ${d.slice(0, 7) !== state.mon ? 'out' : ''} ${d < today ? 'past' : ''} ${d === firstOpen ? 'today' : ''} ${d === state.sel ? 'sel' : ''}" data-day="${d}">
       <span class="dn"><b>${+d.slice(8)}</b>${d === firstOpen ? `<span class="td">${d === today ? '오늘' : '다음 거래일'}</span>` : ''}${xs.length ? `<span class="n">${xs.length}개</span>` : ''}</span>
-      ${xs.slice(0, 4).map(r => `<span class="tk ${mine.has(r.t) ? 'mine' : ''}" title="${esc(r.ko || r.n || '')}"><b>${esc(r.t)}</b>${!r._done && when(r) && !(d === today && doneToday(r)) ? `<i>${when(r)}</i>` : ''}${chip(r, d)}</span>`).join('')}
+      ${xs.slice(0, 4).map(r => `<span class="tk ${mine.has(r.t) ? 'mine' : ''}"><b>${esc(r.t)}</b>${!r._done && when(r) && !(d === today && doneToday(r)) ? `<i>${when(r)}</i>` : ''}${chip(r, d)}</span>`).join('')}
       ${xs.length > 4 ? `<span class="more">+${xs.length - 4}</span>` : ''}</button>`;
   }
   let h = `<div class="hero"><h1>실적 발표 달력</h1><p>미국 날짜 기준 (장 후 발표는 한국 시간으로 다음 날 새벽) · 다음 발표일은 회사 발표나 예상치(매주 갱신)</p></div>`;
   h += `<div class="card" style="gap:10px"><div class="cal-nav"><button class="btn" data-mon="${mvm(-1)}" aria-label="이전 달">‹</button><b>${yy}년 ${mm}월</b><button class="btn" data-mon="${mvm(1)}" aria-label="다음 달">›</button>
       ${state.mon !== today.slice(0, 7) ? `<button class="btn" data-mon="${today.slice(0, 7)}" data-go="${firstOpen}">오늘</button>` : ''}
       <span class="seg" style="margin-left:auto">${Object.entries(scopes).map(([k, [l]]) => `<button class="btn ${k === state.scope ? 'on' : ''}" data-scope="${k}">${esc(l)}</button>`).join('')}</span></div>
-    <div class="cal">${['월', '화', '수', '목', '금'].map(x => `<div class="hd">${x}</div>`).join('')}${cells}</div>
+    <div class="cal" data-tip-er>${['월', '화', '수', '목', '금'].map(x => `<div class="hd">${x}</div>`).join('')}${cells}</div>
     <div class="small mut">발표 전: 전·후 = 장 전·장 후 발표, ±% = 예상 변동폭(옵션, 없으면 지난 8번 평균) · 발표 뒤: 애널리스트 예상 대비 결과 · 관심·포트폴리오 종목은 색으로</div></div>`;
 
   // 고른 날 목록

@@ -388,3 +388,7 @@ tr.xr{display:none}
 .dvc div{display:flex;flex-direction:column;gap:2px;font-size:14px}
 .dvc span{font-size:12.5px;color:var(--muted)}
 .dvc b{font-weight:600}
+
+/* 티커 말풍선: 실적 부분 */
+.tk-tip .tk-er{border-top:1px solid var(--line2);margin-top:6px;padding-top:6px;display:flex;flex-direction:column;gap:2px;font-size:12px}
+.tk-tip .tk-er .tk-h{font-weight:600;font-size:12.5px}

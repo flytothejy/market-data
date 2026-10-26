@@ -724,6 +724,27 @@ const GLOSS = {
 const tipText = t => `<span class="tip" tabindex="0" role="note" aria-label="${esc(t)}" data-tip="${esc(t)}">?</span>`;
 const tip = k => GLOSS[k] ? `<span class="tip" tabindex="0" role="note" aria-label="${esc(GLOSS[k])}" data-tip="${esc(GLOSS[k])}">?</span>` : '';
 
+// 말풍선 실적 부분 (실적 달력 칸에서): 최근 발표 결과 + 다음 발표
+function erTipHtml(r) {
+  const md = s => s ? `${+s.slice(5, 7)}/${+s.slice(8, 10)}` : '';
+  const P = v => v == null ? '-' : `<span class="${cls(v)}">${fmt(v, 'pct', { sign: true })}</span>`, pm = v => v == null ? null : '±' + fmt(v, 'pct');
+  const L = (x, c) => x == null ? null : x > c ? 1 : x < -c ? -1 : 0, a = L(r.er_eps_s, 0.02), b = L(r.er_rev_s, 0.01), k = a ?? b;
+  const vt = k == null ? '' : (a != null && b != null && a !== b) ? '엇갈림' : k > 0 ? '예상 상회' : k < 0 ? '예상 하회' : '예상 부합';
+  let h = '';
+  if (r.er_d && (r.er_eps_s != null || r.er_rev_s != null || r.er_mv != null)) {
+    h += `<div class="tk-er"><div class="tk-h">최근 실적 ${md(r.er_d)}${vt ? ` · <b class="${k > 0 && vt !== '엇갈림' ? 'up' : k < 0 && vt !== '엇갈림' ? 'dn' : ''}">${vt}</b>` : ''}</div>
+      <div>EPS ${P(r.er_eps_s)} · 매출 ${P(r.er_rev_s)} <span class="mut">(예상 대비)</span></div>
+      ${r.er_mv != null ? `<div>주가 반응 ${P(r.er_mv)}${r.er_avg ? ` <span class="mut">· 평소 ±${fmt(r.er_avg, 'pct')}</span>` : ''}</div>` : ''}
+      ${r.er_nq != null ? `<div>다음 분기 매출 전망 ${P(r.er_nq)} <span class="mut">(발표 뒤 수정)</span></div>` : ''}</div>`;
+  }
+  if (r.c_next) {
+    const mv = [r.er_imp ? `옵션 예상 ${pm(r.er_imp)}` : '', r.er_avg ? `지난 8번 ${pm(r.er_avg)}` : '', r.em_ind ? `${r.em_all ? '전체' : '업종'} ${pm(r.em_ind)}` : ''].filter(Boolean).join(' · ');
+    h += `<div class="tk-er"><div class="tk-h">다음 실적 ${md(r.c_next)}${r.c_when ? ' ' + esc(r.c_when) : ''}${r.c_est ? ' <span class="mut">(예상일)</span>' : ''}</div>
+      ${mv ? `<div>${mv}</div>` : ''}
+      ${r.c_surp != null || r.c_beats != null ? `<div>직전 서프라이즈 ${P(r.c_surp)}${r.c_beats != null ? ` · 4분기 상회 ${r.c_beats}/4` : ''}</div>` : ''}</div>`;
+  }
+  return h;
+}
 // ---- 티커에 마우스를 올리면 회사 이름 (화면 어디든: 표·범례·칩·순위 목록)
 // 글자가 티커 모양인 가장 안쪽 요소를 찾아 표시해 두고, 올렸을 때 종목 목록에서 찾아 보여 줌 (없으면 아무것도 안 함)
 (() => {
@@ -763,7 +784,7 @@ const tip = k => GLOSS[k] ? `<span class="tip" tabindex="0" role="note" aria-lab
     const sub = r.k === 'etf'
       ? [r.grp, r.aum ? `운용자산 ${fmtUsd(r.aum)}` : '', r.exp != null ? `보수 ${(r.exp * 100).toFixed(2)}%` : ''].filter(Boolean).join(' · ')
       : [r.sec ? secKo(r.sec) : '', r.mcap ? `시가총액 ${fmtUsd(r.mcap)}` : ''].filter(Boolean).join(' · ');
-    tip.innerHTML = `<div><b>${esc(r.t)}</b> ${esc(r.ko || '')}</div>${r.n && r.n !== r.ko ? `<div class="tk-n">${esc(r.n)}</div>` : ''}${sub ? `<div class="tk-s">${esc(sub)}${r.r1d != null ? ` · 1일 <span class="${cls(r.r1d)}">${fmt(r.r1d, 'pct', { sign: true })}</span>` : ''}</div>` : ''}<div class="tk-sp"></div>`;
+    tip.innerHTML = `<div><b>${esc(r.t)}</b> ${esc(r.ko || '')}</div>${r.n && r.n !== r.ko ? `<div class="tk-n">${esc(r.n)}</div>` : ''}${sub ? `<div class="tk-s">${esc(sub)}${r.r1d != null ? ` · 1일 <span class="${cls(r.r1d)}">${fmt(r.r1d, 'pct', { sign: true })}</span>` : ''}</div>` : ''}${el.closest('[data-tip-er]') ? erTipHtml(r) : ''}<div class="tk-sp"></div>`;
     tip.style.display = 'block';
     const place = () => {
       const b = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
