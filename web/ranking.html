@@ -111,7 +111,7 @@ const card = (title, sub, body) => `<div class="card"><h3>${title}</h3>${sub ? `
     card('유명 투자자 매수 우위', '새로 사거나 늘린 곳 − 팔거나 줄인 곳', rankList(by(S.filter(r => r.g13_chg > 0), 'g13_chg'), r => `<span class="up">+${r.g13_chg}곳</span>`, r => `보유 ${r.g13 ?? 0}곳 · ${secKo(r.sec)}`)),
     card('ETF 편입이 늘어난 종목', `전체 구성을 받는 ETF 기준, ${eBase ? eBase + ' 대비' : '약 30일 전 대비'}`, eAdd.length ? rankList(eAdd, r => `+${r.etf_add}개`, r => `편출 ${r.etf_drop ?? 0} · 비중 변화 ${fmt(r.etf_wchg, 'pct', { sign: true })}`)
       : '<div class="mut s13">새로 편입된 종목이 없어요</div>'),
-    card(`S&P 500 요건 충족 비구성 종목 ${tip('ix_sp')}`, '시가총액 순 · 흑자·거래량 요건을 충족하는 미국 기업', (() => { const xs = S.filter(r => r.ix_sp && !(r.idx || '').includes('S&P500')).sort((a, b) => a.ix_sp - b.ix_sp).slice(0, 10); return xs.length ? rankList(xs, r => fmtUsd(r.mcap), r => `${secKo(r.sec)}`) : '<div class="mut s13">해당 종목이 없어요</div>'; })()),
+    card(`S&P 500 요건 충족 비구성 종목 ${tip('ix_sp')}`, '시가총액 순 · 흑자·거래량 요건을 충족하는 미국 기업', (() => { const xs = S.filter(r => r.ix_sp && !(r.idx || '').includes('S&P500')).sort((a, b) => a.ix_sp - b.ix_sp).slice(0, 10); return xs.length ? rankList(xs, r => fmtUsd(r.mcap), r => `${secKo(r.sec)}${r.ix_sp_chk ? ' · 미국 본사 확인 필요' : ''}`) : '<div class="mut s13">해당 종목이 없어요</div>'; })()),
   ], 'screen.html?cat=tech');
 
   // ---- 티커맵 사용자 (종목별 이용 합계 — 서버에서 받아 나중에 채움)

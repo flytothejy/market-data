@@ -132,7 +132,7 @@ function mountChart(id, d, isEtf) {
 // 지수 근접도 (연구 과제 1-3·2-4) — 순위 사실만
 function ixTags(m) {
   let h = '';
-  if (m.ix_sp && m.ix_sp <= 20 && !(m.idx || '').includes('S&P500')) h += `<span class="tag">S&P 500 요건 충족 비구성 시총 ${m.ix_sp}위</span>${tip('ix_sp')}`;
+  if (m.ix_sp && m.ix_sp <= 20 && !(m.idx || '').includes('S&P500')) h += `<span class="tag">S&P 500 요건 충족 비구성 시총 ${m.ix_sp}위${m.ix_sp_chk ? ' · 미국 본사 확인 필요' : ''}</span>${m.ix_sp_chk ? tipText('SEC에 등록된 설립지가 미국 밖이라 S&P 500의 미국 회사 요건을 충족하는지 확인이 필요해요. ' + GLOSS.ix_sp) : tip('ix_sp')}`;
   if (m.ix_nq && m.ix_nq <= 150) h += `<span class="tag">나스닥 비금융 시총 ${m.ix_nq >= 90 && m.ix_nq <= 130 ? '약 ' : ''}${m.ix_nq}위</span>${tip('ix_nq')}`;
   return h;
 }
