@@ -95,7 +95,7 @@ def main():
         return
     groups = {"phase1": ORDER, "phase2": ORDER2, "phase3": ORDER3, "daily": DAILY, "weekly": WEEKLY, "close": CLOSE}
     names = [n for part in a.source.split(",") for n in groups.get(part.strip(), [part.strip()])]
-    valid = set(ORDER + ORDER2 + ORDER3 + ["tenk", "build", "check", "cards", "insider_hist", "alerts"])
+    valid = set(ORDER + ORDER2 + ORDER3 + ["tenk", "build", "check", "cards", "insider_hist", "alerts", "sec_accepted_fix"])
     bad = [n for n in names if n not in valid]
     if bad:
         sys.exit(f"모르는 수집기: {', '.join(bad)} (가능: {', '.join(sorted(valid))})")
