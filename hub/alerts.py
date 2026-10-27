@@ -61,6 +61,8 @@ def pp(v):
 
 
 def usd(v):
+    if v is None:
+        return "-"
     v = abs(v)
     return f"${v / 1e8:,.1f}억" if v >= 1e8 else f"${v / 1e4:,.0f}만" if v >= 1e4 else f"${v:,.0f}"
 
@@ -169,9 +171,9 @@ def detect(U, prev, init):
                 eps, rev, mv, avg = L.get("eps"), L.get("rev"), L.get("mv"), L.get("avg")
                 bits = []
                 if eps:
-                    bits.append(f"EPS {eps_s(eps['a'])} (예상 {eps_s(eps['e'])}, {pct(eps['s'])})")
+                    bits.append(f"EPS {eps_s(eps.get('a'))} (예상 {eps_s(eps.get('e'))}" + (f", {pct(eps['s'])})" if eps.get('s') is not None else ")"))
                 if rev:
-                    bits.append(f"매출 {usd(rev['a'])} (예상 {usd(rev['e'])}, {pct(rev['s'])})")
+                    bits.append(f"매출 {usd(rev.get('a'))} (예상 {usd(rev.get('e'))}" + (f", {pct(rev['s'])})" if rev.get('s') is not None else ")"))
                 # 주가는 조심스럽게: 다음 날 반응은 그날까지의 값이고, 지금 주가와 다를 수 있음을 함께 적음. 아직 다음 날 종가가 없으면 주가는 빼고 실적만
                 nh = L.get("n_hist") or 0
                 mvt = ""
