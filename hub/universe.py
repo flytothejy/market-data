@@ -31,7 +31,11 @@ def ishares_holdings(http, pid):
         body.append(l)
     df = pd.read_csv(io.StringIO("\n".join(body)), thousands=",")
     df = df[df["Asset Class"].astype(str).str.lower().eq("equity")].copy()
-    df["Weight (%)"] = pd.to_numeric(df["Weight (%)"], errors="coerce")
+    # 2026-10 iShares 파일에서 'Weight (%)' → 'Market Weight'로 이름이 바뀜 (둘 다 받음)
+    wc = next((c for c in ("Weight (%)", "Market Weight") if c in df), next((c for c in df.columns if "weight" in str(c).lower()), None))
+    if wc is None:
+        raise RuntimeError(f"비중 열 없음 (열: {list(df.columns)[:12]})")
+    df["Weight (%)"] = pd.to_numeric(df[wc], errors="coerce")
     return df, asof
 
 

@@ -129,7 +129,8 @@ def ishares(http, t, expect_name=None):
         body.append(l)
     df = pd.read_csv(io.StringIO("\n".join(body)), thousands=",")
     q = next((c for c in df.columns if c in ("Quantity", "Shares")), None)
-    return _frame(df, t, "ishares", "Ticker", "Name", "Weight (%)", q, "Market Value")
+    wc = next((c for c in ("Weight (%)", "Market Weight") if c in df), "Weight (%)")       # 2026-10 열 이름 변경
+    return _frame(df, t, "ishares", "Ticker", "Name", wc, q, "Market Value")
 
 
 def adapter(family, t):
