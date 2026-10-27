@@ -18,6 +18,40 @@ th.sort.asc::after{content:' ▲';font-size:9px}
 th.sort.desc::after{content:' ▼';font-size:9px}
 #addf{display:none;gap:6px;flex-wrap:wrap;align-items:center;padding:10px;border:1px dashed var(--line);border-radius:10px}
 #addf.on{display:flex}
+
+/* AI 문장 검색 */
+@property --ai-a{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes ai-spin{to{--ai-a:360deg}}
+@keyframes ai-shine{to{background-position:200% 0}}
+.ai-wrap{position:relative;border-radius:18px;padding:2px;margin-bottom:14px;isolation:isolate;
+  background:conic-gradient(from var(--ai-a),#ff6b6b,#ffa94d,#ffd43b,#69db7c,#4dabf7,#9775fa,#f783ac,#ff6b6b);animation:ai-spin 5s linear infinite}
+.ai-wrap::before{content:'';position:absolute;inset:4px;border-radius:18px;background:inherit;filter:blur(16px);opacity:.28;z-index:-1}
+.ai{border-radius:16px;background:var(--card);padding:16px 16px 14px}
+.ai-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ai-top svg{width:22px;height:22px;flex:none}
+.ai-top b{font-size:15.5px;letter-spacing:-.01em}
+.ai-tag{font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:99px;color:#fff;background:linear-gradient(90deg,#ff7a59,#9775fa,#4dabf7)}
+.ai-top .mut{margin-left:auto;font-size:12px}
+.ai-row{display:flex;gap:8px;align-items:stretch}
+.ai textarea{flex:1;font:inherit;font-size:15px;line-height:1.45;border:1px solid var(--line);border-radius:12px;padding:11px 13px;resize:none;background:var(--bg);color:var(--ink);min-height:48px;outline:none;transition:border-color .15s,box-shadow .15s}
+.ai textarea:focus{border-color:#9775fa;box-shadow:0 0 0 3px rgba(151,117,250,.15)}
+.ai .go{white-space:nowrap;padding:0 18px;border:0;border-radius:12px;color:#fff;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  background:linear-gradient(135deg,#ff7a59,#9775fa 55%,#4dabf7)}
+.ai .go:disabled{opacity:.6;cursor:wait}
+.ai .go svg{width:15px;height:15px}
+.ai-ex{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.ai-ex .btn{font-size:12.5px;background:var(--soft);border-color:transparent}
+.ai-out{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);display:none}
+.ai-out.on{display:block}
+.ai-h{font-size:12.5px;color:var(--muted);margin-bottom:6px;display:flex;gap:8px;justify-content:space-between;align-items:center}
+.ai-load{font-size:13.5px;font-weight:700;background:linear-gradient(90deg,var(--muted) 0%,#9775fa 25%,#ff7a59 50%,var(--muted) 75%);background-size:200% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:ai-shine 1.4s linear infinite}
+.ai-q{font-size:13.5px;margin-bottom:6px;line-height:1.6}
+.ai-note{font-size:12.5px;line-height:1.6}
+.ai-note .u{color:var(--warn)}
+.chip.ai-c{background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(90deg,#ff9f7a,#b197fc,#74c0fc) border-box;border:1px solid transparent}
+@media (prefers-reduced-motion:reduce){.ai-wrap{animation:none}.ai-load{animation:none;color:var(--muted)}}
+@media (max-width:640px){.ai-q{display:none}.ai-top .mut{display:none}.ai-row{flex-direction:column}.ai .go{justify-content:center;padding:11px}}
 </style>
 </head>
 <body>
@@ -48,6 +82,11 @@ const PRESETS = [
 ];
 let U, F, kind = qs('kind') === 'etf' ? 'etf' : 'stock', cat = qs('cat') || 'info', sortK = null, sortD = -1, shown = 100;
 const filt = {};           // key → [min,max]
+const dfilt = {};          // 날짜 조건 key → {past|next: 일수}
+const efilt = {};          // 고른 값 조건 key → [값…] (업종·지수 말고)
+const AIK = new Set();     // AI가 넣은 조건 (칩 색)
+const DLAB = { gc: '골든크로스', c_next: '다음 실적 발표', er_d: '최근 실적 발표', ea_d: '최근 실적 발표', ib_last: '최근 내부자 매수', k10: '최근 10-K' };
+const ENUM_LAB = { dz: v => ['보통', '주의', '높음', '매우 높음'][v] || v, dvc_m: v => v + '월', c_when: v => v };
 let sector = qs('sec') || '', index = '', query = '';
 
 const lab = k => (F[k] || {}).label || (EXTRA[k] || [k])[0];
@@ -72,17 +111,35 @@ function rows() {
   return U.rows.filter(r => r.k === kind
     && (!sector || r.sec === sector) && (!index || (r.idx || '').split(',').includes(index))
     && (!q || r.t.toLowerCase().startsWith(q) || (r.n || '').toLowerCase().includes(q))
-    && Object.entries(filt).every(([k, [a, b]]) => r[k] != null && (a == null || r[k] >= a) && (b == null || r[k] <= b)));
+    && Object.entries(filt).every(([k, [a, b]]) => r[k] != null && (a == null || (a === 0 ? r[k] > 0 : r[k] >= a)) && (b == null || (b === 0 ? r[k] < 0 : r[k] <= b)))
+    && Object.entries(dfilt).every(([k, d]) => dateOk(r[k], d))
+    && Object.entries(efilt).every(([k, vs]) => r[k] != null && vs.map(String).includes(String(r[k]))));
+}
+const TODAY = () => new Date().toISOString().slice(0, 10);
+const dd = (a, b) => (Date.parse(a) - Date.parse(b)) / 864e5;
+function dateOk(v, d) {
+  if (!v || v === 'NaT') return false;
+  if (d.past != null) return v <= U.asof && dd(U.asof, v) <= d.past;
+  const base = TODAY() > U.asof ? TODAY() : U.asof;
+  return v >= base && dd(v, base) <= d.next;
 }
 
+function rangeTxt(k, a, b) {
+  if (a === 0 && b == null) return '> 0';
+  if (b === 0 && a == null) return '< 0';
+  return `${a != null ? '≥ ' + fmt(a, fm(k)) : ''}${a != null && b != null ? ' · ' : ''}${b != null ? '≤ ' + fmt(b, fm(k)) : ''}`;
+}
 function render() {
   const cols = kind === 'etf' ? COLS.etf : COLS[cat];
   let R = rows();
   const sk = sortK && cols.concat(['t']).includes(sortK) ? sortK : (kind === 'etf' ? 'aum' : 'mcap');
   R.sort((a, b) => { const x = a[sk], y = b[sk]; if (x == null) return 1; if (y == null) return -1; return (x > y ? 1 : x < y ? -1 : 0) * (sortK ? sortD : -1); });
   $('#count').textContent = `${R.length.toLocaleString()}개`;
-  $('#chips').innerHTML = Object.entries(filt).map(([k, [a, b]]) => `<span class="chip">${esc(lab(k))} ${a != null ? '≥ ' + fmt(a, fm(k)) : ''}${a != null && b != null ? ' · ' : ''}${b != null ? '≤ ' + fmt(b, fm(k)) : ''}<button data-k="${k}" aria-label="삭제">×</button></span>`).join('');
-  $('#chips').querySelectorAll('button').forEach(b => b.onclick = () => { delete filt[b.dataset.k]; render(); });
+  const cc = k => `chip${AIK.has(k) ? ' ai-c' : ''}`;
+  $('#chips').innerHTML = Object.entries(dfilt).map(([k, d]) => `<span class="${cc(k)}">${esc(DLAB[k] || lab(k))} ${d.past != null ? `최근 ${d.past}일 안` : `앞으로 ${d.next}일 안`}<button data-t="d" data-k="${k}" aria-label="삭제">×</button></span>`).join('')
+    + Object.entries(efilt).map(([k, vs]) => `<span class="${cc(k)}">${esc(lab(k))} ${vs.map(v => esc((ENUM_LAB[k] || (x => x))(v))).join('·')}<button data-t="e" data-k="${k}" aria-label="삭제">×</button></span>`).join('')
+    + Object.entries(filt).map(([k, [a, b]]) => `<span class="${cc(k)}">${esc(lab(k))} ${rangeTxt(k, a, b)}<button data-t="r" data-k="${k}" aria-label="삭제">×</button></span>`).join('');
+  $('#chips').querySelectorAll('button').forEach(b => b.onclick = () => { delete ({ d: dfilt, e: efilt, r: filt })[b.dataset.t][b.dataset.k]; AIK.delete(b.dataset.k); syncUrl(); render(); });
   $('#tbl').innerHTML = `<thead><tr><th class="sort ${sortK === 't' ? (sortD > 0 ? 'asc' : 'desc') : ''}" data-k="t">티커</th>${cols.map(k => `<th class="sort ${sortK === k ? (sortD > 0 ? 'asc' : 'desc') : ''} ${['n', 'sec', 'grp', 'k8_last', 'nw_last'].includes(k) ? 'l' : ''}" data-k="${k}">${esc(lab(k))}${tip(k)}</th>`).join('')}</tr></thead>
     <tbody>${R.slice(0, shown).map(r => `<tr><td><a href="${stockUrl(r.t)}"><b>${esc(r.t)}</b></a></td>${cols.map(k => cell(r, k)).join('')}</tr>`).join('')}</tbody>`;
   $('#tbl').querySelectorAll('th.sort').forEach(th => th.onclick = () => { const k = th.dataset.k; sortD = sortK === k ? -sortD : (k === 't' || k === 'n' ? 1 : -1); sortK = k; render(); });
@@ -93,11 +150,93 @@ function render() {
   $('#presets').style.display = kind === 'etf' ? 'none' : '';
 }
 
+// AI 문장 검색 — AI는 문장을 조건으로 바꾸기만 함 (features/ai-screen/README.md). 예시는 미리 바꿔 둔 결과
+const AI_EX = [
+  { label: '실적 4분기 연속 상회 + 한 달 안 골든크로스', q: '최근 실적 서프라이즈가 4분기 연속이고 매출·순이익이 늘었으며, 한 달 안에 골든크로스가 난 종목',
+    r: { conds: [{ k: 'c_beats', min: 4 }, { k: 'rev_g', min: 0 }, { k: 'ni_g', min: 0 }, { k: 'gc', past_days: 30 }],
+      assumptions: ["'매출·순이익이 늘었다'는 최근 4개 분기 합이 1년 전보다 늘었는지로 봤어요"], unsupported: ['매출·순이익이 여러 분기 연속으로 늘었는지 (준비 중)'] } },
+  { label: '이번 주 실적 발표하는 기술주', q: '이번 주에 실적 발표하는 기술주',
+    r: { conds: [{ k: 'c_next', next_days: 7 }, { k: 'sec', in: ['Technology'] }], assumptions: ["'이번 주'는 오늘부터 7일 안으로 봤어요"] } },
+  { label: '배당 4% 넘고 빚 적은 대형주', q: '배당 4% 넘고 빚 적은 대형주',
+    r: { conds: [{ k: 'dy', min: 0.04 }, { k: 'de', max: 0.5 }, { k: 'mcap', min: 1e10 }],
+      assumptions: ["'빚 적은'은 장기부채가 자본의 0.5배 이하로 봤어요", "'대형주'는 시가총액 100억 달러 이상으로 봤어요"] } },
+];
+const B64 = { enc: o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+  dec: s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))))) };
+let aiRes = null;
+function clearAll() { [filt, dfilt, efilt].forEach(o => Object.keys(o).forEach(k => delete o[k])); AIK.clear(); sector = index = ''; }
+function syncUrl() {
+  const u = new URL(location.href);
+  if (aiRes) u.searchParams.set('ai', B64.enc({ q: aiRes.q, r: { ...aiRes.r, conds: aiRes.r.conds.filter(c => AIK.has(c.k)) } })); else u.searchParams.delete('ai');
+  history.replaceState(null, '', u);
+}
+// AI 결과 적용: 사전에 없는 key·형태가 틀린 조건은 버리고 '지원하지 않는 조건'으로 (Worker에서도 같은 검사)
+function applyAI(q, r) {
+  clearAll();
+  const un = [...(r.unsupported || [])];
+  for (const c of r.conds || []) {
+    if (c.k === 'sec' && c.in) { sector = c.in[0]; AIK.add('sec'); continue; }
+    if (c.k === 'idx' && c.in) { index = c.in[0]; AIK.add('idx'); continue; }
+    if (!F[c.k]) { un.push(c.k); continue; }
+    if (c.past_days != null || c.next_days != null) dfilt[c.k] = c.past_days != null ? { past: +c.past_days } : { next: +c.next_days };
+    else if (c.in) efilt[c.k] = c.in;
+    else if (c.is != null) efilt[c.k] = [c.is];
+    else if (c.min != null || c.max != null) filt[c.k] = [c.min ?? null, c.max ?? null];
+    else { un.push(c.k); continue; }
+    AIK.add(c.k);
+  }
+  const cats = (r.conds || []).map(c => (F[c.k] || {}).cat).filter(x => x && x !== 'info');
+  if (cats.length) cat = cats[0];
+  aiRes = { q, r: { ...r, unsupported: un } };
+  $('#sec').value = sector; $('#idx').value = index;
+  showAI(); syncUrl(); render();
+}
+function condTxt(c) {
+  if (c.k === 'sec') return '업종 ' + c.in.map(secKo).join('·');
+  if (c.k === 'idx') return '지수 ' + c.in.join('·');
+  if (c.past_days != null) return `${DLAB[c.k] || lab(c.k)} 최근 ${c.past_days}일 안`;
+  if (c.next_days != null) return `${DLAB[c.k] || lab(c.k)} 앞으로 ${c.next_days}일 안`;
+  if (c.in || c.is != null) return `${lab(c.k)} ${(c.in || [c.is]).map(v => (ENUM_LAB[c.k] || (x => x))(v)).join('·')}`;
+  return `${lab(c.k)} ${rangeTxt(c.k, c.min ?? null, c.max ?? null)}`;
+}
+function showAI() {
+  const o = $('#aiout'), r = aiRes.r;
+  o.classList.add('on');
+  o.innerHTML = `<div class="ai-h"><span>이렇게 이해했어요 · 아래 조건 칩에서 고치거나 지울 수 있어요</span><a href="#" id="aiclr">지우기</a></div>
+    <div class="ai-q">${(r.conds || []).map(c => `<b>${esc(condTxt(c))}</b>`).join(' · ')}</div>
+    <div class="ai-note">${(r.assumptions || []).map(x => `<div class="mut">· ${esc(x)}</div>`).join('')}${(r.unsupported || []).map(x => `<div class="u">· 아직 지원하지 않는 조건: ${esc(x)}</div>`).join('')}
+    <div class="faint" style="margin-top:4px">AI는 문장을 조건으로 바꾸기만 해요. 종목은 조건에 맞는 데이터로만 걸러요.</div></div>`;
+  $('#aiclr').onclick = e => { e.preventDefault(); clearAll(); aiRes = null; o.classList.remove('on'); $('#aiq').value = ''; $('#sec').value = $('#idx').value = ''; syncUrl(); render(); };
+}
+async function askAI(q) {
+  q = (q || '').trim();
+  if (!q) return $('#aiq').focus();
+  const ex = AI_EX.find(e => e.q === q || e.label === q);
+  const o = $('#aiout'), btn = $('#aigo');
+  o.classList.add('on'); o.innerHTML = '<div class="ai-load">조건으로 바꾸는 중…</div>'; btn.disabled = true;
+  try {
+    if (ex) { await new Promise(res => setTimeout(res, 500)); return applyAI(ex.q, ex.r); }
+    const r = await fetch(API_BASE + '/ai/screen', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q }) });
+    if (r.status === 404) throw new Error('soon');
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'fail');
+    if (j.refused) { o.innerHTML = `<div class="ai-note">${esc(j.refused)}</div>`; return; }
+    applyAI(q, j);
+  } catch (e) {
+    o.innerHTML = `<div class="ai-note">${e.message === 'soon' || e instanceof TypeError ? '문장 검색은 곧 열려요. 지금은 위의 예시 문장을 눌러 보세요.' : esc(e.message === 'limit' ? '오늘 쓸 수 있는 횟수를 다 썼어요. 내일 다시 써 보세요.' : '이해하지 못했어요. 조건을 조금 더 구체적으로 적어 보세요.')}</div>`;
+  } finally { btn.disabled = false; }
+}
 (async () => {
   U = await Data.universe(); F = U.fields;
   const secs = [...new Set(U.rows.filter(r => r.sec).map(r => r.sec))].sort((a, b) => secKo(a).localeCompare(secKo(b), 'ko'));
   const fkeys = Object.keys(F).filter(k => !['t', 'n', 'k', 'sec', 'ind', 'idx', 'cur', 'fq', 'k8_last', 'nw_last', 'gc', 'ib_last', 'k10', 'c_next'].includes(k) && F[k].tier === 'free');
   $('#app').innerHTML = `<div class="hero"><h1>검색</h1><p>다섯 카테고리 지표를 섞어 종목을 걸러보세요. 러셀 1000 + 나스닥 100 ${U.rows.filter(r => r.k === 'stock').length.toLocaleString()}종목 · ETF ${U.rows.filter(r => r.k === 'etf').length}개</p></div>
+<div class="ai-wrap"><div class="ai" id="ai">
+    <div class="ai-top"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="aig" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7a59"/><stop offset=".55" stop-color="#9775fa"/><stop offset="1" stop-color="#4dabf7"/></linearGradient></defs><path d="M10.5 2.5c.7 5.2 2.8 7.8 8 8.6-5.2.8-7.3 3.4-8 8.6-.7-5.2-2.8-7.8-8-8.6 5.2-.8 7.3-3.4 8-8.6z" fill="url(#aig)"/><path d="M19 14.5c.3 2.1 1.1 3.1 3.1 3.5-2 .4-2.8 1.4-3.1 3.5-.3-2.1-1.1-3.1-3.1-3.5 2-.4 2.8-1.4 3.1-3.5z" fill="url(#aig)"/></svg><b>문장으로 찾기</b><span class="ai-tag">AI</span><span class="mut">조건을 말로 적으면 필터로 바꿔 드려요</span></div>
+    <div class="ai-row"><textarea id="aiq" rows="2" maxlength="300" placeholder="예) 실적이 4분기 연속 예상을 넘었고 한 달 안에 골든크로스가 난 종목"></textarea><button class="go" id="aigo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 2.5c.7 5.2 2.8 7.8 8 8.6-5.2.8-7.3 3.4-8 8.6-.7-5.2-2.8-7.8-8-8.6 5.2-.8 7.3-3.4 8-8.6z" fill="#fff"/><path d="M19 14.5c.3 2.1 1.1 3.1 3.1 3.5-2 .4-2.8 1.4-3.1 3.5-.3-2.1-1.1-3.1-3.1-3.5 2-.4 2.8-1.4 3.1-3.5z" fill="#fff"/></svg>찾기</button></div>
+    <div class="ai-ex"><span class="mut s13">예시</span>${AI_EX.map((e, i) => `<button class="btn" data-ex="${i}">${esc(e.label)}</button>`).join('')}</div>
+    <div class="ai-out" id="aiout"></div>
+  </div></div>
   <div class="card">
     <div class="filters"><div class="seg" id="kinds"><button class="btn" data-k="stock">주식</button><button class="btn" data-k="etf">ETF</button></div>
       <input class="f" id="q" type="search" placeholder="티커·이름" style="width:150px">
@@ -122,14 +261,18 @@ function render() {
   $('#q').oninput = e => { query = e.target.value.trim(); shown = 100; render(); };
   $('#sec').onchange = e => { sector = e.target.value; render(); };
   $('#idx').onchange = e => { index = e.target.value; render(); };
-  $('#kinds').querySelectorAll('.btn').forEach(b => b.onclick = () => { kind = b.dataset.k; sortK = null; Object.keys(filt).forEach(k => delete filt[k]); render(); });
+  $('#kinds').querySelectorAll('.btn').forEach(b => b.onclick = () => { kind = b.dataset.k; sortK = null; clearAll(); render(); });
   $('#cats').querySelectorAll('.btn').forEach(b => b.onclick = () => { cat = b.dataset.c; render(); });
   $('#more').onclick = () => { shown += 100; render(); };
   $('#addbtn').onclick = () => { $('#addf').classList.toggle('on'); $('#fk').dispatchEvent(new Event('change')); };
   $('#fk').onchange = () => { const k = $('#fk').value; $('#fu').textContent = unitOf(k) ? `단위: ${unitOf(k)}` : ''; $('#fa').value = toIn(k, (filt[k] || [])[0]); $('#fb').value = toIn(k, (filt[k] || [])[1]); };
   $('#fok').onclick = () => { const k = $('#fk').value, a = toRaw(k, $('#fa').value), b = toRaw(k, $('#fb').value); if (a == null && b == null) delete filt[k]; else filt[k] = [a, b]; cat = F[k].cat === 'info' ? cat : F[k].cat; render(); };
-  $('#reset').onclick = () => { Object.keys(filt).forEach(k => delete filt[k]); sector = index = query = ''; $('#sec').value = $('#idx').value = $('#q').value = ''; sortK = null; render(); };
-  $('#presets').querySelectorAll('.btn').forEach(b => b.onclick = () => { const p = PRESETS[+b.dataset.i]; Object.keys(filt).forEach(k => delete filt[k]); Object.assign(filt, JSON.parse(JSON.stringify(p[1]))); cat = p[2]; sortK = p[3] || null; sortD = -1; render(); });
+  $('#reset').onclick = () => { clearAll(); aiRes = null; $('#aiout').classList.remove('on'); syncUrl(); query = ''; $('#sec').value = $('#idx').value = $('#q').value = ''; sortK = null; render(); };
+  $('#presets').querySelectorAll('.btn').forEach(b => b.onclick = () => { const p = PRESETS[+b.dataset.i]; clearAll(); Object.assign(filt, JSON.parse(JSON.stringify(p[1]))); cat = p[2]; sortK = p[3] || null; sortD = -1; render(); });
+  $('#aigo').onclick = () => askAI($('#aiq').value);
+  $('#aiq').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); askAI($('#aiq').value); } };
+  document.querySelectorAll('[data-ex]').forEach(b => b.onclick = () => { const e = AI_EX[+b.dataset.ex]; $('#aiq').value = e.q; askAI(e.q); });
+  if (qs('ai')) { try { const a = B64.dec(qs('ai')); $('#aiq').value = a.q || ''; applyAI(a.q, a.r); } catch (e) { } }
   render();
   footer();
 })();
