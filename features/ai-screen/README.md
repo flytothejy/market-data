@@ -1,6 +1,6 @@
 # AI 조건 검색 — 문장으로 종목 걸러 찾기
 
-> 2026-10-28 설계. 상태: 문서·필드 사전 완료 / Worker·화면 미구현.
+> 2026-10-28 설계·1차 구현. 상태: 화면(design 미리보기)·Worker `/ai/screen`·새 필드 완료 / Claude API 키 등록·평가 대기.
 > 필드 사전: `hub/spec/screen_catalog.json` (`python -m hub.screen_catalog <universe.json>`으로 생성)
 > 평가 문장: `features/ai-screen/eval.json`
 
@@ -117,7 +117,7 @@ OR 조건, 두 필드 비교(예: 최근 분기 성장 > 1년 성장), 순위(�
 | 모델 | Claude 작은 모델(빠르고 쌈). 평가 정확도가 낮으면 한 단계 위 모델 |
 | 비용 | 요청당 입력 약 8천 토큰(캐시) + 출력 수백 토큰 — 1원 안팎 예상 |
 | 키 | Claude API 키를 Worker 비밀값으로 (사용자가 직접 등록, 저장소에 넣지 않음) |
-| 제한 | 로그인 사용자 하루 20회, 비로그인은 예시 문장만. Worker에서 사용자별 카운트(D1) |
+| 제한 | 로그인 하루 30회, 비로그인 하루 10회(IP를 하루 단위로 해시해 셈, 원래 IP는 저장 안 함). 같은 문장은 저장된 결과라 횟수에 안 셈. 예시 문장은 무제한 |
 | 기록 | 문장·결과 조건·unsupported를 D1에 저장(개인 식별 없이) → 자주 나오는 unsupported로 필드 추가 우선순위 결정 |
 | 유료화 | 횟수 확대를 유료 후보로 (pitch §7) |
 
@@ -133,9 +133,9 @@ OR 조건, 두 필드 비교(예: 최근 분기 성장 > 1년 성장), 순위(�
 
 1. [x] 필드 사전 생성기(`hub/screen_catalog.py`)와 사전 JSON
 2. [x] 설계 문서·평가 문장
-3. [ ] 새 필드: 연속 분기 매출 증가 수(`rev_up_q`), 연속 분기 순이익 증가 수(`ni_up_q`) — SEC 분기 재무로 build에서 계산
-4. [ ] build에서 사전을 사이트로 내보내기(`api/v1/free/screen_catalog.json`), 분포는 매일 갱신
-5. [ ] 검색 화면 필터 확장(date·enum·flag) + 주소에 조건 담기
-6. [ ] Worker `/ai/screen` (검증·제한·기록) — API 키 등록 뒤
-7. [ ] 화면 입력창·칩·안내
+3. [x] 새 필드: 연속 분기 매출 증가 수(`rev_up_q`), 연속 분기 순이익 증가 수(`ni_up_q`) — SEC 분기 재무로 build에서 계산
+4. [x] build에서 사전을 사이트로 내보내기(`api/v1/free/screen_catalog.json`), 분포는 매일 갱신
+5. [x] 검색 화면 필터 확장(date·enum·flag) + 주소에 조건 담기
+6. [x] Worker `/ai/screen` (검증·제한·기록) — `cloudflare/api/ai.js`, 프롬프트 `cloudflare/api/ai_prompt.txt`, 평가 `python -m hub.ai_eval`
+7. [x] 화면 입력창·칩·안내
 8. [ ] 평가 돌려 통과율 92% 넘기면 공개

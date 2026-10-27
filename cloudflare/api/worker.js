@@ -15,6 +15,7 @@
 
 import { makeAuth, log, isNoEmail, SITE_ORIGINS } from './auth.js';
 import { admin, adminCors, ADMIN_ORIGINS } from './admin.js';
+import { aiScreen, whoOf } from './ai.js';
 
 const DAY = 864e5;
 const json = (o, s = 200) => new Response(JSON.stringify(o), {
@@ -242,6 +243,12 @@ const credCors = (req, env) => {
   const o = req.headers.get('origin') || '';
   const ok = SITE_ORIGINS.includes(o) || ADMIN_ORIGINS.includes(o) || (env.AUTH_DEV === '1' && /^http:\/\/localhost(:\d+)?$/.test(o));
   return ok ? { 'access-control-allow-origin': o, 'access-control-allow-credentials': 'true', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'vary': 'Origin' } : {};
+};
+// AI 문장 검색: 사이트·미리보기(*.tickermap.pages.dev)는 쿠키 포함 허용(로그인이면 횟수 더), 그 밖은 쿠키 없이
+const aiCors = (req, env) => {
+  const o = req.headers.get('origin') || '';
+  const ok = SITE_ORIGINS.includes(o) || /^https:\/\/([a-z0-9-]+\.)?tickermap\.pages\.dev$/.test(o) || (env.AUTH_DEV === '1' && /^http:\/\/localhost(:\d+)?$/.test(o));
+  return ok ? { 'access-control-allow-origin': o, 'access-control-allow-credentials': 'true', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST,OPTIONS', 'vary': 'Origin' } : CORS;
 };
 const withCors = (res, h) => { const r = new Response(res.body, res); for (const [k, v] of Object.entries(h)) r.headers.set(k, v); return r; };
 const cjson = (o, h, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', ...h } });
@@ -476,11 +483,18 @@ export default {
   async fetch(req, env, ctx) {
     const path = new URL(req.url).pathname.replace(/\/$/, '') || '/';
     const cred = path.startsWith('/api/auth/') || path.startsWith('/api/account/');
-    if (req.method === 'OPTIONS') return new Response(null, { headers: path.startsWith('/admin/') ? adminCors(req, env) : cred ? { ...credCors(req, env), 'access-control-max-age': '86400' } : CORS });
+    if (req.method === 'OPTIONS') return new Response(null, { headers: path.startsWith('/admin/') ? adminCors(req, env) : path === '/ai/screen' ? { ...aiCors(req, env), 'access-control-max-age': '86400' } : cred ? { ...credCors(req, env), 'access-control-max-age': '86400' } : CORS });
     try {
       if (path.startsWith('/api/auth/')) return withCors(await makeAuth(env).handler(req), credCors(req, env));
       if (path.startsWith('/admin/')) return await admin(req, env, path);
       if (path.startsWith('/api/account/')) return await account(req, env, path);
+      if (path === '/ai/screen' && req.method === 'POST') {
+        const h = aiCors(req, env);
+        try {
+          const who = await whoOf(req, env, () => makeAuth(env).api.getSession({ headers: req.headers }));
+          return await aiScreen(req, env, ctx, who, h);
+        } catch (e) { return new Response(JSON.stringify({ error: 'fail', detail: String(e && e.message || e).slice(0, 200) }), { status: 500, headers: { 'content-type': 'application/json', ...h } }); }
+      }
       if (path === '/api/ev' && req.method === 'POST') return await events(req, env);
       if (path === '/api/popular' && req.method === 'GET') return await popular(req, env, ctx);
       if (path.startsWith('/api/') && req.method === 'POST') return await api(req, env, path);

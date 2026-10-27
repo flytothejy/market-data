@@ -320,7 +320,20 @@ def fin_metrics(fc):
         prev = [k for k in ks if 350 <= (last - k).days <= 380]
         if prev:
             rev_qg = div(rq[last], rq[prev[-1]]) - 1 if div(rq[last], rq[prev[-1]]) else None
-    m = {"rev": T["rev"], "rev_g": (div(T["rev"], P["rev"]) - 1) if div(T["rev"], P["rev"]) else None, "rev_qg": rev_qg,
+    def up_streak(c, cap=12):
+        """최근 분기부터 거꾸로, 작년 같은 분기보다 늘어난 분기가 몇 번 연속인지 (작년 값이 없으면 멈춤)"""
+        q = Q.get(c) or {}
+        ds, n = sorted(q), 0
+        for d in reversed(ds):
+            prev = [k for k in ds if 350 <= (d - k).days <= 380]
+            if not prev or q[d] is None or q[prev[-1]] is None or not q[d] > q[prev[-1]]:
+                break
+            n += 1
+            if n >= cap:
+                break
+        return n if any(350 <= (ds[-1] - k).days <= 380 for k in ds) else None
+    m = {"rev_up_q": up_streak("rev") if ks else None, "ni_up_q": up_streak("ni") if ks else None,
+         "rev": T["rev"], "rev_g": (div(T["rev"], P["rev"]) - 1) if div(T["rev"], P["rev"]) else None, "rev_qg": rev_qg,
          "gm": div(A("gp"), A("rev")), "om": div(A("opi"), A("rev")), "nm": div(A("ni"), A("rev")), "ni": T["ni"],
          "ni_g": (div(T["ni"], P["ni"]) - 1) if (P["ni"] or 0) > 0 and div(T["ni"], P["ni"]) else None, "eps": T["eps"],
          "fcf": (T["cfo"] - T["capex"]) if T["cfo"] is not None and T["capex"] is not None else T["cfo"],
@@ -1583,6 +1596,11 @@ def run(limit=0, **_):
     except Exception as e:
         R.warning(f"실적 변동폭 기록 실패: {str(e)[:80]}")
     dump(OUT / "free" / "universe.json", {"asof": PX.date.max(), "consensus_asof": c_asof, "etf_base": etf_base, "fields": fields, "cats": CATS, "rows": free_rows})
+    try:                                   # AI 문장 검색용 필드 사전 (값 분포는 오늘 universe 기준) — Worker /ai/screen이 읽음
+        from . import screen_catalog
+        dump(OUT / "free" / "screen_catalog.json", screen_catalog.build(OUT / "free" / "universe.json"))
+    except Exception as e:
+        R.warning(f"AI 필드 사전 실패: {e}")
     dump(OUT / "pro" / "universe_pro.json", {"rows": U2[["t"] + [k for k in pro_keys if k in U2.columns]].to_dict("records")})
     st = U2[U2.k == "stock"]
     sec = st.groupby("sec").agg(n=("t", "size"), r1d=("r1d", "median"), r1m=("r1m", "median"), r1y=("r1y", "median"),

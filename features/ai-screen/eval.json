@@ -1,32 +1,411 @@
 {
-  "note": "AI 조건 검색 평가 문장. expect.conds의 key 집합이 같고 숫자가 range 안이면 통과. unsupported/refused는 있음·없음만 비교. 숫자 범위는 [최소, 최대] 허용 구간.",
-  "cases": [
-    {"q": "최근 실적 발표 서프라이즈가 4분기 연속으로 발생했고, 매출 순이익이 지속 증가추세이면서, 최근 한달 안에 골드크로스가 난 종목",
-     "expect": {"conds": {"c_beats": {"min": [4, 4]}, "rev_g": {"min": [0, 0.05]}, "ni_g": {"min": [0, 0.05]}, "gc": {"past_days": [28, 31]}}, "unsupported": true}},
-    {"q": "배당 4% 넘는 대형주", "expect": {"conds": {"dy": {"min": [0.04, 0.04]}, "mcap": {"min": [1e10, 1e10]}}, "assumptions": true}},
-    {"q": "S&P 500 안에서 PER 15배 이하 흑자 기업", "expect": {"conds": {"idx": {"in": ["S&P500"]}, "pe": {"max": [15, 15]}, "ni": {"min": [0, 0]}}}},
-    {"q": "이번 주에 실적 발표하는 기술주", "expect": {"conds": {"c_next": {"next_days": [5, 7]}, "sec": {"in": ["Technology"]}}}},
-    {"q": "내부자가 최근 석 달 동안 10만 달러 이상 산 종목", "expect": {"conds": {"ib": {"min": [1e5, 1e5]}}}},
-    {"q": "유명 투자자가 지난 분기에 새로 산 헬스케어 종목", "expect": {"conds": {"g13_new": {"min": [1, 1]}, "sec": {"in": ["Healthcare"]}}}},
-    {"q": "52주 신고가 근처인데 거래량도 늘어난 종목", "expect": {"conds": {"hi52": {"min": [-0.05, -0.02]}, "vr": {"min": [1.2, 1.6]}}, "assumptions": true}},
-    {"q": "고점 대비 30% 이상 빠졌고 RSI 30 아래인 시총 100억 달러 이상", "expect": {"conds": {"hi52": {"max": [-0.3, -0.3]}, "rsi": {"max": [30, 30]}, "mcap": {"min": [1e10, 1e10]}}}},
-    {"q": "애널리스트들이 최근 이익 전망을 많이 올린 회사", "expect": {"conds": {"c_ratio": {"min": [0.2, 0.5]}}, "assumptions": true}},
-    {"q": "매출 성장률 30% 넘고 영업이익률도 플러스인 회사", "expect": {"conds": {"rev_g": {"min": [0.3, 0.3]}, "om": {"min": [0, 0]}}}},
-    {"q": "부실 위험 높음 이상인 종목", "expect": {"conds": {"dz": {"in": [2, 3]}}}},
-    {"q": "11월에 배당을 올려 온 회사", "expect": {"conds": {"dvc_m": {"in": [11]}}}},
-    {"q": "S&P 500 편입 요건은 맞췄는데 아직 안 들어간 회사 상위 10개", "expect": {"conds": {"ix_sp": {"max": [10, 10]}}}},
-    {"q": "공매도 거래 비중이 60% 넘는 종목", "expect": {"conds": {"sv": {"min": [0.6, 0.6]}}}},
-    {"q": "빚 적고 현금 잘 버는 회사", "expect": {"conds": {"de": {"max": [0.3, 1.0]}, "fcf": {"min": [0, 0]}}, "assumptions": true}},
-    {"q": "200일선 위에 있고 1년 수익률이 S&P 500보다 좋은 종목", "expect": {"conds": {"d200": {"min": [0, 0]}}, "unsupported": true}},
-    {"q": "최근 실적 발표 뒤 주가가 10% 넘게 떨어진 종목", "expect": {"conds": {"er_mv": {"max": [-0.1, -0.1]}}}},
-    {"q": "다음 달에 오를 종목 알려줘", "expect": {"conds": {}, "refused": true}},
-    {"q": "지금 사면 좋은 배당주 추천", "expect": {"conds": {}, "refused": true}},
-    {"q": "워런 버핏이 가진 종목", "expect": {"conds": {"g13": {"min": [1, 1]}}, "unsupported": true}},
-    {"q": "CEO가 최근에 바뀐 회사", "expect": {"conds": {}, "unsupported": true}},
-    {"q": "나스닥 100 종목 중 올해 가장 많이 빠진 순서로", "expect": {"conds": {"idx": {"in": ["NDX"]}}, "sort": {"k": "rytd", "dir": "asc"}}},
-    {"q": "배당수익률 높지만 배당이 들쭉날쭉하지 않은 회사", "expect": {"conds": {"dy": {"min": [0.03, 0.05]}, "dvc_v": {"is": [0, 0]}}, "assumptions": true}},
-    {"q": "실적 발표 때마다 주가가 크게 움직이는 회사", "expect": {"conds": {"er_avg": {"min": [0.07, 0.11]}}, "assumptions": true}},
-    {"q": "중소형 반도체 회사", "expect": {"conds": {"mcap": {"max": [1e10, 1e10]}, "sec": {"in": ["Technology"]}}, "unsupported": true,
-     "why": "세부 업종(반도체)은 조건으로 못 씀 → 기술 업종으로 대신하고 unsupported"}}
-  ]
+ "note": "AI 조건 검색 평가 문장. expect.conds의 key 집합이 같고 숫자가 range 안이면 통과. unsupported/refused는 있음·없음만 비교. 숫자 범위는 [최소, 최대] 허용 구간.",
+ "cases": [
+  {
+   "q": "최근 실적 발표 서프라이즈가 4분기 연속으로 발생했고, 매출 순이익이 지속 증가추세이면서, 최근 한달 안에 골드크로스가 난 종목",
+   "expect": {
+    "conds": {
+     "c_beats": {
+      "min": [
+       4,
+       4
+      ]
+     },
+     "rev_up_q": {
+      "min": [
+       3,
+       4
+      ]
+     },
+     "ni_up_q": {
+      "min": [
+       3,
+       4
+      ]
+     },
+     "gc": {
+      "past_days": [
+       28,
+       31
+      ]
+     }
+    },
+    "unsupported": false
+   }
+  },
+  {
+   "q": "배당 4% 넘는 대형주",
+   "expect": {
+    "conds": {
+     "dy": {
+      "min": [
+       0.04,
+       0.04
+      ]
+     },
+     "mcap": {
+      "min": [
+       10000000000.0,
+       10000000000.0
+      ]
+     }
+    },
+    "assumptions": true
+   }
+  },
+  {
+   "q": "S&P 500 안에서 PER 15배 이하 흑자 기업",
+   "expect": {
+    "conds": {
+     "idx": {
+      "in": [
+       "S&P500"
+      ]
+     },
+     "pe": {
+      "max": [
+       15,
+       15
+      ]
+     },
+     "ni": {
+      "min": [
+       0,
+       0
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "이번 주에 실적 발표하는 기술주",
+   "expect": {
+    "conds": {
+     "c_next": {
+      "next_days": [
+       5,
+       7
+      ]
+     },
+     "sec": {
+      "in": [
+       "Technology"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "내부자가 최근 석 달 동안 10만 달러 이상 산 종목",
+   "expect": {
+    "conds": {
+     "ib": {
+      "min": [
+       100000.0,
+       100000.0
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "유명 투자자가 지난 분기에 새로 산 헬스케어 종목",
+   "expect": {
+    "conds": {
+     "g13_new": {
+      "min": [
+       1,
+       1
+      ]
+     },
+     "sec": {
+      "in": [
+       "Healthcare"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "52주 신고가 근처인데 거래량도 늘어난 종목",
+   "expect": {
+    "conds": {
+     "hi52": {
+      "min": [
+       -0.05,
+       -0.02
+      ]
+     },
+     "vr": {
+      "min": [
+       1.2,
+       1.6
+      ]
+     }
+    },
+    "assumptions": true
+   }
+  },
+  {
+   "q": "고점 대비 30% 이상 빠졌고 RSI 30 아래인 시총 100억 달러 이상",
+   "expect": {
+    "conds": {
+     "hi52": {
+      "max": [
+       -0.3,
+       -0.3
+      ]
+     },
+     "rsi": {
+      "max": [
+       30,
+       30
+      ]
+     },
+     "mcap": {
+      "min": [
+       10000000000.0,
+       10000000000.0
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "애널리스트들이 최근 이익 전망을 많이 올린 회사",
+   "expect": {
+    "conds": {
+     "c_ratio": {
+      "min": [
+       0.2,
+       0.5
+      ]
+     }
+    },
+    "assumptions": true
+   }
+  },
+  {
+   "q": "매출 성장률 30% 넘고 영업이익률도 플러스인 회사",
+   "expect": {
+    "conds": {
+     "rev_g": {
+      "min": [
+       0.3,
+       0.3
+      ]
+     },
+     "om": {
+      "min": [
+       0,
+       0
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "부실 위험 높음 이상인 종목",
+   "expect": {
+    "conds": {
+     "dz": {
+      "in": [
+       2,
+       3
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "11월에 배당을 올려 온 회사",
+   "expect": {
+    "conds": {
+     "dvc_m": {
+      "in": [
+       11
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "S&P 500 편입 요건은 맞췄는데 아직 안 들어간 회사 상위 10개",
+   "expect": {
+    "conds": {
+     "ix_sp": {
+      "max": [
+       10,
+       10
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "공매도 거래 비중이 60% 넘는 종목",
+   "expect": {
+    "conds": {
+     "sv": {
+      "min": [
+       0.6,
+       0.6
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "빚 적고 현금 잘 버는 회사",
+   "expect": {
+    "conds": {
+     "de": {
+      "max": [
+       0.3,
+       1.0
+      ]
+     },
+     "fcf": {
+      "min": [
+       0,
+       0
+      ]
+     }
+    },
+    "assumptions": true
+   }
+  },
+  {
+   "q": "200일선 위에 있고 1년 수익률이 S&P 500보다 좋은 종목",
+   "expect": {
+    "conds": {
+     "d200": {
+      "min": [
+       0,
+       0
+      ]
+     }
+    },
+    "unsupported": true
+   }
+  },
+  {
+   "q": "최근 실적 발표 뒤 주가가 10% 넘게 떨어진 종목",
+   "expect": {
+    "conds": {
+     "er_mv": {
+      "max": [
+       -0.1,
+       -0.1
+      ]
+     }
+    }
+   }
+  },
+  {
+   "q": "다음 달에 오를 종목 알려줘",
+   "expect": {
+    "conds": {},
+    "refused": true
+   }
+  },
+  {
+   "q": "지금 사면 좋은 배당주 추천",
+   "expect": {
+    "conds": {},
+    "refused": true
+   }
+  },
+  {
+   "q": "워런 버핏이 가진 종목",
+   "expect": {
+    "conds": {
+     "g13": {
+      "min": [
+       1,
+       1
+      ]
+     }
+    },
+    "unsupported": true
+   }
+  },
+  {
+   "q": "CEO가 최근에 바뀐 회사",
+   "expect": {
+    "conds": {},
+    "unsupported": true
+   }
+  },
+  {
+   "q": "나스닥 100 종목 중 올해 가장 많이 빠진 순서로",
+   "expect": {
+    "conds": {
+     "idx": {
+      "in": [
+       "NDX"
+      ]
+     }
+    },
+    "sort": {
+     "k": "rytd",
+     "dir": "asc"
+    }
+   }
+  },
+  {
+   "q": "배당수익률 높지만 배당이 들쭉날쭉하지 않은 회사",
+   "expect": {
+    "conds": {
+     "dy": {
+      "min": [
+       0.03,
+       0.05
+      ]
+     },
+     "dvc_v": {
+      "is": [
+       0,
+       0
+      ]
+     }
+    },
+    "assumptions": true
+   }
+  },
+  {
+   "q": "실적 발표 때마다 주가가 크게 움직이는 회사",
+   "expect": {
+    "conds": {
+     "er_avg": {
+      "min": [
+       0.07,
+       0.11
+      ]
+     }
+    },
+    "assumptions": true
+   }
+  },
+  {
+   "q": "중소형 반도체 회사",
+   "expect": {
+    "conds": {
+     "mcap": {
+      "max": [
+       10000000000.0,
+       10000000000.0
+      ]
+     },
+     "sec": {
+      "in": [
+       "Technology"
+      ]
+     }
+    },
+    "unsupported": true,
+    "why": "세부 업종(반도체)은 조건으로 못 씀 → 기술 업종으로 대신하고 unsupported"
+   }
+  }
+ ]
 }

@@ -9,6 +9,12 @@ workers_dev = true       # 예전 주소(tickermap-api.flytothejy.workers.dev)�
 
 routes = [{ pattern = "api.tickermap.kr", custom_domain = true }]
 
+# AI 문장 검색 프롬프트(ai_prompt.txt)를 글자 그대로 불러옴
+[[rules]]
+type = "Text"
+globs = ["**/*.txt"]
+fallthrough = true
+
 [vars]
 SITE = "https://tickermap.kr/hub"
 API_URL = "https://api.tickermap.kr"

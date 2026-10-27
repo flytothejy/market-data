@@ -20,3 +20,11 @@ schema.sql — D1 Console에 붙여넣는 테이블 정의 (Console이 주석·�
 - 잠금: ① Cloudflare Access(Zero Trust)로 admin.tickermap.kr 전체 ② 로그인 세션 + 변수 `ADMIN_EMAILS`(쉼표로 여러 개)
 - 기록: `admin_audit`(관리자가 본 것, 2년) · `alert_log`(알림 발송 결과, 90일)
 - admin.tickermap.kr 가 아닌 주소(*.pages.dev)에서는 예시 숫자만 보임 (쿠키가 닿지 않음)
+
+
+## AI 문장 검색 (`/ai/screen`)
+
+- Secret `ANTHROPIC_API_KEY` — Claude API 키 (대시보드에서 직접 등록, 없으면 404 → 화면은 '곧 열려요')
+- Variable(선택) `AI_MODEL`(기본 claude-haiku-5-5), `AI_LIMIT_USER`(30), `AI_LIMIT_ANON`(10), `DATA_URL`(https://tickermap.kr/api/v1)
+- D1 `ai_log`(요청 기록), `ai_cache`(같은 문장 결과 7일) — migrations/0006_ai.sql
+- 설계: features/ai-screen/README.md
