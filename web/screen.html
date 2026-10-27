@@ -153,8 +153,8 @@ function render() {
 // AI 문장 검색 — AI는 문장을 조건으로 바꾸기만 함 (features/ai-screen/README.md). 예시는 미리 바꿔 둔 결과
 const AI_EX = [
   { label: '실적 4분기 연속 상회 + 한 달 안 골든크로스', q: '최근 실적 서프라이즈가 4분기 연속이고 매출·순이익이 늘었으며, 한 달 안에 골든크로스가 난 종목',
-    r: { conds: [{ k: 'c_beats', min: 4 }, { k: 'rev_g', min: 0 }, { k: 'ni_g', min: 0 }, { k: 'gc', past_days: 30 }],
-      assumptions: ["'매출·순이익이 늘었다'는 최근 4개 분기 합이 1년 전보다 늘었는지로 봤어요"], unsupported: ['매출·순이익이 여러 분기 연속으로 늘었는지 (준비 중)'] } },
+    r: { conds: [{ k: 'c_beats', min: 4 }, { k: 'rev_up_q', min: 4 }, { k: 'ni_up_q', min: 4 }, { k: 'gc', past_days: 30 }],
+      assumptions: ["'매출·순이익이 꾸준히 늘었다'는 최근 4개 분기 연속으로 작년 같은 분기보다 늘었는지로 봤어요"] } },
   { label: '이번 주 실적 발표하는 기술주', q: '이번 주에 실적 발표하는 기술주',
     r: { conds: [{ k: 'c_next', next_days: 7 }, { k: 'sec', in: ['Technology'] }], assumptions: ["'이번 주'는 오늘부터 7일 안으로 봤어요"] } },
   { label: '배당 4% 넘고 빚 적은 대형주', q: '배당 4% 넘고 빚 적은 대형주',
@@ -185,8 +185,14 @@ function applyAI(q, r) {
     else { un.push(c.k); continue; }
     AIK.add(c.k);
   }
+  if (r.kind === 'etf' || r.kind === 'stock') kind = r.kind;
   const cats = (r.conds || []).map(c => (F[c.k] || {}).cat).filter(x => x && x !== 'info');
   if (cats.length) cat = cats[0];
+  sortK = null; sortD = -1;
+  if (r.sort && F[r.sort.k]) {
+    sortK = r.sort.k; sortD = r.sort.dir === 'asc' ? 1 : -1;
+    if (!COLS[cat].includes(sortK)) cat = Object.keys(COLS).find(c => c !== 'etf' && COLS[c].includes(sortK)) || cat;
+  }
   aiRes = { q, r: { ...r, unsupported: un } };
   $('#sec').value = sector; $('#idx').value = index;
   showAI(); syncUrl(); render();
@@ -219,8 +225,10 @@ async function askAI(q) {
     const r = await fetch(API_BASE + '/ai/screen', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q }) });
     if (r.status === 404) throw new Error('soon');
     const j = await r.json();
+    if (r.status === 429) { o.innerHTML = `<div class="ai-note">오늘 쓸 수 있는 횟수(${j.limit}회)를 다 썼어요. ${j.login ? '로그인하면 하루 30회까지 쓸 수 있어요.' : '내일 다시 써 보세요.'} 예시 문장은 계속 쓸 수 있어요.</div>`; return; }
     if (!r.ok) throw new Error(j.error || 'fail');
     if (j.refused) { o.innerHTML = `<div class="ai-note">${esc(j.refused)}</div>`; return; }
+    if (!(j.conds || []).length) { o.innerHTML = `<div class="ai-note">조건을 찾지 못했어요.${(j.unsupported || []).length ? ` 아직 지원하지 않는 조건: ${esc(j.unsupported.join(', '))}.` : ''} 위의 예시처럼 숫자·기간이 들어간 조건으로 적어 보세요.</div>`; return; }
     applyAI(q, j);
   } catch (e) {
     o.innerHTML = `<div class="ai-note">${e.message === 'soon' || e instanceof TypeError ? '문장 검색은 곧 열려요. 지금은 위의 예시 문장을 눌러 보세요.' : esc(e.message === 'limit' ? '오늘 쓸 수 있는 횟수를 다 썼어요. 내일 다시 써 보세요.' : '이해하지 못했어요. 조건을 조금 더 구체적으로 적어 보세요.')}</div>`;
