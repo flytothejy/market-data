@@ -300,6 +300,16 @@ PAGE_KO = {"INDEX": "홈", "MATRIX": "티커맵", "RANKING": "랭킹", "STOCK": 
            "INVESTORS": "유명 투자자", "WATCH": "내 종목", "PORTFOLIO": "포트폴리오", "ACCOUNT": "계정"}
 
 
+def ai_line(a):
+    """AI 문장 검색 어제 합계 한 줄 (요청이 없으면 빈 문자열)"""
+    if not a or not a.get("n"):
+        return ""
+    un = " · ".join(f"{k}({v})" for k, v in (a.get("unsup") or []))
+    tok = f" · 토큰 {(a.get('tin') or 0) / 1000:.0f}k/{(a.get('tout') or 0) / 1000:.1f}k" if a.get("tin") else ""
+    return (f"\nAI 검색 {a['n']}건 (사람 {a.get('uu') or 0} · 저장 결과 {a.get('cached') or 0} · 거절 {a.get('refused') or 0} · 조건 못 찾음 {a.get('empty') or 0})"
+            + (f" · 평균 {a['ms'] / 1000:.1f}초" if a.get("ms") else "") + tok + (f"\n  미지원 많이: {un}" if un else ""))
+
+
 def ops_report(m):
     """운영자에게 매일 아침 지표 한 통 (운영 알림 봇 — TELEGRAM_TOKEN·TELEGRAM_CHAT_ID). 기록은 _ops/에 날짜별로"""
     d = DATA / "_ops"
@@ -315,7 +325,7 @@ def ops_report(m):
            f"방문 기기 {m.get('visits_y', 0):,} (7일 {m.get('visits_7', 0):,}) · 종목 조회 {m.get('views_y', 0):,} · 담기 {m.get('adds_y', 0):,}\n"
            f"계정 {m.get('accounts', 0):,} (+{m.get('accounts_new', 0)}){f' — {prov}' if prov else ''} · 로그인 {m.get('logins_y', 0)}\n"
            f"텔레그램 연결 {m.get('telegram', 0)} (끔 {m.get('telegram_off', 0)}) · 내 종목 쓰는 사람 {m.get('watch_users', 0)} (평균 {m.get('watch_avg', 0)}종목)"
-           + (f"\n화면별 방문: {pages}" if pages else ""))
+           + (f"\n화면별 방문: {pages}" if pages else "") + ai_line(m.get("ai_y")))
     requests.post(f"https://api.telegram.org/bot{tok}/sendMessage", json={"chat_id": chat, "text": txt, "parse_mode": "HTML"}, timeout=20)
 
 

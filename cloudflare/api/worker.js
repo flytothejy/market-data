@@ -332,6 +332,17 @@ async function account(req, env, path) {
   return cjson({ error: 'not found' }, h, 404);
 }
 
+// AI 문장 검색 하루 합계 (평가 요청 제외) — 운영 알림용
+async function aiOps(env, day) {
+  try {
+    const r = await env.DB.prepare("SELECT COUNT(*) n, SUM(cached) cached, SUM(refused) refused, SUM(n = 0 AND refused = 0) empty, COUNT(DISTINCT who) uu, SUM(tok_in) tin, SUM(tok_out) tout, AVG(CASE WHEN cached = 0 THEN ms END) ms FROM ai_log WHERE day=? AND who <> 'eval'").bind(day).first();
+    const un = {};
+    for (const x of (await env.DB.prepare("SELECT unsup FROM ai_log WHERE day=? AND who <> 'eval' AND unsup <> '[]'").bind(day).all()).results)
+      try { for (const k of JSON.parse(x.unsup)) un[k] = (un[k] || 0) + 1; } catch (e) { }
+    return { ...r, ms: r.ms ? Math.round(r.ms) : null, unsup: Object.entries(un).sort((a, b) => b[1] - a[1]).slice(0, 3) };
+  } catch (e) { return null; }
+}
+
 // ---- 텔레그램 웹훅
 const HELP = s => `<b>티커맵 알림</b>
 후보함 종목에 새 일이 생기면 매일 아침(한국 시간 8~9시) 한 번에 모아 보내요.
@@ -437,6 +448,7 @@ async function internal(req, env, path) {
       watch_users: wl.length, watch_avg: wl.length ? +(wl.reduce((a, b) => a + b, 0) / wl.length).toFixed(1) : 0,
       visits_y: sum(yd, 'u'), visits_7: sum('7', 'u'), views_y: sum(yd, 'v'), adds_y: sum(yd, 'w'), logins_y: logins.n || 0,
       pages_y: Object.fromEntries((await env.DB.prepare("SELECT t, n FROM stats WHERE d=? AND k='p' ORDER BY n DESC").bind(yd).all()).results.map(r => [r.t, r.n])),
+      ai_y: await aiOps(env, yd),
     });
   }
   if (path === '/internal/send') {                    // { msgs: [{uid, text}] } — 한 번에 15개까지 (무료 요금제 요청당 외부 호출 50개 제한)
