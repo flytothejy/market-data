@@ -115,6 +115,25 @@ export async function admin(req, env, path) {
     return out({ rows: rows.map(r => ({ ...r, uid: r.uid.slice(0, 4) + '…' })), days: days.map(r => ({ d: new Date(r.dd * DAY).toISOString().slice(0, 10), n: r.n, ok: r.ok, uu: r.uu })) }, h);
   }
 
+  if (path === '/admin/ai') {                            // AI 문장 검색: 날짜별 합계 · 자주 나온 미지원 조건 · 최근 질문 (eval=1이면 평가 요청도)
+    const withEval = q('eval') === '1', before = +q('before') || Date.now() + 1;
+    await audit(withEval ? 'eval=1' : '');
+    const ex = withEval ? '' : " AND who <> 'eval'";
+    const since = Date.now() - 30 * DAY;
+    const days = await all(env, `SELECT day d, COUNT(*) n, SUM(cached) cached, SUM(refused) refused, SUM(n = 0 AND refused = 0) empty, COUNT(DISTINCT who) uu,
+        SUM(who LIKE 'u:%') login, SUM(tok_in) tin, SUM(tok_out) tout, AVG(CASE WHEN cached = 0 THEN ms END) ms FROM ai_log WHERE ts >= ?${ex} GROUP BY day ORDER BY day`, since).catch(() => []);
+    const un = {};
+    for (const r of await all(env, `SELECT unsup FROM ai_log WHERE ts >= ? AND unsup <> '[]'${ex}`, since).catch(() => []))
+      try { for (const x of JSON.parse(r.unsup)) un[x] = (un[x] || 0) + 1; } catch (e) { }
+    const rows = await all(env, `SELECT id, ts, who, q, res, n, unsup, refused, ms, cached, tok_in, tok_out FROM ai_log WHERE ts < ?${ex} ORDER BY ts DESC LIMIT 100`, before).catch(() => []);
+    const kind = w => w === 'eval' ? '평가' : w.startsWith('u:') ? '로그인' : '비로그인';
+    return out({
+      days, unsup: Object.entries(un).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([t, n]) => ({ t, n })),
+      rows: rows.map(r => { let x = {}; try { x = JSON.parse(r.res || '{}'); } catch (e) { }
+        return { id: r.id, at: r.ts, who: kind(r.who), q: r.q, n: r.n, conds: (x.conds || []).map(c => c.k), sort: x.sort, assumptions: x.assumptions || [], unsupported: x.unsupported || [], refused: x.refused || null, ms: r.ms, cached: !!r.cached, tin: r.tok_in, tout: r.tok_out }; }),
+    }, h);
+  }
+
   if (path === '/admin/admin-log') {
     const rows = await all(env, 'SELECT admin, action, target, at FROM admin_audit ORDER BY at DESC LIMIT 200');
     return out({ rows: rows.map(r => ({ ...r, admin: mask(r.admin) })) }, h);

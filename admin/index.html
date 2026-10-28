@@ -137,7 +137,7 @@ const kpi = (l, v, s) => `<div class="card kpi"><div class="l">${l}</div><div cl
 const provTags = a => (a || []).map(p => `<span class="tag ${p}">${PROV[p] || esc(p)}</span>`).join('');
 
 // ── 화면 ──────────────────────────────────────────────
-const TABS = [['overview', '개요'], ['users', '사용자'], ['audit', '보안 기록'], ['alerts', '알림'], ['ops', '운영'], ['adminlog', '관리자 기록']];
+const TABS = [['overview', '개요'], ['users', '사용자'], ['audit', '보안 기록'], ['alerts', '알림'], ['ai', 'AI 검색'], ['ops', '운영'], ['adminlog', '관리자 기록']];
 let tab = (location.hash || '#overview').slice(1), days = 30;
 function nav() { $('#nav').innerHTML = TABS.map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" data-t="${k}">${l}</button>`).join(''); }
 $('#nav').onclick = e => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.t; history.replaceState(null, '', '#' + tab); nav(); render(); };
@@ -203,6 +203,30 @@ const V = {
     ${card('알림 발송', '최근 30일 · 하루 단위', chart(D, [{ n: '성공', v: D.map(d => (by[d] || {}).ok || 0), c: 'var(--c3)' }, { n: '실패', v: D.map(d => ((by[d] || {}).n || 0) - ((by[d] || {}).ok || 0)), c: 'var(--up)' }], { type: 'bar', h: 160 }))}
     ${card('발송 기록', '최근 100건 · 메시지는 첫 두 줄만 · 90일 보관', alertTable(o.rows) + (o.rows.length === 100 ? '<button class="btn more" id="lmore">더 보기</button>' : ''))}`;
   },
+  async ai() {
+    const o = await call(`/admin/ai${aiEval ? '?eval=1' : ''}`);
+    if (!aiLab) { aiLab = {}; try { for (const f of (await (await fetch('https://tickermap.kr/api/v1/free/screen_catalog.json')).json()).fields) aiLab[f.k] = f.label; } catch (e) { } }
+    const D = dayRange(kstDay(Date.now() - 29 * DAY), 30), by = Object.fromEntries(o.days.map(r => [r.d, r]));
+    const S = k => D.map(d => (by[d] || {})[k] || 0), sum = (k, n = 7) => S(k).slice(-n).reduce((a, b) => a + b, 0);
+    const y = by[D[D.length - 2]] || {}, n7 = sum('n'), fresh7 = n7 - sum('cached');
+    const ms = o.days.filter(r => r.ms).slice(-7), msAvg = ms.length ? ms.reduce((a, r) => a + r.ms, 0) / ms.length : 0;
+    return `${banner()}
+    <div class="row" style="justify-content:space-between"><div class="mut small">문장으로 찾기 · 최근 30일 · 한국 날짜</div>
+      <label class="small mut"><input type="checkbox" id="aieval" ${aiEval ? 'checked' : ''}> 평가 요청 포함</label></div>
+    <div class="grid kpis">
+      ${kpi('최근 7일 요청', nf(n7), `어제 ${nf(y.n || 0)} · AI 호출 ${nf(fresh7)}`)}
+      ${kpi('쓴 사람', nf(o.days.slice(-7).reduce((a, r) => a + r.uu, 0)), '날짜별 합 · 비로그인은 하루 단위')}
+      ${kpi('거절', nf(sum('refused')), '추천·예측 요청 · 최근 7일')}
+      ${kpi('조건 못 찾음', nf(sum('empty')), '최근 7일')}
+      ${kpi('평균 처리 시간', msAvg ? (msAvg / 1000).toFixed(1) + '초' : '-', 'AI를 부른 요청만')}
+      ${kpi('토큰 (7일)', `${nf(Math.round(sum('tin') / 1000))}k / ${nf(Math.round(sum('tout') / 1000))}k`, '입력 / 출력 · 비용은 Claude Console에서')}
+    </div>
+    <div class="grid g2">
+      ${card('요청', '하루 단위 · 저장 결과 = 같은 문장이라 AI를 안 부름', chart(D, [{ n: 'AI 호출', v: D.map(d => ((by[d] || {}).n || 0) - ((by[d] || {}).cached || 0)), c: 'var(--c1)' }, { n: '저장 결과', v: S('cached'), c: 'var(--c2)' }, { n: '거절', v: S('refused'), c: 'var(--up)' }], { type: 'bar', h: 180 }))}
+      ${card('자주 나온 미지원 조건', '최근 30일 · 필드를 늘릴 순서 정하기용', bars(o.unsup))}
+    </div>
+    ${card('최근 질문', '최근 100건 · 문장 원문은 1년 보관 · 계정을 지우면 함께 삭제', aiTable(o.rows) + (o.rows.length === 100 ? '<button class="btn more" id="aimore">더 보기</button>' : ''))}`;
+  },
   async ops() {
     let runs = [], err = '';
     try {
@@ -227,10 +251,18 @@ const V = {
   },
   async adminlog() {
     const o = await call('/admin/admin-log');
-    const A = { overview: '개요 조회', users: '사용자 조회', audit: '보안 기록 조회', alerts: '알림 기록 조회' };
+    const A = { overview: '개요 조회', users: '사용자 조회', audit: '보안 기록 조회', alerts: '알림 기록 조회', ai: 'AI 검색 기록 조회' };
     return `${banner()}${card('관리자 기록', '이 화면에서 누가 무엇을 봤는지 · 2년 보관 · 이 목록 자체를 본 것은 남기지 않아요', o.rows.length ? `<div class="tbl"><table><thead><tr><th>시각</th><th>관리자</th><th>한 일</th><th>대상·조건</th></tr></thead><tbody>${o.rows.map(r => `<tr><td>${when(r.at)}</td><td>${esc(r.admin)}</td><td>${A[r.action] || esc(r.action)}</td><td class="mut">${esc(r.target || '')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">기록 없음</div>')}`;
   },
 };
+let aiEval = false, aiLab = null;
+const aiK = k => esc((aiLab || {})[k] || k);
+const aiTable = rows => rows.length ? `<div class="tbl"><table><thead><tr><th>시각</th><th>누가</th><th>질문</th><th>결과</th><th class="n">시간</th></tr></thead><tbody>${rows.map(aiRow).join('')}</tbody></table></div>` : '<div class="empty">아직 질문이 없어요</div>';
+const aiRow = r => `<tr data-at="${r.at}"><td>${when(r.at)}</td><td class="mut">${esc(r.who)}${r.cached ? ' <span class="tag">저장</span>' : ''}</td>
+  <td style="white-space:normal;min-width:260px"><b>${esc(r.q)}</b>${r.assumptions.length ? `<div class="sub">${r.assumptions.map(esc).join(' · ')}</div>` : ''}</td>
+  <td style="white-space:normal;min-width:200px">${r.refused ? `<span class="tag bad">거절</span> <span class="sub">${esc(r.refused.slice(0, 80))}</span>` : r.n ? r.conds.map(k => `<span class="tag" title="${esc(k)}">${aiK(k)}</span>`).join(' ') + (r.sort ? ` <span class="sub">정렬 ${aiK(r.sort.k)} ${r.sort.dir === 'asc' ? '↑' : '↓'}</span>` : '') : '<span class="tag bad">조건 없음</span>'}
+    ${r.unsupported.length ? `<div class="sub" style="color:var(--warn)">미지원: ${r.unsupported.map(esc).join(' · ')}</div>` : ''}</td>
+  <td class="n mut">${r.cached ? '-' : r.ms ? (r.ms / 1000).toFixed(1) + '초' : '-'}</td></tr>`;
 const auditTable = rows => rows.length ? `<div class="tbl"><table><thead><tr><th>시각</th><th>이벤트</th><th>계정</th><th>기기</th></tr></thead><tbody>${rows.map(auditRow).join('')}</tbody></table></div>` : '<div class="empty">기록 없음</div>';
 const auditRow = r => `<tr data-at="${r.at}"><td>${when(r.at)}</td><td><span class="tag ${r.ev === 'account_deleted' ? 'bad' : r.ev === 'login' ? 'ok' : ''}">${EV[r.ev] || esc(r.ev)}</span></td><td>${r.gone ? `<span class="faint">삭제된 계정 · ${esc((r.auth_id || '').slice(0, 8))}</span>` : `<b>${esc(r.name)}</b> <span class="sub">${esc(r.email || '')}</span>`}</td><td class="mut">${esc(r.dev)}</td></tr>`;
 const alertTable = rows => rows.length ? `<div class="tbl"><table><thead><tr><th>시각</th><th>결과</th><th>종류</th><th>받는 사람</th><th>내용</th></tr></thead><tbody>${rows.map(alertRow).join('')}</tbody></table></div>` : '<div class="empty">아직 발송 기록이 없어요 (이번 배포 뒤부터 쌓여요)</div>';
@@ -258,6 +290,8 @@ function wire() {
     const o = await call(path(last)); tb.insertAdjacentHTML('beforeend', o.rows.map(rowFn).join('')); if (o.rows.length < 100) btn.remove(); }; };
   more($('#amore'), b => `/admin/audit?ev=${ast.ev}&id=${encodeURIComponent(ast.id)}&before=${b}`, auditRow);
   more($('#lmore'), b => `/admin/alerts?before=${b}`, alertRow);
+  more($('#aimore'), b => `/admin/ai?before=${b}${aiEval ? '&eval=1' : ''}`, aiRow);
+  const ae = $('#aieval'); if (ae) ae.onchange = () => { aiEval = ae.checked; render(); };
 }
 function fail(e) {
   const el = $('#app');
@@ -292,6 +326,13 @@ function demo(path) {
   if (path.startsWith('/admin/users')) return { offset: 0, anon: { n: 38, tg: 3 }, rows: names.map((nm, i) => ({ id: 'demo' + i, name: nm, email: i % 3 === 1 ? null : ['fly****@gmail.com', 'min***@naver.com', 'sar**@gmail.com'][i % 3], created: now - i * 2.3 * DAY, prov: [['google'], ['kakao'], ['google', 'naver'], ['naver']][i % 4], last_login: now - i * 5.1 * 3600e3, sessions: 1, tg: i % 3 === 0, mode: i === 3 ? 'off' : 'digest', devices: 1 + i % 3, watch: rnd(i, 0, 25), pf: i % 2 ? rnd(i, 1, 12) : 0 })) };
   if (path.startsWith('/admin/audit')) { const evs = ['login', 'device_link', 'login', 'logout', 'login', 'account_deleted']; return { kinds: [{ ev: 'login', n: 64 }, { ev: 'device_link', n: 31 }, { ev: 'logout', n: 9 }, { ev: 'account_deleted', n: 1 }], rows: Array.from({ length: 24 }, (_, i) => { const ev = evs[i % 6], g = ev === 'account_deleted'; return { id: i, auth_id: 'demo' + (i % 8) + 'x9f2k', ev, dev: ['iOS · Safari', 'Windows · Chrome', 'Android · 카카오톡', 'Mac · Chrome'][i % 4], at: now - i * 3.7 * 3600e3, name: g ? null : names[i % 8], email: g ? null : 'fly****@gmail.com', gone: g }; }) }; }
   if (path.startsWith('/admin/alerts')) return { days: dayRange(kstDay(now - 29 * DAY), 30).map((d, i) => ({ d, n: rnd(i, 5, 10), ok: rnd(i, 5, 10) - (i === 20 ? 1 : 0), uu: 7 })), rows: Array.from({ length: 12 }, (_, i) => ({ id: i, uid: 'a1b2…', kind: i === 5 ? 'test' : 'alert', ok: i === 7 ? 0 : 1, why: i === 7 ? 'Forbidden: bot was blocked by the user' : '', head: ['티커맵 알림 · 미국 10/22 목 종가 기준 / 📊 SPCX 실적 발표 결과', '티커맵 알림 · 미국 10/22 목 종가 기준 / 📅 내일 실적 발표: TSLA', '티커맵 알림 · 미국 10/21 수 종가 기준 / 🟢 임원 매수: PLTR'][i % 3], at: now - i * 0.4 * DAY })) };
+  if (path.startsWith('/admin/ai')) {
+    const Q = [['배당 4% 넘고 빚 적은 대형주', ['dy', 'de', 'mcap'], ["'빚 적은'은 장기부채가 자본의 0.5배 이하로 봤어요"], []], ['이번 주 실적 발표하는 반도체 회사', ['c_next', 'sec'], ["'반도체'는 기술 업종으로 봤어요"], ['세부 업종(반도체)']],
+      ['다음 달에 오를 종목', [], [], []], ['CEO가 바뀐 회사', [], [], ['CEO 교체']], ['ROE 20% 넘고 PER 20배 이하', ['roe', 'pe'], [], []], ['최근 일주일 10% 넘게 오른 중소형주 많이 오른 순', ['r1w', 'mcap'], ["'중소형주'는 시가총액 100억 달러 이하로 봤어요"], []]];
+    return { days: dayRange(kstDay(now - 29 * DAY), 30).map((d, i) => { const n = i < 20 ? 0 : rnd(i, 3, 18); return { d, n, cached: Math.round(n * .2), refused: n ? rnd(i, 0, 2) : 0, empty: n ? rnd(i + 2, 0, 1) : 0, uu: Math.round(n * .6), login: Math.round(n * .3), tin: n * 9000, tout: n * 180, ms: n ? 2100 + rnd(i, 0, 900) : null }; }),
+      unsup: [['세부 업종(반도체)', 9], ['CEO 교체', 4], ['특정 투자자(워런 버핏) 이름으로 찾기', 3], ['두 필드 비교(최근 분기 > 1년 성장)', 2], ['상장일', 1]].map(([t, n]) => ({ t, n })),
+      rows: Array.from({ length: 12 }, (_, i) => { const [q, conds, as, un] = Q[i % 6]; return { id: i, at: now - i * 0.21 * DAY, who: ['비로그인', '로그인', '비로그인'][i % 3], q, n: conds.length, conds, sort: i % 6 === 5 ? { k: 'r1w', dir: 'desc' } : null, assumptions: as, unsupported: un, refused: i % 6 === 2 ? '티커맵은 종목을 추천하지 않아요. 대신 조건으로 찾아보세요.' : null, ms: 1800 + rnd(i, 0, 1500), cached: i % 5 === 4, tin: 9100, tout: 170 }; }) };
+  }
   if (path.startsWith('/admin/admin-log')) return { rows: Array.from({ length: 8 }, (_, i) => ({ admin: 'fly****@gmail.com', action: ['overview', 'users', 'audit', 'alerts'][i % 4], target: i === 2 ? 'id=demo3x9f2k' : null, at: now - i * 600e3 })) };
   return {};
 }
