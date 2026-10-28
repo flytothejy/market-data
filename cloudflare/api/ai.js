@@ -100,7 +100,7 @@ function parseJSON(t) {
 
 async function claude(env, cat, q) {
   const body = {
-    model: env.AI_MODEL || 'claude-haiku-5-5', max_tokens: 900, temperature: 0,
+    model: env.AI_MODEL || 'claude-haiku-5-5', max_tokens: 900,
     system: [
       { type: 'text', text: PROMPT },
       { type: 'text', text: cat.text, cache_control: { type: 'ephemeral' } },
@@ -133,9 +133,9 @@ export async function aiScreen(req, env, ctx, who, h) {
     .bind(t0, day, who, q, JSON.stringify(res), res.conds ? res.conds.length : 0, JSON.stringify(res.unsupported || []), res.refused ? 1 : 0, Date.now() - t0, extra.cached ? 1 : 0, extra.tin || 0, extra.tout || 0).run().catch(() => { }));
   // 같은 문장(같은 사전 버전)은 저장해 둔 결과 — 횟수에 안 셈
   if (Math.random() < 0.02) ctx.waitUntil(env.DB.prepare('DELETE FROM ai_log WHERE ts<?').bind(t0 - 365 * DAY).run().catch(() => { }));   // 기록은 1년 보관 (개인정보처리방침)
-  const hit = await env.DB.prepare('SELECT res FROM ai_cache WHERE qh=? AND ts>?').bind(qh, t0 - 7 * DAY).first();
+  const hit = who === 'eval' ? null : await env.DB.prepare('SELECT res FROM ai_cache WHERE qh=? AND ts>?').bind(qh, t0 - 7 * DAY).first();   // 평가는 늘 새로
   if (hit) { const res = JSON.parse(hit.res); log(res, { cached: true }); return send({ ...res, cached: true }); }
-  const limit = +(who.startsWith('u:') ? env.AI_LIMIT_USER || 30 : env.AI_LIMIT_ANON || 10);
+  const limit = who === 'eval' ? 1e9 : +(who.startsWith('u:') ? env.AI_LIMIT_USER || 30 : env.AI_LIMIT_ANON || 10);
   const used = (await env.DB.prepare('SELECT COUNT(*) n FROM ai_log WHERE day=? AND who=? AND cached=0').bind(day, who).first()).n;
   if (used >= limit) return send({ error: 'limit', limit, login: !who.startsWith('u:') }, 429);
   let raw = null, usage = {}, tries = 0;
@@ -152,6 +152,7 @@ export async function aiScreen(req, env, ctx, who, h) {
 }
 
 export async function whoOf(req, env, getSession) {
+  if (env.ALERT_KEY && req.headers.get('x-ai-eval') === env.ALERT_KEY) return 'eval';     // 평가 워크플로(.github/workflows/ai-eval.yml) — 횟수 제한·저장 결과 없이
   try {
     const s = await getSession();
     if (s && s.user) return 'u:' + s.user.id;

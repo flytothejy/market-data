@@ -1,0 +1,23 @@
+name: ai-eval
+
+# AI 문장 검색 평가 — features/ai-screen/eval.json 문장을 Worker /ai/screen에 보내 통과율 확인 (수동 실행)
+# ALERT_KEY로 횟수 제한·저장 결과를 건너뜀
+on:
+  workflow_dispatch:
+    inputs:
+      api:
+        description: "API 주소"
+        default: "https://tickermap-api.flytothejy.workers.dev"
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests
+      - run: python -m hub.ai_eval "${{ inputs.api }}"
+        env:
+          ALERT_KEY: ${{ secrets.ALERT_KEY }}

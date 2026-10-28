@@ -5,7 +5,7 @@
 통과 기준: 기대한 key가 모두 있고 숫자가 허용 구간 안, unsupported·refused 있음/없음 일치 (assumptions는 참고만)
 주의: 문장 수만큼 하루 횟수를 씀(같은 문장은 저장된 결과라 다시 돌리면 안 셈)
 """
-import json, sys, time
+import json, os, sys, time
 from pathlib import Path
 
 import requests
@@ -45,7 +45,8 @@ def main(api):
     ok = 0
     for c in cases:
         t = time.time()
-        r = requests.post(api.rstrip("/") + "/ai/screen", json={"q": c["q"]}, timeout=60)
+        r = requests.post(api.rstrip("/") + "/ai/screen", json={"q": c["q"]}, timeout=60,
+                          headers={"x-ai-eval": os.environ["ALERT_KEY"]} if os.environ.get("ALERT_KEY") else {})
         got = r.json()
         if r.status_code != 200:
             print(f"✗ [{r.status_code}] {c['q'][:40]} → {got}")
@@ -58,6 +59,7 @@ def main(api):
         if why:
             print("     ", "; ".join(why), "|", json.dumps({k: got.get(k) for k in ('conds', 'unsupported', 'sort')}, ensure_ascii=False)[:300])
     print(f"\n통과 {ok}/{len(cases)} ({ok / len(cases):.0%}) — 목표 92%")
+    return ok, len(cases)
 
 
 if __name__ == "__main__":
