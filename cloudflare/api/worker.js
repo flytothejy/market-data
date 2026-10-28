@@ -319,6 +319,7 @@ async function account(req, env, path) {
     if (u) await wipe(env, u.uid);
     await env.DB.batch([
       env.DB.prepare('DELETE FROM prefs WHERE auth_id=?').bind(A.id),
+      env.DB.prepare('DELETE FROM ai_log WHERE who=?').bind('u:' + A.id),        // 문장으로 찾기 기록
       env.DB.prepare('DELETE FROM session WHERE userId=?').bind(A.id),
       env.DB.prepare('DELETE FROM account WHERE userId=?').bind(A.id),
       env.DB.prepare('DELETE FROM "user" WHERE id=?').bind(A.id),
