@@ -1,6 +1,6 @@
 # AI 조건 검색 — 문장으로 종목 걸러 찾기
 
-> 2026-10-28 설계·1차 구현. 상태: 화면(design 미리보기)·Worker `/ai/screen`·새 필드 완료 / Claude API 키 등록·평가 대기.
+> 2026-10-28 설계·구현. 상태: Worker 가동(키 등록 완료), 평가 25/25, 화면은 design 미리보기 — 공개는 '반영' 때.
 > 필드 사전: `hub/spec/screen_catalog.json` (`python -m hub.screen_catalog <universe.json>`으로 생성)
 > 평가 문장: `features/ai-screen/eval.json`
 
@@ -138,4 +138,5 @@ OR 조건, 두 필드 비교(예: 최근 분기 성장 > 1년 성장), 순위(�
 5. [x] 검색 화면 필터 확장(date·enum·flag) + 주소에 조건 담기
 6. [x] Worker `/ai/screen` (검증·제한·기록) — `cloudflare/api/ai.js`, 프롬프트 `cloudflare/api/ai_prompt.txt`, 평가 `python -m hub.ai_eval`
 7. [x] 화면 입력창·칩·안내
-8. [ ] 평가 돌려 통과율 92% 넘기면 공개
+8. [x] 평가 25/25 (2026-10-28, 평균 약 2.3초) — 평가는 Actions 'ai-eval' 수동 실행
+9. [ ] 공개 뒤: 실제 문장 기록(ai_log)에서 실패·미지원 사례를 모아 평가 문장에 추가 (평가 문장에 맞춰 고친 부분이 있어 새 문장으로 다시 확인 필요)
