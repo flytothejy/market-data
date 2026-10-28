@@ -13,18 +13,18 @@ async function sha(s) {
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
-// ---- 필드 사전 (사이트 데이터, 1시간 캐시)
+// ---- 필드 사전 (사이트 데이터, 10분 캐시)
 let _cat = null, _catAt = 0;
 async function catalog(env, ctx) {
-  if (_cat && Date.now() - _catAt < 3600e3) return _cat;
+  if (_cat && Date.now() - _catAt < 600e3) return _cat;
   const url = (env.DATA_URL || 'https://tickermap.kr/api/v1').replace(/\/$/, '') + '/free/screen_catalog.json';
   const cache = caches.default, key = new Request(url);
   let r = await cache.match(key);
   if (!r) {
-    r = await fetch(url, { cf: { cacheTtl: 3600 } });
+    r = await fetch(url, { cf: { cacheTtl: 600 } });
     if (!r.ok) throw new Error('catalog ' + r.status);
     const copy = new Response(r.clone().body, r);
-    copy.headers.set('cache-control', 'max-age=3600');
+    copy.headers.set('cache-control', 'max-age=600');
     ctx.waitUntil(cache.put(key, copy));
   }
   const c = await r.json();

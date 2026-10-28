@@ -23,6 +23,8 @@ def check(exp, got):
     for k, rule in exp.get("conds", {}).items():
         c = gc.get(k)
         if not c:
+            if any(a in gc for a in exp.get("alt", {}).get(k, [])):       # 같은 뜻의 다른 필드로 바꿨으면 통과
+                continue
             why.append(f"{k} 없음")
             continue
         for op, v in rule.items():

@@ -178,11 +178,17 @@
      "c_ratio": {
       "min": [
        0.2,
-       0.5
+       0.6
       ]
      }
     },
-    "assumptions": true
+    "assumptions": true,
+    "alt": {
+     "c_ratio": [
+      "c_chg90",
+      "c_up"
+     ]
+    }
    }
   },
   {
@@ -209,9 +215,9 @@
    "expect": {
     "conds": {
      "dz": {
-      "in": [
+      "min": [
        2,
-       3
+       2
       ]
      }
     }
@@ -272,7 +278,12 @@
       ]
      }
     },
-    "assumptions": true
+    "assumptions": true,
+    "alt": {
+     "fcf": [
+      "fcfy"
+     ]
+    }
    }
   },
   {
