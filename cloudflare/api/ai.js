@@ -18,10 +18,10 @@ let _cat = null, _catAt = 0;
 async function catalog(env, ctx) {
   if (_cat && Date.now() - _catAt < 600e3) return _cat;
   const url = (env.DATA_URL || 'https://tickermap.kr/api/v1').replace(/\/$/, '') + '/free/screen_catalog.json';
-  const cache = caches.default, key = new Request(url);
+  const cache = caches.default, key = new Request(url + '?t=' + Math.floor(Date.now() / 600e3));   // 10분마다 새 키
   let r = await cache.match(key);
   if (!r) {
-    r = await fetch(url, { cf: { cacheTtl: 600 } });
+    r = await fetch(url + '?t=' + Math.floor(Date.now() / 600e3));
     if (!r.ok) throw new Error('catalog ' + r.status);
     const copy = new Response(r.clone().body, r);
     copy.headers.set('cache-control', 'max-age=600');
