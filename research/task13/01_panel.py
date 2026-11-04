@@ -164,6 +164,7 @@ P["n_avail"] = comp.notna().sum(axis=1)
 P["n_flag"] = comp.fillna(0).sum(axis=1)
 P["COMP2"] = np.where(P["n_avail"] >= 3, (P["n_flag"] >= 2).astype(float), np.nan)
 print("panel", len(P), "firms", P["t"].nunique())
+P.to_parquet(os.path.join(OUT, "fund.parquet"))  # 과제 2-9(섹터) 재사용
 
 # ---------- 가격 ----------
 px = pd.concat([pd.read_parquet(p, columns=["date", "ticker", "close", "adj_close", "volume"]) for p in sorted(glob.glob(os.path.join(R2, "px_20*.parquet")))])
