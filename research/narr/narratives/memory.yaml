@@ -1,0 +1,29 @@
+id: memory
+title: AI가 메모리 슈퍼사이클을 만든다
+question: 메모리 호황, 정점은 지났을까?
+core: producer
+keywords: 'HBM|high.bandwidth memory|DRAM|NAND|memory'
+layers:
+  - id: demand
+    name: 수요 (돈을 쓰는 쪽)
+    role: spender
+    members: [MSFT, GOOGL, AMZN, META, ORCL]
+  - id: accel
+    name: AI 가속기 (HBM을 쓰는 쪽)
+    role: seller
+    members: [NVDA, AMD, AVGO]
+  - id: producer
+    name: 메모리 생산
+    role: producer
+    members: [MU, SNDK, SNDKOLD]
+  - id: storage
+    name: 저장장치
+    role: producer
+    members: [WDC, STX]
+  - id: equip
+    name: 장비·테스트
+    role: seller
+    members: [LRCX, AMAT, KLAC, TER]
+notes:
+  - SNDKOLD는 2016년 웨스턴디지털에 인수되기 전 샌디스크(2009~2016), SNDK는 2025년 분할 상장 이후. 같은 줄에 이어 표시.
+  - 삼성전자·SK하이닉스는 미국 분기 공시가 없어 DART 연동 전까지 제외.

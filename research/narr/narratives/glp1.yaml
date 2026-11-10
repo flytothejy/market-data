@@ -1,0 +1,31 @@
+id: glp1
+title: 비만약이 식품 수요를 줄인다
+question: 비만약이 식품 회사를 무너뜨릴까?
+core: food
+polarity: negative   # 핵심 층 회사에 나쁜 이야기
+gate: driver          # 원인 층이 '견고' 이상일 때만 이야기가 성립
+keywords: 'GLP-1|obesity|weight.loss|semaglutide|tirzepatide|appetite'
+layers:
+  - id: driver
+    name: 원인 (비만약)
+    role: seller
+    members: [LLY]
+  - id: supply
+    name: 공급망 (주사기·위탁생산)
+    role: seller
+    members: [WST, TMO]
+  - id: food
+    name: 포장식품 (타격 예상)
+    role: defensive
+    members: [GIS, KHC, MDLZ, HSY, CAG, CPB, SJM]
+  - id: snack
+    name: 음료·스낵 (타격 예상)
+    role: defensive
+    members: [PEP, KO, KDP]
+  - id: medtech
+    name: 수면무호흡·당뇨 기기 (타격 예상)
+    role: seller
+    members: [RMD, DXCM, PODD]
+notes:
+  - 노보노디스크는 미국 분기 XBRL이 없어 제외. 원인 층은 일라이릴리 전체 매출이라 GLP-1 외 약품이 섞임.
+  - 모든 층의 국면은 그 층 회사들 기준(견고 = 좋음). 이야기의 방향은 polarity로, 판정은 원인 층×핵심 층 조합으로.

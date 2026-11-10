@@ -1,0 +1,29 @@
+id: ev
+title: 전기차가 자동차 산업을 바꾼다
+question: 전기차 혁명, 어디까지 왔나?
+core: ev
+polarity: positive
+keywords: 'electric vehicle|EV |battery|lithium|charging'
+layers:
+  - id: ev
+    name: 전기차 제조
+    role: seller
+    agg: sum
+    members: [TSLA, RIVN, LCID]
+  - id: battery
+    name: 리튬·소재
+    role: seller
+    agg: sum
+    members: [ALB, MP]
+  - id: parts
+    name: 전장 부품·전력반도체
+    role: seller
+    members: ['ON', APTV, BWA]
+  - id: charging
+    name: 충전 인프라
+    role: seller
+    agg: sum
+    members: [CHPT, EVGO, BLNK]
+notes:
+  - 루시드·차지포인트·EVgo·블링크는 티커맵 가격 수집 대상이 아니라 재무만 반영(가격선 없음).
+  - 니오·샤오펑·리오토·BYD·CATL 등 중국 기업은 미국 분기 XBRL이 없어 제외.
